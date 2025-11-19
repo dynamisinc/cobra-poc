@@ -1,7 +1,15 @@
 ﻿using ChecklistAPI.Data;
+using ChecklistAPI.Extensions;
+using ChecklistAPI.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add Application Insights telemetry
+builder.Services.AddApplicationInsightsTelemetry(options =>
+{
+    options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+});
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -12,6 +20,9 @@ builder.Services.AddSignalR();
 // Add DbContext
 builder.Services.AddDbContext<ChecklistDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Register application services
+builder.Services.AddScoped<ITemplateService, TemplateService>();
 
 // CORS for frontend
 builder.Services.AddCors(options =>
@@ -35,6 +46,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowFrontend");
+
+// Mock authentication (POC only - replace with real auth in production)
+app.UseMockUserContext();
+
 app.UseAuthorization();
 app.MapControllers();
 
