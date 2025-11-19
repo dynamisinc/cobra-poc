@@ -1,0 +1,848 @@
+# C5 Seeder - Project Context for Claude Code
+
+## Project Overview
+
+**Project Name**: C5 Seeder  
+**Purpose**: AI-powered demo data generator for COBRA C5 emergency management system  
+**GitHub**: c5-seeder  
+**Architecture**: Three-tier (React frontend, .NET Azure Functions API, SQL Server database)
+
+## What This Application Does
+
+C5 Seeder enables Customer Care advocates and SMEs to rapidly create customized demonstration environments for the COBRA C5 emergency management platform. The application:
+
+1. **Captures customer requirements** through a discovery form (industry, pain points, features to showcase)
+2. **Generates realistic scenarios** using Claude AI (events, logbooks, entries, chat messages)
+3. **Reviews and refines** the generated content with the user
+4. **Executes automated data injection** into the target COBRA server via REST APIs
+5. **Monitors progress** in real-time and provides execution history
+
+### Key Value Proposition
+
+- **Before**: Manual demo creation taking hours, only usable by one developer
+- **After**: Self-service demo creation in under 10 minutes, usable by entire team
+
+## Domain Context
+
+### COBRA C5 Emergency Management System
+
+COBRA is a national-level emergency and crisis management command and control tool used by organizations to monitor, respond to, and coordinate natural and manmade crises. It operates at tactical, operational, and strategic levels.
+
+**Key Concepts:**
+
+- **Events/Incidents**: Emergency situations being managed (wildfire, hurricane, etc.)
+- **Logbooks**: Chronological records of actions, decisions, and observations
+- **Operational Periods**: Time segments for organizing response activities
+- **ICS Positions**: Incident Command System roles (IC, Planning Chief, Operations Chief, etc.)
+- **Chat Messages**: Real-time communication between responders
+- **Organizations**: Customer boundaries with sub-organizations
+
+### Target Users
+
+- **Customer Care Advocates**: Create demos for sales presentations
+- **SMEs (Subject Matter Experts)**: Design complex scenarios showcasing specific features
+- **Future**: Onboarding coordinators, training administrators
+
+## Technical Architecture
+
+### Frontend (frontend/)
+
+- **Framework**: React 18+ with TypeScript
+- **UI**: Material UI v7+ (minimum v7, based on COBRA's design system)
+- **Build**: Vite
+- **State**: React Context + Hooks
+- **HTTP**: Axios
+- **Real-time**: SignalR client
+- **Routing**: React Router v6
+- **Forms**: React Hook Form
+
+### Backend (api/)
+
+- **Runtime**: .NET 8 (LTS)
+- **Hosting**: Azure Functions v4 (Isolated worker model)
+- **ORM**: Entity Framework Core 8
+- **HTTP Client**: HttpClient with Polly (retry/circuit breaker)
+- **Validation**: FluentValidation
+- **Logging**: ILogger + Application Insights
+- **Authentication**: JWT (app), Data Protection API (C5 credentials)
+
+### Database (database/)
+
+- **RDBMS**: SQL Server (Azure SQL)
+- **Approach**: Code-first with EF Core migrations
+- **Key Tables**: Servers, DemoUsers, Executions, ExecutionPositions
+
+### External Dependencies
+
+- **Claude API** (Anthropic): LLM scenario generation
+- **COBRA C5 API**: Target system for data injection
+- **Azure Services**: Static Web Apps, Functions, SQL, Key Vault, App Insights
+
+## Project Structure
+
+```
+c5-seeder/
+├── frontend/                          # React frontend
+│   ├── src/
+│   │   ├── components/          # UI components by feature
+│   │   ├── pages/               # Routed page components
+│   │   ├── services/            # API client layer
+│   │   ├── models/              # TypeScript interfaces
+│   │   ├── contexts/            # React contexts (Auth, etc.)
+│   │   ├── hooks/               # Custom hooks
+│   │   └── utils/               # Helper functions
+│   └── README.md
+├── api/                          # .NET Azure Functions
+│   ├── src/
+│   │   ├── Functions/           # HTTP endpoints
+│   │   ├── Services/            # Business logic
+│   │   ├── Models/
+│   │   │   ├── DTOs/            # Data transfer objects
+│   │   │   └── Entities/        # EF Core entities
+│   │   ├── Data/                # DbContext and migrations
+│   │   └── Utilities/           # Helpers
+│   └── README.md
+├── database/                     # Schema management
+│   ├── migrations/              # EF migrations
+│   ├── scripts/                 # Manual SQL scripts
+│   └── seed-data/               # Development data
+├── docs/                         # Planning documentation
+│   ├── architecture.md          # Technical architecture
+│   └── user-stories/            # MVP user stories
+└── reference/                    # Existing console app code
+    └── console-app/             # Patterns and C5 API examples
+    └── cobraApi.ts              # Auto-generated TypeScript client from COBRA C5 Swagger
+```
+
+## Current Development Phase
+
+**Status**: Initial setup complete, ready for Sprint 1  
+**GitHub**: Issues created for 14 user stories (~100 story points)  
+**Sprint 1 Focus**: Infrastructure & authentication (~25 points)
+
+### Active User Stories (Sprint 1)
+
+- US-001: Server Registry (5 pts)
+- US-002: Demo User Pool with encryption (8 pts)
+- US-003: Organization Selection (5 pts)
+- US-012: Simple Login (5 pts)
+- US-013: Dashboard (5 pts)
+
+### Upcoming Sprints
+
+- Sprint 2: LLM generation and scenario review
+- Sprint 3: Execution engine and C5 API integration
+- Sprint 4: Monitoring and history
+
+## Coding Standards & Practices
+
+### General Principles
+
+1. **Separation of Concerns**: Clear boundaries between layers
+2. **DRY (Don't Repeat Yourself)**: Extract reusable logic
+3. **Readability**: Code should be self-documenting
+4. **Function Size**: Keep functions focused (< 50 lines ideally)
+5. **Comments**: Verbose headers for complex logic, help new engineers
+
+### TypeScript/React Standards
+
+**Naming Conventions:**
+
+- Components: PascalCase (`ServerList.tsx`)
+- Files: Match component name
+- Functions/variables: camelCase
+- Hooks: `use` prefix (`useAuth`, `useServers`)
+- Services: camelCase with Service suffix (`serverService.ts`)
+- Interfaces: PascalCase, no `I` prefix (`Server`, not `IServer`)
+
+**Component Structure:**
+
+```typescript
+/**
+ * ComponentName
+ *
+ * Brief description of what this component does.
+ *
+ * Features:
+ * - Feature 1
+ * - Feature 2
+ *
+ * @component
+ */
+
+import React, { useState } from "react";
+
+interface ComponentNameProps {
+  propName: type;
+  optionalProp?: type;
+}
+
+export const ComponentName: React.FC<ComponentNameProps> = ({
+  propName,
+  optionalProp,
+}) => {
+  // Component implementation
+};
+```
+
+**Best Practices:**
+
+- Use functional components with hooks
+- Prefer `const` over `let`
+- Use async/await over promises
+- Handle loading and error states for all async operations
+- Destructure props in function signature
+- Use TypeScript strict mode
+- Extract complex logic into custom hooks
+- Material UI: Use `sx` prop for styling, leverage theme
+- **Material UI v7 Grid API**: Use `size` prop instead of `item` prop:
+  - ❌ OLD: `<Grid item xs={12} md={6}>`
+  - ✅ NEW: `<Grid size={{ xs: 12, md: 6 }}>`
+  - Always remove `item` prop when using `size` prop
+- **Avoid `any` type - Use as absolute last resort only**:
+  - ❌ BAD: `function process(data: any) {}`
+  - ✅ GOOD: `function process(data: ServerDto) {}`
+  - ✅ GOOD: `function process<T>(data: T) {}`
+  - ✅ ACCEPTABLE: `function process(data: unknown) {}` (when type truly unknown)
+  - Only use `any` when unavoidable, with explicit `// eslint-disable-next-line @typescript-eslint/no-explicit-any` and justification comment
+  - Prefer: specific types, union types (`string | number`), generics (`<T>`), or `unknown` over `any`
+  - ESLint will now throw an error for `any` usage - this is intentional
+
+### C# Standards
+
+**Naming Conventions:**
+
+- Classes: PascalCase (`ServerService`)
+- Interfaces: `I` prefix (`IServerService`)
+- Methods: PascalCase (`GetServerByIdAsync`)
+- Parameters/variables: camelCase
+- Private fields: `_` prefix (`_logger`, `_context`)
+- Constants: PascalCase
+- Async methods: `Async` suffix
+
+**Class Structure:**
+
+```csharp
+/// <summary>
+/// Brief description of what this class does.
+/// Handles X, Y, and Z operations.
+/// </summary>
+public class ClassName : IClassName
+{
+    private readonly IDependency _dependency;
+    private readonly ILogger<ClassName> _logger;
+
+    /// <summary>
+    /// Initializes a new instance of ClassName.
+    /// </summary>
+    public ClassName(
+        IDependency dependency,
+        ILogger<ClassName> logger)
+    {
+        _dependency = dependency;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Brief description of what this method does.
+    /// </summary>
+    /// <param name="parameter">Description of parameter</param>
+    /// <returns>Description of return value</returns>
+    public async Task<ReturnType> MethodNameAsync(ParameterType parameter)
+    {
+        // Implementation
+    }
+}
+```
+
+**Best Practices:**
+
+- Interface-first design for services
+- Dependency injection for all dependencies
+- Async/await for all I/O operations
+- Use `ILogger<T>` for logging
+- XML documentation comments for public APIs
+- Use nullable reference types
+- Prefer explicit types over `var` (except for anonymous types)
+- Use `ConfigureAwait(false)` for library code
+- Entity Framework: async methods, AsNoTracking for read-only
+- Validation: FluentValidation for complex rules
+- Error handling: Try/catch in service methods, log errors
+
+### Database/EF Core Standards
+
+**Entity Conventions:**
+
+- Entities in `Models/Entities`
+- DTOs in `Models/DTOs`
+- Primary key: `Id` property
+- Foreign keys: `{Entity}Id` (e.g., `ServerId`)
+- Timestamps: `CreatedAt`, `UpdatedAt` (UTC)
+- Soft delete: `IsActive` or `DeletedAt`
+
+**Migration Naming:**
+
+- Format: `YYYYMMDD_DescriptiveName`
+- Example: `20241106_AddDemoUsersTable`
+
+**Querying Best Practices:**
+
+- Always use async methods
+- Use `AsNoTracking()` for read-only queries
+- Use `Include()` for eager loading relationships
+- Avoid N+1 queries
+- Use pagination for large result sets
+- Leverage indexes for common queries
+
+### Security Requirements
+
+**Mandatory Security Practices:**
+
+1. **Never log sensitive data**: passwords, tokens, API keys
+2. **Encrypt C5 credentials**: Use Data Protection API
+3. **Validate all inputs**: Both client and server side
+4. **Use parameterized queries**: EF Core does this automatically
+5. **HTTPS only**: Enforce at all layers
+6. **Secrets in Key Vault**: Never in code or config files
+7. **Least privilege**: Database users, Azure permissions
+
+**Password Handling:**
+
+- C5 demo user passwords encrypted using Data Protection API
+- Encryption keys stored in Azure Key Vault
+- Decrypt only when needed, never display
+- Use Managed Identity to access Key Vault
+
+**Authentication:**
+
+- Web app: JWT tokens with 8-hour expiration
+- C5 API: Bearer tokens from C5 auth endpoint
+- Token caching: In-memory with expiration tracking
+
+## Key Patterns & Approaches
+
+### Service Layer Pattern
+
+**Purpose**: Encapsulate business logic, separate from HTTP concerns
+
+```csharp
+// Interface defines contract
+public interface IServerService
+{
+    Task<IEnumerable<ServerDto>> GetAllServersAsync();
+    Task<ServerDto?> GetServerByIdAsync(int id);
+    Task<ServerDto> CreateServerAsync(CreateServerDto dto);
+    Task<ServerDto> UpdateServerAsync(int id, UpdateServerDto dto);
+    Task DeleteServerAsync(int id);
+}
+
+// Implementation contains business logic
+public class ServerService : IServerService
+{
+    private readonly AppDbContext _context;
+    private readonly ILogger<ServerService> _logger;
+
+    // Implementation with proper error handling, logging, validation
+}
+
+// Function uses service
+public class ServerFunctions
+{
+    private readonly IServerService _serverService;
+
+    [Function("GetServers")]
+    public async Task<HttpResponseData> GetServers(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
+    {
+        var servers = await _serverService.GetAllServersAsync();
+        // Return response
+    }
+}
+```
+
+### DTO Pattern
+
+**Purpose**: Separate internal entities from API contracts
+
+- **Entities**: Internal EF Core models with navigation properties
+- **DTOs**: Clean API contracts, no circular references
+- **Mapping**: Use extension methods or mapping libraries
+
+### Repository Pattern (Optional)
+
+**Note**: EF Core DbContext is already a repository pattern. Use custom repositories only if you need:
+
+- Complex query encapsulation
+- Multiple data sources
+- Testing abstraction
+
+For most cases, inject DbContext directly into services.
+
+### API Response Pattern
+
+**Standardized responses:**
+
+```csharp
+public class ApiResponse<T>
+{
+    public bool Success { get; set; }
+    public T? Data { get; set; }
+    public string? ErrorMessage { get; set; }
+    public List<string>? ValidationErrors { get; set; }
+}
+```
+
+### Error Handling Strategy
+
+**Frontend:**
+
+- Try/catch around API calls
+- Display user-friendly error messages
+- Log errors to console (dev) or App Insights (prod)
+- Show loading states during operations
+- Provide retry options for transient failures
+
+**Backend:**
+
+- Try/catch in service methods
+- Log errors with context (operation, parameters, stack trace)
+- Return meaningful error messages (not stack traces)
+- Use appropriate HTTP status codes
+- Handle transient failures with retry policies (Polly)
+
+## LLM Integration Patterns
+
+### Prompt Engineering for Claude
+
+**System Context:**
+
+```
+You are an expert in emergency management and incident command systems (ICS).
+You generate realistic demo scenarios for the COBRA C5 platform that showcase
+specific features and address customer pain points.
+```
+
+**User Prompt Structure:**
+
+```
+Generate a {incident_type} scenario for a {industry} organization.
+
+Customer Requirements:
+- Pain points: {pain_points}
+- Features to showcase: {features}
+- Timeline: {duration}
+- Operational periods: {num_periods}
+
+Output Format: JSON matching the ScenarioDto schema
+```
+
+**Response Parsing:**
+
+- Expect structured JSON from Claude
+- Validate against schema before accepting
+- Handle generation errors gracefully
+- Allow regeneration if unsatisfactory
+
+### C5 API Integration Patterns
+
+**Authentication:**
+
+1. Retrieve demo user credentials (encrypted)
+2. Decrypt using Data Protection API
+3. Call C5 auth endpoint to get bearer token
+4. Cache token with expiration
+5. Use token for subsequent API calls
+
+**Execution Flow:**
+
+1. Create Event → Get Event ID
+2. Setup Positions → Map personas to users
+3. Create Logbooks → Get Logbook IDs
+4. Create Entries (batched) → Track progress
+5. Create Chat Threads → Add messages
+
+**Error Handling:**
+
+- Retry transient failures (network, timeout)
+- Log all C5 API responses
+- Continue on partial failures (log errors)
+- Mark execution as "Partial" if some operations fail
+- Provide detailed error reporting to user
+
+## Testing Strategy
+
+### Unit Tests
+
+- Service layer methods
+- Utility functions
+- Validation logic
+- DTO mapping
+
+### Integration Tests
+
+- Database operations (in-memory or test DB)
+- API endpoints (test host)
+- External API calls (mocked)
+
+### Manual Testing Checklist
+
+- Server CRUD operations
+- User management with encryption
+- LLM generation with various inputs
+- Complete execution flow
+- Error scenarios (network failures, invalid data)
+
+## Development Workflow
+
+### Git Workflow
+
+1. Pick user story from GitHub Issues
+2. Create feature branch: `feature/US-XXX-description`
+3. Implement with commits referencing issue
+4. **Run all tests and ensure they pass**
+5. Create PR referencing issue: `Closes #XXX`
+6. Code review
+7. Merge to main
+
+### Testing Workflow
+
+**CRITICAL**: Always run tests before committing code or creating PRs. All tests must pass.
+
+#### Backend API Tests
+
+```powershell
+# From repository root
+cd api
+dotnet build
+dotnet test
+
+# Run specific test class
+dotnet test --filter "FullyQualifiedName~ServerFunctionsTests"
+
+# Run with verbose output
+dotnet test --logger "console;verbosity=detailed"
+```
+
+#### Frontend Tests
+
+```powershell
+# From repository root
+cd frontend
+npm test
+
+# Run tests in watch mode during development
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+
+# For CI environments (sequential execution)
+.\run-tests-sequential.ps1
+```
+
+#### Test-Driven Development (TDD)
+
+When implementing user stories:
+
+1. **Write tests first** for new functionality
+2. Run tests and verify they fail (red)
+3. Implement the minimum code to make tests pass (green)
+4. Refactor while keeping tests passing
+5. Ensure all existing tests still pass
+
+#### Pre-Commit Checklist
+
+- [ ] All backend tests pass (`dotnet test`)
+- [ ] All frontend tests pass (`npm test`)
+- [ ] Integration tests pass for affected features (if applicable)
+- [ ] No TypeScript compilation errors
+- [ ] No linting errors
+- [ ] Code follows project conventions
+- [ ] New functionality has corresponding tests (unit + integration)
+
+#### Test Documentation
+
+- **Frontend**: See `frontend/TESTING.md` for comprehensive testing guide
+- **Backend**: Unit tests in `api.Tests/`, organized by layer (Functions, Services, Middleware)
+- **Integration**: PowerShell tests in `tests/integration/`, see `tests/integration/README.md`
+- **Coverage Analysis**: See `TEST_COVERAGE_ANALYSIS.md` for current coverage and gaps
+
+### Commit Messages
+
+```
+feat(US-XXX): Brief description
+
+- Detailed change 1
+- Detailed change 2
+
+Closes #XXX (GitHub issue number)
+```
+
+## Definition of Done
+
+For any feature or bug fix to be considered complete and ready for merge:
+
+### Code Quality
+
+- [ ] Code follows project conventions (see CODING_STANDARDS.md)
+- [ ] All functions/components have verbose header comments
+- [ ] Code follows separation of concerns and DRY principles
+- [ ] No TypeScript compilation errors
+- [ ] No linting errors or warnings
+- [ ] Code reviewed by at least one team member
+
+### Testing Requirements
+
+- [ ] **Unit tests written and passing** for all new backend services/functions
+- [ ] **Unit tests written and passing** for all new frontend components/services
+- [ ] **Integration tests** created or updated if feature involves:
+  - New API endpoints
+  - Changes to request/response contracts
+  - Complex multi-step workflows
+  - External service integration (LLM, blob storage, etc.)
+- [ ] All existing tests still pass (no regressions)
+- [ ] Tests cover edge cases and error scenarios
+- [ ] Minimum 70% code coverage for new code
+- [ ] Critical paths (auth, encryption, data persistence) have 90%+ coverage
+
+### Integration Testing
+
+- [ ] If new API endpoint, integration test exists in `tests/integration/`
+- [ ] If modifying existing endpoint, integration test updated
+- [ ] Integration test validates:
+  - Happy path with realistic data
+  - At least one error scenario
+  - Response format and data integrity
+  - Authentication/authorization requirements
+- [ ] Integration test documented in `tests/integration/README.md`
+
+### Execution
+
+- [ ] Backend tests pass: `dotnet test`
+- [ ] Frontend tests pass: `npm test` (or `.\run-tests-sequential.ps1` on Windows)
+- [ ] Integration tests pass for affected features
+- [ ] Tested in local environment
+- [ ] No console errors or warnings in browser
+
+### Documentation
+
+- [ ] User story acceptance criteria met
+- [ ] README.md updated if setup/usage changed
+- [ ] API documentation updated if endpoints changed
+- [ ] Migration guide provided if breaking changes
+- [ ] Inline code comments for complex logic
+
+### Reference Materials
+
+- **Testing Guide**: See `TEST_COVERAGE_ANALYSIS.md` for coverage requirements
+- **Frontend Testing**: See `frontend/TESTING.md` for test setup and execution
+- **Integration Testing**: See `tests/integration/README.md` for integration test patterns
+- **Coding Standards**: See `CODING_STANDARDS.md` for detailed conventions
+
+### Branch Naming
+
+- Features: `feature/US-001-server-registry`
+- Bugfixes: `fix/issue-description`
+- Hotfixes: `hotfix/critical-issue`
+
+## Common Pitfalls to Avoid
+
+### Frontend
+
+- ❌ Not handling loading states
+- ❌ Not handling error states
+- ❌ Mutating state directly (use setState/useState)
+- ❌ Missing key props in lists
+- ❌ Not cleaning up useEffect subscriptions
+- ❌ Inline styles instead of MUI theming
+
+### Backend
+
+- ❌ Forgetting async/await
+- ❌ Not disposing resources (use `using`)
+- ❌ Logging sensitive data
+- ❌ Hardcoding connection strings
+- ❌ Not validating inputs
+- ❌ Synchronous I/O operations
+
+### Database
+
+- ❌ Not using migrations (editing DB directly)
+- ❌ Forgetting indexes on foreign keys
+- ❌ Not using AsNoTracking for read-only queries
+- ❌ N+1 query problems
+- ❌ Missing cascading delete configurations
+
+## Reference Code
+
+The `reference/cobraApi.ts` file is an auto-generated TypeScript client and DTO set from the COBRA C5 REST API Swagger/OpenAPI spec. Use this file as the authoritative source for available endpoints, request/response types, and integration patterns when building features that interact with the C5 API.
+
+**Important:** The C5 API may change over time. You must periodically re-generate and update `reference/cobraApi.ts` from the latest Swagger/OpenAPI definition provided by the C5 team to ensure your integration remains accurate and up to date. Coordinate with the backend/API team to obtain the latest spec and regenerate this file as needed.
+
+The `reference/console-app/` directory contains a complete .NET 8 console application demonstrating C5 API integration. This is **essential** for implementing Sprint 3 (US-007 through US-011).
+
+### Key Files to Reference
+
+**Authentication & Token Management:**
+
+- `src/services/TokenFetcher.cs` - Browser automation for token capture
+- `src/services/TokenManager.cs` - Token storage and lookup
+- `src/services/PlaywrightBrowserAutomation.cs` - Automated login
+
+**C5 API Client:**
+
+- `src/services/CobraApiClient.cs` - Complete HTTP client implementation
+- `src/interfaces/ICobraApiClient.cs` - Service contract
+
+**Data Models (C5 API DTOs):**
+
+- `src/models/cobraapi/CobraLogbookEntryRequest.cs` - Entry creation payload
+- `src/models/cobraapi/CobraLogbook.cs` - Logbook metadata
+- `src/models/cobraapi/EventDetails.cs` - Event information
+- `src/models/cobraapi/CobraEntryType.cs` - Entry type definitions
+- `src/models/cobraapi/CobraPriority.cs` - Priority levels
+
+**Business Logic:**
+
+- `src/services/LogbookImporter.cs` - Entry creation with threading
+- `src/services/ChatImporter.cs` - Chat message posting
+
+**Documentation:**
+
+- `API_REFERENCE.md` - Complete API endpoint documentation (1,179 lines)
+- `ARCHITECTURE.md` - Architecture patterns and design (551 lines)
+- `README.md` - User guide with examples
+
+### Critical C5 API Patterns
+
+**Required Headers:**
+
+```csharp
+request.Headers.Add("Eventid", eventId);  // Required for most endpoints!
+request.Headers.Add("Accept-Language", language);
+```
+
+**Entry Creation Requirements:**
+
+- All three timezone fields required: `timeZoneId`, `timeZoneAbbreviation`, `utcOffset`
+- Location must be WKT format: `POINT(longitude latitude)`
+- Response is string GUID that needs parsing
+- Parent-child threading via `ParentId` field
+
+**C5 API Endpoints:**
+
+```
+GET  Logbooks/SelectedLogbooks       // Get logbooks for event
+GET  Logbooks/EntryTypes             // Get entry types
+GET  Organizations/Priorities        // Get priorities
+POST Logbooks/{id}/Entries           // Create entry
+GET  Events                          // List events
+GET  Events/{id}                     // Get event details
+```
+
+### How to Use Reference Code
+
+1. **For US-007 (Authentication)**: Study `TokenFetcher.cs` and `TokenManager.cs`
+2. **For US-008 (Events/Positions)**: See `CobraApiClient.cs` GetEvents methods
+3. **For US-009 (Logbooks/Entries)**: Reference `LogbookImporter.cs` and `CobraLogbookEntryRequest.cs`
+4. **For US-010 (Chat)**: Study `ChatImporter.cs` and PostChatMessageAsync
+5. **For DTOs**: Copy and adapt models from `models/cobraapi/`
+
+**Do not copy/paste blindly** - the console app was a proof of concept. Extract patterns and improve them for the web application architecture (React + Azure Functions). The reference shows WHAT to send to C5 API and HOW to structure requests - adapt the implementation to fit the three-tier architecture.
+
+## Environment Setup
+
+### Required Tools
+
+- Node.js 20+ and npm
+- .NET 8 SDK
+- Azure Functions Core Tools v4
+- SQL Server (LocalDB or Azure SQL)
+- VS Code or Visual Studio 2022
+- Git
+- Azure CLI (for deployment)
+
+### Local Development Configuration
+
+**Web (.env in frontend/):**
+
+```env
+VITE_API_BASE_URL=http://localhost:7071/api
+VITE_APP_TITLE=C5 Seeder
+```
+
+**API (local.settings.json in api/):**
+
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "ConnectionStrings__DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=C5Seeder;Trusted_Connection=True;",
+    "ClaudeApiKey": "your-api-key",
+    "AppSettings__JwtSecret": "dev-secret-key-min-32-chars",
+    "AppSettings__JwtIssuer": "c5-seeder-api",
+    "AppSettings__JwtAudience": "c5-seeder-web"
+  }
+}
+```
+
+## Deployment Strategy
+
+### Azure Resources
+
+- Azure Static Web App (frontend + functions)
+- Azure SQL Database
+- Azure Key Vault
+- Azure App Configuration
+- Application Insights
+
+### CI/CD Pipeline
+
+- Trigger: Push to main branch
+- Build: React app + .NET functions
+- Test: Run unit/integration tests
+- Deploy: Azure Static Web App (staging → production)
+- Migrate: Run EF Core migrations
+
+## Success Metrics
+
+### MVP Goals
+
+- Create demo in < 10 minutes
+- 90% LLM generation success rate
+- < 5% execution failure rate
+- Support 5 concurrent users
+- < 2 second UI response time
+
+## Getting Help
+
+### Documentation Locations
+
+- User Stories: `docs/user-stories/mvp-user-stories.md`
+- Architecture: `docs/architecture.md`
+- Database: `database/README.md`
+- API Guide: `api/README.md`
+- Web Guide: `frontend/README.md`
+
+### External Resources
+
+- COBRA C5 API: Internal documentation
+- Claude API: https://docs.anthropic.com
+- Azure Functions: https://docs.microsoft.com/azure/azure-functions
+- Material UI: https://mui.com
+- EF Core: https://docs.microsoft.com/ef/core
+
+## Notes for Claude Code
+
+- Prefer reading this context file before starting new features
+- Reference user stories in GitHub issues for requirements
+- Check `reference/console-app/` for C5 API patterns
+- Ask clarifying questions if requirements are ambiguous
+- Suggest improvements to patterns if you see better approaches
+- Always consider security implications
+- Test changes locally before committing
+- Keep commits focused and well-documented
+- Update relevant readme files as requirements change or architecture is modified
+- Error handling and extensive logging both in console and application insights is critical
