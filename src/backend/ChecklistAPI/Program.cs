@@ -23,6 +23,7 @@ builder.Services.AddDbContext<ChecklistDbContext>(options =>
 
 // Register application services
 builder.Services.AddScoped<ITemplateService, TemplateService>();
+builder.Services.AddScoped<IChecklistService, ChecklistService>();
 
 // CORS for frontend
 builder.Services.AddCors(options =>
