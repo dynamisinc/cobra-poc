@@ -14,6 +14,38 @@ import { apiClient, getErrorMessage } from './api';
 import type { Template } from '../types';
 
 /**
+ * Create Template Request
+ */
+export interface CreateTemplateRequest {
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+  items: CreateTemplateItemRequest[];
+}
+
+export interface CreateTemplateItemRequest {
+  itemText: string;
+  itemType: string;
+  displayOrder: number;
+  isRequired: boolean;
+  statusConfiguration: string | null;
+  allowedPositions: string | null;
+  defaultNotes: string | null;
+}
+
+/**
+ * Update Template Request
+ */
+export interface UpdateTemplateRequest {
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+  items: CreateTemplateItemRequest[];
+}
+
+/**
  * Template service interface
  */
 export const templateService = {
@@ -71,6 +103,43 @@ export const templateService = {
       return response.data;
     } catch (error) {
       console.error(`Failed to fetch template ${templateId}:`, error);
+      throw new Error(getErrorMessage(error));
+    }
+  },
+
+  /**
+   * Create a new template
+   * @param request Template data with items
+   * @returns Newly created template
+   */
+  async createTemplate(request: CreateTemplateRequest): Promise<Template> {
+    try {
+      const response = await apiClient.post<Template>('/api/templates', request);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to create template:', error);
+      throw new Error(getErrorMessage(error));
+    }
+  },
+
+  /**
+   * Update an existing template
+   * @param templateId Template ID to update
+   * @param request Updated template data
+   * @returns Updated template
+   */
+  async updateTemplate(
+    templateId: string,
+    request: UpdateTemplateRequest
+  ): Promise<Template> {
+    try {
+      const response = await apiClient.put<Template>(
+        `/api/templates/${templateId}`,
+        request
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to update template ${templateId}:`, error);
       throw new Error(getErrorMessage(error));
     }
   },

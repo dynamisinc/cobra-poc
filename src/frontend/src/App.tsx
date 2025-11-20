@@ -13,6 +13,7 @@ import { faClipboardList, faBook } from '@fortawesome/free-solid-svg-icons';
 import { MyChecklistsPage } from './pages/MyChecklistsPage';
 import { ChecklistDetailPage } from './pages/ChecklistDetailPage';
 import { TemplateLibraryPage } from './pages/TemplateLibraryPage';
+import { TemplateEditorPage } from './pages/TemplateEditorPage';
 import { PositionSelector } from './components/PositionSelector';
 import { c5Colors } from './theme/c5Theme';
 
@@ -121,6 +122,12 @@ function App() {
 
           {/* Template Library page */}
           <Route path="/templates" element={<TemplateLibraryPage />} />
+
+          {/* Create New Template */}
+          <Route path="/templates/new" element={<TemplateEditorPage />} />
+
+          {/* Edit Existing Template */}
+          <Route path="/templates/:templateId/edit" element={<TemplateEditorPage />} />
 
           {/* Catch-all route - redirect to My Checklists */}
           <Route path="*" element={<Navigate to="/checklists" replace />} />

@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -22,7 +23,7 @@ import {
   Chip,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faClipboardList } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faClipboardList, faEdit } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 import { templateService } from '../services/templateService';
 import { checklistService, type CreateFromTemplateRequest } from '../services/checklistService';
@@ -34,6 +35,7 @@ import type { Template } from '../types';
  * Template Library Page Component
  */
 export const TemplateLibraryPage: React.FC = () => {
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,14 +141,24 @@ export const TemplateLibraryPage: React.FC = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ mb: 1 }}>
-          <FontAwesomeIcon icon={faClipboardList} style={{ marginRight: 12 }} />
-          Template Library
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Select a template to create a new checklist for your event or operational period.
-        </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
+        <Box>
+          <Typography variant="h4" sx={{ mb: 1 }}>
+            <FontAwesomeIcon icon={faClipboardList} style={{ marginRight: 12 }} />
+            Template Library
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Select a template to create a new checklist for your event or operational period.
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          startIcon={<FontAwesomeIcon icon={faPlus} />}
+          onClick={() => navigate('/templates/new')}
+          sx={{ minHeight: 48 }}
+        >
+          Create New Template
+        </Button>
       </Box>
 
       {/* Templates Grid */}
@@ -205,7 +217,18 @@ export const TemplateLibraryPage: React.FC = () => {
                   </Typography>
                 </CardContent>
 
-                <CardActions sx={{ p: 2, pt: 0 }}>
+                <CardActions sx={{ p: 2, pt: 0, display: 'flex', gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<FontAwesomeIcon icon={faEdit} />}
+                    onClick={() => navigate(`/templates/${template.id}/edit`)}
+                    sx={{
+                      minHeight: 48, // C5 minimum touch target
+                      flex: '0 0 auto',
+                    }}
+                  >
+                    Edit
+                  </Button>
                   <Button
                     variant="contained"
                     fullWidth

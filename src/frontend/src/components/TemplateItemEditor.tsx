@@ -1,0 +1,273 @@
+/**
+ * Template Item Editor Component
+ *
+ * Edits a single template item with all its configuration.
+ * Features:
+ * - Item text, type (checkbox/status), required flag
+ * - Status configuration builder (for status items)
+ * - Advanced options: position restrictions, default notes
+ * - Drag handle for reordering
+ * - Delete button
+ */
+
+import React, { useState } from 'react';
+import {
+  Box,
+  TextField,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  Checkbox,
+  IconButton,
+  Paper,
+  Typography,
+  Collapse,
+  Button,
+  Autocomplete,
+  Chip,
+} from '@mui/material';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faGripVertical,
+  faTrash,
+  faChevronDown,
+  faChevronUp,
+} from '@fortawesome/free-solid-svg-icons';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { c5Colors } from '../theme/c5Theme';
+import { StatusConfigurationBuilder } from './StatusConfigurationBuilder';
+import { ItemType, DEFAULT_STATUS_OPTIONS, ICS_POSITIONS, type StatusOption } from '../types';
+
+export interface TemplateItemFormData {
+  id: string; // Temporary ID for new items (guid for existing)
+  itemText: string;
+  itemType: ItemType;
+  displayOrder: number;
+  isRequired: boolean;
+  statusConfiguration: StatusOption[];
+  allowedPositions: string[];
+  defaultNotes: string;
+}
+
+interface TemplateItemEditorProps {
+  item: TemplateItemFormData;
+  index: number;
+  onUpdate: (id: string, updates: Partial<TemplateItemFormData>) => void;
+  onRemove: (id: string) => void;
+}
+
+/**
+ * Template Item Editor Component
+ */
+export const TemplateItemEditor: React.FC<TemplateItemEditorProps> = ({
+  item,
+  index,
+  onUpdate,
+  onRemove,
+}) => {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const handleTypeChange = (newType: string) => {
+    const updates: Partial<TemplateItemFormData> = {
+      itemType: newType as ItemType,
+    };
+
+    // If switching to status type and no status config, add defaults
+    if (newType === ItemType.STATUS && item.statusConfiguration.length === 0) {
+      updates.statusConfiguration = DEFAULT_STATUS_OPTIONS;
+    }
+
+    // If switching away from status, clear status config
+    if (newType === ItemType.CHECKBOX) {
+      updates.statusConfiguration = [];
+    }
+
+    onUpdate(item.id, updates);
+  };
+
+  return (
+    <Paper
+      ref={setNodeRef}
+      style={style}
+      elevation={2}
+      sx={{
+        p: 2,
+        mb: 2,
+        border: `2px solid ${c5Colors.silverWhite}`,
+        '&:hover': {
+          borderColor: c5Colors.cobaltBlue,
+        },
+      }}
+    >
+      {/* Header Row */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        {/* Drag Handle */}
+        <Box
+          {...attributes}
+          {...listeners}
+          sx={{
+            cursor: 'grab',
+            color: c5Colors.dimGray,
+            display: 'flex',
+            alignItems: 'center',
+            '&:active': {
+              cursor: 'grabbing',
+            },
+          }}
+        >
+          <FontAwesomeIcon icon={faGripVertical} size="lg" />
+        </Box>
+
+        {/* Item Number */}
+        <Typography variant="h6" sx={{ minWidth: '80px' }}>
+          Item #{index + 1}
+        </Typography>
+
+        {/* Spacer */}
+        <Box sx={{ flexGrow: 1 }} />
+
+        {/* Delete Button */}
+        <IconButton
+          size="small"
+          onClick={() => onRemove(item.id)}
+          sx={{ color: c5Colors.lavaRed }}
+          title="Remove item"
+        >
+          <FontAwesomeIcon icon={faTrash} />
+        </IconButton>
+      </Box>
+
+      {/* Item Text */}
+      <TextField
+        fullWidth
+        label="Item Text"
+        placeholder="e.g., Verify all personnel have safety equipment"
+        value={item.itemText}
+        onChange={(e) => onUpdate(item.id, { itemText: e.target.value })}
+        required
+        sx={{ mb: 2 }}
+      />
+
+      {/* Item Type */}
+      <FormControl component="fieldset" sx={{ mb: 2 }}>
+        <FormLabel component="legend">Item Type</FormLabel>
+        <RadioGroup
+          row
+          value={item.itemType}
+          onChange={(e) => handleTypeChange(e.target.value)}
+        >
+          <FormControlLabel
+            value={ItemType.CHECKBOX}
+            control={<Radio />}
+            label="Checkbox (Simple yes/no completion)"
+          />
+          <FormControlLabel
+            value={ItemType.STATUS}
+            control={<Radio />}
+            label="Status (Multiple status options)"
+          />
+        </RadioGroup>
+      </FormControl>
+
+      {/* Required Checkbox */}
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={item.isRequired}
+            onChange={(e) => onUpdate(item.id, { isRequired: e.target.checked })}
+          />
+        }
+        label="This item is required to complete the checklist"
+        sx={{ mb: 2 }}
+      />
+
+      {/* Status Configuration (only for status type) */}
+      {item.itemType === ItemType.STATUS && (
+        <Box sx={{ mb: 2, p: 2, backgroundColor: '#F5F5F5', borderRadius: 1 }}>
+          <StatusConfigurationBuilder
+            value={item.statusConfiguration}
+            onChange={(statusOptions) => onUpdate(item.id, { statusConfiguration: statusOptions })}
+            error={
+              item.statusConfiguration.length === 0
+                ? 'At least one status option is required'
+                : undefined
+            }
+          />
+        </Box>
+      )}
+
+      {/* Advanced Options Toggle */}
+      <Button
+        size="small"
+        onClick={() => setShowAdvanced(!showAdvanced)}
+        startIcon={
+          <FontAwesomeIcon icon={showAdvanced ? faChevronUp : faChevronDown} />
+        }
+        sx={{ mb: 1 }}
+      >
+        Advanced Options
+      </Button>
+
+      {/* Advanced Options Section */}
+      <Collapse in={showAdvanced}>
+        <Box sx={{ p: 2, backgroundColor: '#FAFAFA', borderRadius: 1 }}>
+          {/* Allowed Positions */}
+          <Autocomplete
+            multiple
+            options={ICS_POSITIONS as unknown as string[]}
+            value={item.allowedPositions}
+            onChange={(_, newValue) => onUpdate(item.id, { allowedPositions: newValue })}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Allowed Positions (Optional)"
+                placeholder="Select positions..."
+                helperText="Leave empty to allow all positions"
+              />
+            )}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip
+                  label={option}
+                  {...getTagProps({ index })}
+                  sx={{ backgroundColor: c5Colors.whiteBlue }}
+                />
+              ))
+            }
+            sx={{ mb: 2 }}
+          />
+
+          {/* Default Notes */}
+          <TextField
+            fullWidth
+            label="Default Notes (Optional)"
+            placeholder="e.g., Check with logistics coordinator before marking complete"
+            multiline
+            rows={2}
+            value={item.defaultNotes}
+            onChange={(e) => onUpdate(item.id, { defaultNotes: e.target.value })}
+            helperText="These notes will appear on checklist items by default"
+          />
+        </Box>
+      </Collapse>
+    </Paper>
+  );
+};
