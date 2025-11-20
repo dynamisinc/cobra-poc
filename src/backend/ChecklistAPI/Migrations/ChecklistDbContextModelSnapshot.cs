@@ -109,7 +109,7 @@ namespace ChecklistAPI.Migrations
 
                     b.HasIndex("TemplateId");
 
-                    b.ToTable("ChecklistInstances");
+                    b.ToTable("ChecklistInstances", (string)null);
                 });
 
             modelBuilder.Entity("ChecklistAPI.Models.Entities.ChecklistItem", b =>
@@ -183,7 +183,7 @@ namespace ChecklistAPI.Migrations
 
                     b.HasIndex("ChecklistInstanceId", "DisplayOrder");
 
-                    b.ToTable("ChecklistItems");
+                    b.ToTable("ChecklistItems", (string)null);
                 });
 
             modelBuilder.Entity("ChecklistAPI.Models.Entities.ItemLibraryEntry", b =>
@@ -258,7 +258,7 @@ namespace ChecklistAPI.Migrations
 
                     b.HasIndex("UsageCount");
 
-                    b.ToTable("ItemLibraryEntries");
+                    b.ToTable("ItemLibraryEntries", (string)null);
                 });
 
             modelBuilder.Entity("ChecklistAPI.Models.Entities.OperationalPeriod", b =>
@@ -320,7 +320,7 @@ namespace ChecklistAPI.Migrations
 
                     b.HasIndex("EventId", "IsCurrent");
 
-                    b.ToTable("OperationalPeriods");
+                    b.ToTable("OperationalPeriods", (string)null);
                 });
 
             modelBuilder.Entity("ChecklistAPI.Models.Entities.Template", b =>
@@ -385,7 +385,7 @@ namespace ChecklistAPI.Migrations
 
                     b.HasIndex("IsActive", "IsArchived");
 
-                    b.ToTable("Templates");
+                    b.ToTable("Templates", (string)null);
                 });
 
             modelBuilder.Entity("ChecklistAPI.Models.Entities.TemplateItem", b =>
@@ -429,7 +429,7 @@ namespace ChecklistAPI.Migrations
 
                     b.HasIndex("TemplateId", "DisplayOrder");
 
-                    b.ToTable("TemplateItems");
+                    b.ToTable("TemplateItems", (string)null);
                 });
 
             modelBuilder.Entity("ChecklistAPI.Models.Entities.ChecklistInstance", b =>
