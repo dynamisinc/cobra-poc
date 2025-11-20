@@ -6,12 +6,13 @@
  */
 
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Box, AppBar, Toolbar, Typography } from '@mui/material';
+import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { Box, AppBar, Toolbar, Typography, Button } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faClipboardList } from '@fortawesome/free-solid-svg-icons';
+import { faClipboardList, faBook } from '@fortawesome/free-solid-svg-icons';
 import { MyChecklistsPage } from './pages/MyChecklistsPage';
 import { ChecklistDetailPage } from './pages/ChecklistDetailPage';
+import { TemplateLibraryPage } from './pages/TemplateLibraryPage';
 import { PositionSelector } from './components/PositionSelector';
 import { c5Colors } from './theme/c5Theme';
 
@@ -23,6 +24,8 @@ interface AppNavBarProps {
  * App Navigation Bar
  */
 const AppNavBar: React.FC<AppNavBarProps> = ({ onPositionChange }) => {
+  const location = useLocation();
+
   return (
     <AppBar
       position="static"
@@ -37,9 +40,44 @@ const AppNavBar: React.FC<AppNavBarProps> = ({ onPositionChange }) => {
           size="lg"
           style={{ marginRight: 16 }}
         />
-        <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
+        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
           COBRA Checklist POC
         </Typography>
+
+        {/* Navigation Links */}
+        <Box sx={{ flexGrow: 1, ml: 4, display: 'flex', gap: 2 }}>
+          <Button
+            component={Link}
+            to="/checklists"
+            sx={{
+              color: 'white',
+              fontWeight: location.pathname === '/checklists' ? 'bold' : 'normal',
+              textDecoration: location.pathname === '/checklists' ? 'underline' : 'none',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              },
+            }}
+          >
+            <FontAwesomeIcon icon={faClipboardList} style={{ marginRight: 8 }} />
+            My Checklists
+          </Button>
+          <Button
+            component={Link}
+            to="/templates"
+            sx={{
+              color: 'white',
+              fontWeight: location.pathname === '/templates' ? 'bold' : 'normal',
+              textDecoration: location.pathname === '/templates' ? 'underline' : 'none',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              },
+            }}
+          >
+            <FontAwesomeIcon icon={faBook} style={{ marginRight: 8 }} />
+            Template Library
+          </Button>
+        </Box>
+
         <PositionSelector onPositionChange={onPositionChange} />
       </Toolbar>
     </AppBar>
@@ -80,6 +118,9 @@ function App() {
             path="/checklists/:checklistId"
             element={<ChecklistDetailPage />}
           />
+
+          {/* Template Library page */}
+          <Route path="/templates" element={<TemplateLibraryPage />} />
 
           {/* Catch-all route - redirect to My Checklists */}
           <Route path="*" element={<Navigate to="/checklists" replace />} />

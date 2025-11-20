@@ -28,11 +28,14 @@ import {
   MenuItem,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faNoteSticky } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faNoteSticky, faCopy } from '@fortawesome/free-solid-svg-icons';
+import { toast } from 'react-toastify';
 import { useChecklistDetail } from '../hooks/useChecklistDetail';
 import { useItemActions } from '../hooks/useItemActions';
 import { c5Colors } from '../theme/c5Theme';
 import { ItemNotesDialog } from '../components/ItemNotesDialog';
+import { CreateChecklistDialog, type ChecklistCreationData } from '../components/CreateChecklistDialog';
+import { checklistService } from '../services/checklistService';
 import type { ChecklistItemDto } from '../services/checklistService';
 
 /**
@@ -74,6 +77,11 @@ export const ChecklistDetailPage: React.FC = () => {
   // Notes dialog state
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ChecklistItemDto | null>(null);
+
+  // Copy dialog state
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [copyMode, setCopyMode] = useState<'clone-clean' | 'clone-direct'>('clone-clean');
+  const [copying, setCopying] = useState(false);
 
   // Fetch checklist on mount
   useEffect(() => {
@@ -151,6 +159,47 @@ export const ChecklistDetailPage: React.FC = () => {
     }
   };
 
+  // Handle open copy dialog
+  const handleOpenCopyDialog = (mode: 'clone-clean' | 'clone-direct') => {
+    setCopyMode(mode);
+    setCopyDialogOpen(true);
+  };
+
+  // Handle close copy dialog
+  const handleCloseCopyDialog = () => {
+    setCopyDialogOpen(false);
+  };
+
+  // Handle save copy
+  const handleSaveCopy = async (data: ChecklistCreationData) => {
+    if (!checklistId || !checklist) return;
+
+    try {
+      setCopying(true);
+
+      const preserveStatus = data.mode === 'clone-direct';
+      const newChecklist = await checklistService.cloneChecklist(
+        checklistId,
+        data.name,
+        preserveStatus
+      );
+
+      toast.success(`Checklist "${newChecklist.name}" created successfully!`);
+
+      // Close dialog
+      setCopyDialogOpen(false);
+
+      // Navigate to the new checklist
+      navigate(`/checklists/${newChecklist.id}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to copy checklist';
+      toast.error(message);
+      throw err; // Re-throw so dialog can show error
+    } finally {
+      setCopying(false);
+    }
+  };
+
   // Loading state
   if (loading && !checklist) {
     return (
@@ -204,7 +253,33 @@ export const ChecklistDetailPage: React.FC = () => {
           <IconButton onClick={() => navigate('/checklists')} sx={{ mr: 2 }}>
             <FontAwesomeIcon icon={faArrowLeft} />
           </IconButton>
-          <Typography variant="h4">{checklist.name}</Typography>
+          <Typography variant="h4" sx={{ flexGrow: 1 }}>{checklist.name}</Typography>
+
+          {/* Copy Buttons */}
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<FontAwesomeIcon icon={faCopy} />}
+              onClick={() => handleOpenCopyDialog('clone-clean')}
+              sx={{
+                minHeight: 48,
+              }}
+            >
+              Copy (Clean)
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<FontAwesomeIcon icon={faCopy} />}
+              onClick={() => handleOpenCopyDialog('clone-direct')}
+              sx={{
+                minHeight: 48,
+              }}
+            >
+              Copy (Direct)
+            </Button>
+          </Box>
         </Box>
 
         <Typography variant="body1" color="text.secondary">
@@ -459,6 +534,23 @@ export const ChecklistDetailPage: React.FC = () => {
           onSave={handleSaveNotes}
           onCancel={handleCloseNotesDialog}
           saving={isProcessing(editingItem.id)}
+        />
+      )}
+
+      {/* Copy Checklist Dialog */}
+      {checklist && (
+        <CreateChecklistDialog
+          open={copyDialogOpen}
+          mode={copyMode}
+          sourceChecklistId={checklist.id}
+          sourceChecklistName={checklist.name}
+          defaultEventId={checklist.eventId}
+          defaultEventName={checklist.eventName}
+          defaultOperationalPeriodId={checklist.operationalPeriodId}
+          defaultOperationalPeriodName={checklist.operationalPeriodName}
+          onSave={handleSaveCopy}
+          onCancel={handleCloseCopyDialog}
+          saving={copying}
         />
       )}
     </Container>
