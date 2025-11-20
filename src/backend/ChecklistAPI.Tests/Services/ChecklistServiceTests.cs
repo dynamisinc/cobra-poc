@@ -4,6 +4,7 @@ using ChecklistAPI.Models.DTOs;
 using ChecklistAPI.Models.Entities;
 using ChecklistAPI.Services;
 using ChecklistAPI.Tests.Helpers;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -423,6 +424,251 @@ public class ChecklistServiceTests : IDisposable
         // Assert
         Assert.Single(result);
         Assert.All(result, c => Assert.True(c.IsArchived));
+    }
+
+    #endregion
+
+    #region RecalculateProgressAsync Tests
+
+    [Fact]
+    public async Task RecalculateProgressAsync_UpdatesProgressCorrectly_WithAllItemsIncomplete()
+    {
+        // Arrange
+        await SeedTestData();
+        var checklistId = _context.ChecklistInstances.First().Id;
+
+        // Ensure all items are incomplete
+        var checklist = await _context.ChecklistInstances
+            .Include(c => c.Items)
+            .FirstAsync(c => c.Id == checklistId);
+        foreach (var item in checklist.Items)
+        {
+            item.IsCompleted = false;
+        }
+        await _context.SaveChangesAsync();
+
+        // Act
+        await _service.RecalculateProgressAsync(checklistId);
+
+        // Assert
+        var updated = await _context.ChecklistInstances.FindAsync(checklistId);
+        Assert.NotNull(updated);
+        Assert.Equal(0, updated.ProgressPercentage);
+        Assert.Equal(0, updated.CompletedItems);
+        Assert.Equal(0, updated.RequiredItemsCompleted);
+        Assert.Equal(3, updated.TotalItems);
+        Assert.Equal(2, updated.RequiredItems);
+    }
+
+    [Fact]
+    public async Task RecalculateProgressAsync_UpdatesProgressCorrectly_WithAllItemsComplete()
+    {
+        // Arrange
+        await SeedTestData();
+        var checklistId = _context.ChecklistInstances.First().Id;
+
+        // Mark all items complete
+        var checklist = await _context.ChecklistInstances
+            .Include(c => c.Items)
+            .FirstAsync(c => c.Id == checklistId);
+        foreach (var item in checklist.Items)
+        {
+            item.IsCompleted = true;
+        }
+        await _context.SaveChangesAsync();
+
+        // Act
+        await _service.RecalculateProgressAsync(checklistId);
+
+        // Assert
+        var updated = await _context.ChecklistInstances.FindAsync(checklistId);
+        Assert.NotNull(updated);
+        Assert.Equal(100, updated.ProgressPercentage);
+        Assert.Equal(3, updated.CompletedItems);
+        Assert.Equal(2, updated.RequiredItemsCompleted);
+        Assert.Equal(3, updated.TotalItems);
+        Assert.Equal(2, updated.RequiredItems);
+    }
+
+    [Fact]
+    public async Task RecalculateProgressAsync_UpdatesProgressCorrectly_WithPartialCompletion()
+    {
+        // Arrange
+        await SeedTestData();
+        var checklistId = _context.ChecklistInstances.First().Id;
+
+        // Mark first item complete (1 out of 3 = 33.33%)
+        var checklist = await _context.ChecklistInstances
+            .Include(c => c.Items)
+            .FirstAsync(c => c.Id == checklistId);
+        checklist.Items.First().IsCompleted = true;
+        await _context.SaveChangesAsync();
+
+        // Act
+        await _service.RecalculateProgressAsync(checklistId);
+
+        // Assert
+        var updated = await _context.ChecklistInstances.FindAsync(checklistId);
+        Assert.NotNull(updated);
+        Assert.Equal(33.33m, updated.ProgressPercentage); // Rounded to 2 decimal places
+        Assert.Equal(1, updated.CompletedItems);
+        Assert.Equal(1, updated.RequiredItemsCompleted); // First item is required
+        Assert.Equal(3, updated.TotalItems);
+        Assert.Equal(2, updated.RequiredItems);
+    }
+
+    [Fact]
+    public async Task RecalculateProgressAsync_DistinguishesRequiredVsOptionalItems()
+    {
+        // Arrange
+        await SeedTestData();
+        var checklistId = _context.ChecklistInstances.First().Id;
+
+        // Mark only the optional item complete (third item, IsRequired = false)
+        var checklist = await _context.ChecklistInstances
+            .Include(c => c.Items)
+            .FirstAsync(c => c.Id == checklistId);
+        var optionalItem = checklist.Items.OrderBy(i => i.DisplayOrder).Last();
+        optionalItem.IsCompleted = true;
+        await _context.SaveChangesAsync();
+
+        // Act
+        await _service.RecalculateProgressAsync(checklistId);
+
+        // Assert
+        var updated = await _context.ChecklistInstances.FindAsync(checklistId);
+        Assert.NotNull(updated);
+        Assert.Equal(33.33m, updated.ProgressPercentage); // 1 out of 3 items
+        Assert.Equal(1, updated.CompletedItems);
+        Assert.Equal(0, updated.RequiredItemsCompleted); // Optional item doesn't count
+        Assert.Equal(2, updated.RequiredItems);
+    }
+
+    [Fact]
+    public async Task RecalculateProgressAsync_HandlesChecklistWithNoItems()
+    {
+        // Arrange
+        await SeedTestTemplate();
+        var emptyChecklist = new ChecklistInstance
+        {
+            Id = Guid.NewGuid(),
+            Name = "Empty Checklist",
+            TemplateId = _templateId,
+            EventId = "EVENT-002",
+            EventName = "Empty Event",
+            CreatedBy = "test@test.com",
+            CreatedByPosition = "Safety Officer",
+            Items = new List<ChecklistItem>()
+        };
+        _context.ChecklistInstances.Add(emptyChecklist);
+        await _context.SaveChangesAsync();
+
+        // Act
+        await _service.RecalculateProgressAsync(emptyChecklist.Id);
+
+        // Assert
+        var updated = await _context.ChecklistInstances.FindAsync(emptyChecklist.Id);
+        Assert.NotNull(updated);
+        Assert.Equal(0, updated.ProgressPercentage);
+        Assert.Equal(0, updated.CompletedItems);
+        Assert.Equal(0, updated.RequiredItemsCompleted);
+        Assert.Equal(0, updated.TotalItems);
+        Assert.Equal(0, updated.RequiredItems);
+    }
+
+    [Fact]
+    public async Task RecalculateProgressAsync_DoesNotThrow_WhenChecklistNotFound()
+    {
+        // Arrange
+        var nonExistentId = Guid.NewGuid();
+
+        // Act & Assert - Should not throw
+        await _service.RecalculateProgressAsync(nonExistentId);
+
+        // Verify warning was logged
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("not found")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RecalculateProgressAsync_RoundsToTwoDecimalPlaces()
+    {
+        // Arrange
+        await SeedTestTemplate();
+        var checklistId = Guid.NewGuid();
+        var checklist = new ChecklistInstance
+        {
+            Id = checklistId,
+            Name = "Rounding Test Checklist",
+            TemplateId = _templateId,
+            EventId = "EVENT-003",
+            EventName = "Rounding Test",
+            CreatedBy = "test@test.com",
+            CreatedByPosition = "Safety Officer",
+            Items = new List<ChecklistItem>()
+        };
+
+        // Add 7 items (1/7 = 14.285714...%)
+        for (int i = 0; i < 7; i++)
+        {
+            checklist.Items.Add(new ChecklistItem
+            {
+                Id = Guid.NewGuid(),
+                ChecklistInstanceId = checklistId,
+                TemplateItemId = Guid.NewGuid(),
+                ItemText = $"Item {i + 1}",
+                ItemType = "checkbox",
+                DisplayOrder = (i + 1) * 10,
+                IsRequired = false,
+                IsCompleted = i == 0 // Only first item complete
+            });
+        }
+
+        _context.ChecklistInstances.Add(checklist);
+        await _context.SaveChangesAsync();
+
+        // Act
+        await _service.RecalculateProgressAsync(checklistId);
+
+        // Assert
+        var updated = await _context.ChecklistInstances.FindAsync(checklistId);
+        Assert.NotNull(updated);
+        Assert.Equal(14.29m, updated.ProgressPercentage); // Should be rounded to 14.29, not 14.285714
+        Assert.Equal(1, updated.CompletedItems);
+        Assert.Equal(7, updated.TotalItems);
+    }
+
+    [Fact]
+    public async Task RecalculateProgressAsync_PersistsChangesToDatabase()
+    {
+        // Arrange
+        await SeedTestData();
+        var checklistId = _context.ChecklistInstances.First().Id;
+
+        // Mark an item complete
+        var checklist = await _context.ChecklistInstances
+            .Include(c => c.Items)
+            .FirstAsync(c => c.Id == checklistId);
+        checklist.Items.First().IsCompleted = true;
+        await _context.SaveChangesAsync();
+
+        // Act
+        await _service.RecalculateProgressAsync(checklistId);
+
+        // Detach the entity to force a fresh load from the database
+        _context.Entry(checklist).State = EntityState.Detached;
+
+        // Assert - Load fresh from database
+        var persisted = await _context.ChecklistInstances.FindAsync(checklistId);
+        Assert.NotNull(persisted);
+        Assert.Equal(33.33m, persisted.ProgressPercentage);
+        Assert.Equal(1, persisted.CompletedItems);
     }
 
     #endregion
