@@ -42,7 +42,9 @@
       "Bash(dotnet ef database:*)",
       "Bash(sqlcmd:*)",
       "Bash(powershell.exe:*)",
-      "Bash(Select-String -Pattern \"error CS\")"
+      "Bash(Select-String -Pattern \"error CS\")",
+      "Bash(git push:*)",
+      "Bash(npm run type-check:*)"
     ],
     "deny": [],
     "ask": []

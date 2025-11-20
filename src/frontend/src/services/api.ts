@@ -33,12 +33,13 @@ export interface MockUserContext {
 /**
  * Current mock user (POC only)
  * TODO: Replace with real authentication in production
+ * Default: Incident Commander to match backend MockUserMiddleware
  */
 let currentUser: MockUserContext = {
-  email: 'test-user@cobra.mil',
-  fullName: 'Test User',
-  position: 'Safety Officer',
-  isAdmin: false,
+  email: 'admin@cobra.mil',
+  fullName: 'Admin User',
+  position: 'Incident Commander',
+  isAdmin: true,
 };
 
 /**
