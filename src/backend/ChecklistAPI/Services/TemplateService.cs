@@ -1,7 +1,9 @@
 using ChecklistAPI.Data;
+using ChecklistAPI.Mappers;
 using ChecklistAPI.Models;
 using ChecklistAPI.Models.DTOs;
 using ChecklistAPI.Models.Entities;
+using ChecklistAPI.Services.Helpers;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChecklistAPI.Services;
@@ -16,6 +18,8 @@ namespace ChecklistAPI.Services;
 /// Dependencies:
 ///   - ChecklistDbContext: Database access via EF Core
 ///   - ILogger: Application Insights and console logging
+///   - TemplateMapper: Entity-to-DTO mapping
+///   - TemplateCreationHelper: Creation and duplication logic
 ///
 /// Design Decisions:
 ///   - All methods are async for database I/O
@@ -23,9 +27,10 @@ namespace ChecklistAPI.Services;
 ///   - Throws exceptions for error cases (caught by middleware)
 ///   - Comprehensive logging for all operations
 ///   - User attribution on all create/update/delete operations
+///   - Complex logic extracted to helper classes (file size limit)
 ///
 /// Author: Checklist POC Team
-/// Last Modified: 2025-11-19
+/// Last Modified: 2025-11-20
 /// </summary>
 public class TemplateService : ITemplateService
 {
@@ -61,7 +66,7 @@ public class TemplateService : ITemplateService
 
         _logger.LogInformation("Retrieved {Count} templates", templates.Count);
 
-        return templates.Select(MapToDto).ToList();
+        return templates.Select(TemplateMapper.MapToDto).ToList();
     }
 
     public async Task<TemplateDto?> GetTemplateByIdAsync(Guid id)
@@ -79,7 +84,7 @@ public class TemplateService : ITemplateService
             return null;
         }
 
-        return MapToDto(template);
+        return TemplateMapper.MapToDto(template);
     }
 
     public async Task<List<TemplateDto>> GetTemplatesByCategoryAsync(string category)
@@ -98,57 +103,19 @@ public class TemplateService : ITemplateService
         _logger.LogInformation("Retrieved {Count} templates in category {Category}",
             templates.Count, category);
 
-        return templates.Select(MapToDto).ToList();
+        return templates.Select(TemplateMapper.MapToDto).ToList();
     }
 
     public async Task<TemplateDto> CreateTemplateAsync(
         CreateTemplateRequest request,
         UserContext userContext)
     {
-        _logger.LogInformation(
-            "Creating template '{Name}' by {User} ({Position})",
-            request.Name,
-            userContext.Email,
-            userContext.Position);
-
-        var template = new Template
-        {
-            Id = Guid.NewGuid(),
-            Name = request.Name,
-            Description = request.Description,
-            Category = request.Category,
-            Tags = request.Tags,
-            IsActive = true,
-            IsArchived = false,
-            CreatedBy = userContext.Email,
-            CreatedByPosition = userContext.Position,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        // Add items with proper ordering
-        foreach (var itemRequest in request.Items)
-        {
-            template.Items.Add(new TemplateItem
-            {
-                Id = Guid.NewGuid(),
-                TemplateId = template.Id,
-                ItemText = itemRequest.ItemText,
-                ItemType = itemRequest.ItemType,
-                DisplayOrder = itemRequest.DisplayOrder,
-                StatusOptions = itemRequest.StatusOptions,
-                DefaultNotes = itemRequest.Notes
-            });
-        }
+        var template = TemplateCreationHelper.CreateTemplate(request, userContext, _logger);
 
         _context.Templates.Add(template);
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation(
-            "Created template {TemplateId} with {ItemCount} items",
-            template.Id,
-            template.Items.Count);
-
-        return MapToDto(template);
+        return TemplateMapper.MapToDto(template);
     }
 
     public async Task<TemplateDto?> UpdateTemplateAsync(
@@ -326,7 +293,7 @@ public class TemplateService : ITemplateService
 
         _logger.LogInformation("Retrieved {Count} archived templates", templates.Count);
 
-        return templates.Select(MapToDto).ToList();
+        return templates.Select(TemplateMapper.MapToDto).ToList();
     }
 
     public async Task<TemplateDto?> DuplicateTemplateAsync(
@@ -334,103 +301,24 @@ public class TemplateService : ITemplateService
         string newName,
         UserContext userContext)
     {
-        _logger.LogInformation(
-            "Duplicating template {TemplateId} as '{NewName}'",
-            id,
-            newName);
-
-        var original = await _context.Templates
-            .Include(t => t.Items)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == id);
-
-        if (original == null)
+        try
         {
-            _logger.LogWarning("Template {TemplateId} not found for duplication", id);
+            var duplicate = await TemplateCreationHelper.DuplicateTemplateAsync(
+                _context,
+                _logger,
+                id,
+                newName,
+                userContext);
+
+            _context.Templates.Add(duplicate);
+            await _context.SaveChangesAsync();
+
+            return TemplateMapper.MapToDto(duplicate);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to duplicate template {TemplateId}", id);
             return null;
         }
-
-        var duplicate = new Template
-        {
-            Id = Guid.NewGuid(),
-            Name = newName,
-            Description = original.Description,
-            Category = original.Category,
-            Tags = original.Tags,
-            IsActive = true,
-            IsArchived = false,
-            CreatedBy = userContext.Email,
-            CreatedByPosition = userContext.Position,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        // Copy items
-        foreach (var item in original.Items)
-        {
-            duplicate.Items.Add(new TemplateItem
-            {
-                Id = Guid.NewGuid(),
-                TemplateId = duplicate.Id,
-                ItemText = item.ItemText,
-                ItemType = item.ItemType,
-                DisplayOrder = item.DisplayOrder,
-                StatusOptions = item.StatusOptions,
-                DefaultNotes = item.DefaultNotes
-            });
-        }
-
-        _context.Templates.Add(duplicate);
-        await _context.SaveChangesAsync();
-
-        _logger.LogInformation(
-            "Duplicated template {OriginalId} to {NewId}",
-            id,
-            duplicate.Id);
-
-        return MapToDto(duplicate);
-    }
-
-    /// <summary>
-    /// Maps Template entity to TemplateDto
-    /// Keeps mapping logic centralized and DRY
-    /// </summary>
-    private static TemplateDto MapToDto(Template template)
-    {
-        return new TemplateDto
-        {
-            Id = template.Id,
-            Name = template.Name,
-            Description = template.Description,
-            Category = template.Category,
-            Tags = template.Tags,
-            IsActive = template.IsActive,
-            IsArchived = template.IsArchived,
-            CreatedBy = template.CreatedBy,
-            CreatedByPosition = template.CreatedByPosition,
-            CreatedAt = template.CreatedAt,
-            LastModifiedBy = template.LastModifiedBy,
-            LastModifiedByPosition = template.LastModifiedByPosition,
-            LastModifiedAt = template.LastModifiedAt,
-            ArchivedBy = template.ArchivedBy,
-            ArchivedAt = template.ArchivedAt,
-            Items = template.Items.OrderBy(i => i.DisplayOrder).Select(MapItemToDto).ToList()
-        };
-    }
-
-    /// <summary>
-    /// Maps TemplateItem entity to TemplateItemDto
-    /// </summary>
-    private static TemplateItemDto MapItemToDto(TemplateItem item)
-    {
-        return new TemplateItemDto
-        {
-            Id = item.Id,
-            TemplateId = item.TemplateId,
-            ItemText = item.ItemText,
-            ItemType = item.ItemType,
-            DisplayOrder = item.DisplayOrder,
-            StatusOptions = item.StatusOptions,
-            Notes = item.DefaultNotes
-        };
     }
 }
