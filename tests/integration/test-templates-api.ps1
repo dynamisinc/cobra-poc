@@ -215,23 +215,23 @@ function Test-GetAllTemplates {
     }
 
     # Should have 3 seed templates
-    Test-CollectionCount -Collection $response -ExpectedCount 3 -TestName "Seed data count"
+    Test-CollectionCount -Collection $response -ExpectedCount 3 -TestName "Seed data count" | Out-Null
 
     # Check first template structure
     if ($response.Count -gt 0) {
         $template = $response[0]
-        Test-PropertyExists -Object $template -PropertyName "id" -TestName "Template has ID"
-        Test-PropertyExists -Object $template -PropertyName "name" -TestName "Template has Name"
-        Test-PropertyExists -Object $template -PropertyName "category" -TestName "Template has Category"
-        Test-PropertyExists -Object $template -PropertyName "items" -TestName "Template has Items"
+        Test-PropertyExists -Object $template -PropertyName "id" -TestName "Template has ID" | Out-Null
+        Test-PropertyExists -Object $template -PropertyName "name" -TestName "Template has Name" | Out-Null
+        Test-PropertyExists -Object $template -PropertyName "category" -TestName "Template has Category" | Out-Null
+        Test-PropertyExists -Object $template -PropertyName "items" -TestName "Template has Items" | Out-Null
 
         if ($template.items -is [array] -and $template.items.Count -gt 0) {
             Write-TestPass "Template includes nested items array"
 
             $item = $template.items[0]
-            Test-PropertyExists -Object $item -PropertyName "itemText" -TestName "Item has ItemText"
-            Test-PropertyExists -Object $item -PropertyName "itemType" -TestName "Item has ItemType"
-            Test-PropertyExists -Object $item -PropertyName "displayOrder" -TestName "Item has DisplayOrder"
+            Test-PropertyExists -Object $item -PropertyName "itemText" -TestName "Item has ItemText" | Out-Null
+            Test-PropertyExists -Object $item -PropertyName "itemType" -TestName "Item has ItemType" | Out-Null
+            Test-PropertyExists -Object $item -PropertyName "displayOrder" -TestName "Item has DisplayOrder" | Out-Null
         }
     }
 
@@ -252,8 +252,16 @@ function Test-GetTemplateById {
         return $null
     }
 
-    $templateId = $Templates[0].id
-    Write-TestInfo "Testing with template ID: $templateId"
+    # Access id property using PSObject for reliability
+    $firstTemplate = $Templates[0]
+    $templateId = $firstTemplate.id
+
+    if ($null -eq $templateId) {
+        Write-TestFail "Template ID is null - cannot test GetById"
+        Write-TestInfo "Template type: $($firstTemplate.GetType().FullName)"
+        Write-TestInfo "Properties: $($firstTemplate.PSObject.Properties.Name -join ', ')"
+        return $null
+    }
 
     $response = Invoke-ApiRequest -Method GET -Endpoint "/api/templates/$templateId"
 
@@ -262,11 +270,22 @@ function Test-GetTemplateById {
     }
 
     # Verify it's the correct template
-    if ($response.id -eq $templateId) {
-        Write-TestPass "Retrieved correct template by ID"
+    # Convert both to lowercase strings for comparison (GUIDs might have different casing)
+    if ($null -ne $response.id -and $null -ne $templateId) {
+        $responseIdString = $response.id.ToString().ToLower()
+        $templateIdString = $templateId.ToString().ToLower()
+
+        if ($responseIdString -eq $templateIdString) {
+            Write-TestPass "Retrieved template ID matches requested ID"
+        }
+        else {
+            Write-TestFail "Retrieved template ID doesn't match requested ID"
+            Write-TestInfo "Expected: $templateIdString"
+            Write-TestInfo "Got: $responseIdString"
+        }
     }
     else {
-        Write-TestFail "Retrieved template ID doesn't match requested ID"
+        Write-TestFail "Template ID or response ID is null"
     }
 
     # Verify it has items
@@ -469,13 +488,21 @@ function Test-DuplicateTemplate {
     # Use the first seed template (not the test one we created)
     $originalTemplate = $Templates[0]
     $templateId = $originalTemplate.id
-    $originalItemCount = $originalTemplate.items.Count
 
-    Write-TestInfo "Duplicating template: $($originalTemplate.name)"
+    # Fetch the full template details to get item count
+    $fullTemplate = Invoke-ApiRequest -Method GET -Endpoint "/api/templates/$templateId"
+    if ($null -eq $fullTemplate) {
+        Write-TestFail "Could not fetch template details for duplication"
+        return $null
+    }
+
+    $originalItemCount = $fullTemplate.items.Count
+
+    Write-TestInfo "Duplicating template: $($fullTemplate.name)"
     Write-TestInfo "Original has $originalItemCount items"
 
     $duplicateRequest = @{
-        newName = "DUPLICATE - $($originalTemplate.name) - $(Get-Date -Format 'HHmmss')"
+        newName = "DUPLICATE - $($fullTemplate.name) - $(Get-Date -Format 'HHmmss')"
     }
 
     $response = Invoke-ApiRequest -Method POST -Endpoint "/api/templates/$templateId/duplicate" -Body $duplicateRequest -ExpectedStatusCode 201
@@ -492,14 +519,16 @@ function Test-DuplicateTemplate {
         Write-TestFail "Duplicate name doesn't match"
     }
 
-    if ($response.category -eq $originalTemplate.category) {
+    if ($response.category -eq $fullTemplate.category) {
         Write-TestPass "Duplicate has same category as original"
     }
 
     Test-CollectionCount -Collection $response.items -ExpectedCount $originalItemCount -TestName "Duplicate item count matches original"
 
-    # Verify it's a new ID
-    if ($response.id -ne $templateId) {
+    # Verify it's a new ID (convert to lowercase strings for comparison)
+    $responseIdStr = $response.id.ToString().ToLower()
+    $templateIdStr = $templateId.ToString().ToLower()
+    if ($responseIdStr -ne $templateIdStr) {
         Write-TestPass "Duplicate has new ID"
     }
     else {

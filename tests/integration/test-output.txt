@@ -1,0 +1,142 @@
+
+============================================================================
+           Checklist POC - Templates API Integration Tests                 
+============================================================================
+
+Base URL: http://localhost:5000
+Started:  2025-11-19 22:19:48
+
+
+============================================================================
+Pre-flight: Testing API Health
+============================================================================
+[PASS] API is running and responding
+
+============================================================================
+Test 1: GET /api/templates - Get All Templates
+============================================================================
+[PASS] Response is an array
+[FAIL] Seed data count - Expected 3 items, got 4
+[PASS] Template has ID - Property 'id' exists
+[PASS] Template has Name - Property 'name' exists
+[PASS] Template has Category - Property 'category' exists
+[PASS] Template has Items - Property 'items' exists
+[PASS] Template includes nested items array
+[PASS] Item has ItemText - Property 'itemText' exists
+[PASS] Item has ItemType - Property 'itemType' exists
+[PASS] Item has DisplayOrder - Property 'displayOrder' exists
+
+============================================================================
+Test 2: GET /api/templates/{id} - Get Template by ID
+============================================================================
+[PASS] Retrieved template ID matches requested ID
+[PASS] Template includes 12 items
+
+[TEST] Testing with invalid ID (expecting 404)
+[PASS] Invalid ID correctly returns 404
+
+============================================================================
+Test 3: GET /api/templates/category/{category} - Get by Category
+============================================================================
+
+[TEST] Testing with category: Safety
+
+[TEST] Testing with non-existent category
+
+============================================================================
+Test 4: POST /api/templates - Create New Template
+============================================================================
+[PASS] Created template has ID - Property 'id' exists
+[PASS] Created template has correct name
+[PASS] Created template has correct category
+[PASS] Created template item count - Expected 2 items, got 2
+[PASS] Has createdBy field - Property 'createdBy' exists
+[PASS] Has createdAt field - Property 'createdAt' exists
+
+============================================================================
+Test 5: PUT /api/templates/{id} - Update Template
+============================================================================
+[PASS] Template name was updated
+[PASS] Template description was updated
+[PASS] Updated template item count - Expected 1 items, got 1
+[PASS] Has lastModifiedBy field - Property 'lastModifiedBy' exists
+[PASS] Has lastModifiedAt field - Property 'lastModifiedAt' exists
+
+============================================================================
+Test 6: POST /api/templates/{id}/duplicate - Duplicate Template
+============================================================================
+[PASS] Duplicate has correct name
+[PASS] Duplicate has same category as original
+[PASS] Duplicate item count matches original - Expected 12 items, got 12
+[PASS] Duplicate has new ID
+
+============================================================================
+Test 7: DELETE /api/templates/{id} - Archive Template (Soft Delete)
+============================================================================
+[PASS] Archive request returned 204 No Content
+
+[TEST] Verifying archived template doesn't appear in active list
+[PASS] Archived template not in active templates list
+
+[TEST] Testing archive with invalid ID (expecting 404)
+[PASS] Invalid ID correctly returns 404
+
+============================================================================
+Test 8: GET /api/templates/archived - Get Archived Templates (Admin)
+============================================================================
+
+[TEST] Testing with non-admin user (expecting 403)
+[FAIL] Non-admin should receive 403, got 200
+
+[TEST] Testing with admin user
+[PASS] Admin successfully accessed archived templates
+[PASS] Response is an array
+[FAIL] Archived template not found in archived list
+
+============================================================================
+Test 9: POST /api/templates/{id}/restore - Restore Template (Admin)
+============================================================================
+
+[TEST] Testing restore with non-admin user (expecting 403)
+[FAIL] Non-admin should receive 403, got 204
+
+[TEST] Restoring template with admin user
+[FAIL] Admin restore failed
+       A parameter cannot be found that matches parameter name 'StatusCodeVariable'.
+
+============================================================================
+Test 10: DELETE /api/templates/{id}/permanent - Permanent Delete (Admin)
+============================================================================
+
+[TEST] Archiving template before permanent delete
+
+
+[TEST] Testing permanent delete with non-admin user (expecting 403)
+[FAIL] Non-admin should receive 403, got 204
+
+[TEST] Permanently deleting with admin user
+[FAIL] Admin permanent delete failed
+       A parameter cannot be found that matches parameter name 'StatusCodeVariable'.
+
+============================================================================
+Test Summary
+============================================================================
+
+Total Tests: 40
+Passed:      33
+Failed:      7
+Pass Rate:   82.5%
+
+Failed Tests:
+  - Seed data count - Expected 3 items, got 4
+  - Non-admin should receive 403, got 200
+  - Archived template not found in archived list
+  - Non-admin should receive 403, got 204
+  - Admin restore failed
+    A parameter cannot be found that matches parameter name 'StatusCodeVariable'.
+  - Non-admin should receive 403, got 204
+  - Admin permanent delete failed
+    A parameter cannot be found that matches parameter name 'StatusCodeVariable'.
+
+============================================================================
+

@@ -6,7 +6,16 @@
       "Bash(curl:*)",
       "Bash(dotnet run:*)",
       "Bash(gh issue create:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(powershell.exe -Command \"$data = $input | ConvertFrom-Json; $data | Select-Object -Property id, name, category | Format-Table\")",
+      "Bash(/tmp/templates.json)",
+      "Bash(powershell.exe -Command \"Get-Content /tmp/templates.json | ConvertFrom-Json | Select-Object -Property id, name, category | Format-Table -AutoSize\")",
+      "Bash(dotnet --version:*)",
+      "Bash(dotnet new:*)",
+      "Bash(rm:*)",
+      "Bash(/dev/null)",
+      "Bash(dotnet test:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
