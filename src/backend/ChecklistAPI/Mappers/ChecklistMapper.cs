@@ -92,6 +92,7 @@ public static class ChecklistMapper
             CurrentStatus = item.CurrentStatus,
             StatusOptions = item.StatusOptions,
             AllowedPositions = item.AllowedPositions,
+            Notes = item.Notes,
             CreatedAt = item.CreatedAt,
             LastModifiedBy = item.LastModifiedBy,
             LastModifiedByPosition = item.LastModifiedByPosition,

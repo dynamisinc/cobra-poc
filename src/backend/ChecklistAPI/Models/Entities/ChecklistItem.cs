@@ -20,7 +20,10 @@ public class ChecklistItem
     public string? CurrentStatus { get; set; }
     public string? StatusOptions { get; set; }
     public string? AllowedPositions { get; set; }
-    
+
+    // Notes
+    public string? Notes { get; set; }
+
     // Audit
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public string? LastModifiedBy { get; set; }

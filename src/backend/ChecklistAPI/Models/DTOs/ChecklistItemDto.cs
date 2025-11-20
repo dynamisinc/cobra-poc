@@ -118,6 +118,12 @@ public record ChecklistItemDto
     public string? AllowedPositions { get; init; }
 
     /// <summary>
+    /// Notes or comments about this item
+    /// Example: "Verified with Safety Officer at 14:30"
+    /// </summary>
+    public string? Notes { get; init; }
+
+    /// <summary>
     /// When this item was created (UTC)
     /// </summary>
     public DateTime CreatedAt { get; init; }
