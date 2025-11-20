@@ -70,7 +70,7 @@ public static class TemplateCreationHelper
                 ItemText = itemRequest.ItemText,
                 ItemType = itemRequest.ItemType,
                 DisplayOrder = itemRequest.DisplayOrder,
-                StatusOptions = itemRequest.StatusOptions,
+                StatusConfiguration = itemRequest.StatusConfiguration,
                 DefaultNotes = itemRequest.Notes,
                 CreatedAt = DateTime.UtcNow
             });
@@ -135,7 +135,7 @@ public static class TemplateCreationHelper
                 ItemText = item.ItemText,
                 ItemType = item.ItemType,
                 DisplayOrder = item.DisplayOrder,
-                StatusOptions = item.StatusOptions,
+                StatusConfiguration = item.StatusConfiguration,
                 DefaultNotes = item.DefaultNotes,
                 IsRequired = item.IsRequired,
                 CreatedAt = DateTime.UtcNow

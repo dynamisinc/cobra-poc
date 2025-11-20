@@ -227,7 +227,7 @@ public class ChecklistItemServiceTests : IDisposable
         // Arrange
         var (checklistId, itemId) = await SeedChecklistWithItem(
             itemType: "status",
-            statusOptions: "Not Started,In Progress,Complete");
+            statusOptions: "[{\"label\":\"Not Started\",\"isCompletion\":false,\"order\":1},{\"label\":\"In Progress\",\"isCompletion\":false,\"order\":2},{\"label\":\"Complete\",\"isCompletion\":true,\"order\":3}]");
 
         var request = new UpdateItemStatusRequest
         {
@@ -251,7 +251,7 @@ public class ChecklistItemServiceTests : IDisposable
         // Arrange
         var (checklistId, itemId) = await SeedChecklistWithItem(
             itemType: "status",
-            statusOptions: "Not Started,In Progress,Complete");
+            statusOptions: "[{\"label\":\"Not Started\",\"isCompletion\":false,\"order\":1},{\"label\":\"In Progress\",\"isCompletion\":false,\"order\":2},{\"label\":\"Complete\",\"isCompletion\":true,\"order\":3}]");
 
         var request = new UpdateItemStatusRequest
         {
@@ -273,7 +273,7 @@ public class ChecklistItemServiceTests : IDisposable
         // Arrange
         var (checklistId, itemId) = await SeedChecklistWithItem(
             itemType: "status",
-            statusOptions: "Not Started,In Progress,Complete");
+            statusOptions: "[{\"label\":\"Not Started\",\"isCompletion\":false,\"order\":1},{\"label\":\"In Progress\",\"isCompletion\":false,\"order\":2},{\"label\":\"Complete\",\"isCompletion\":true,\"order\":3}]");
 
         var request = new UpdateItemStatusRequest
         {
@@ -318,7 +318,7 @@ public class ChecklistItemServiceTests : IDisposable
         // Arrange
         var (checklistId, itemId) = await SeedChecklistWithItem(
             itemType: "status",
-            statusOptions: "Not Started,Complete",
+            statusOptions: "[{\"label\":\"Not Started\",\"isCompletion\":false,\"order\":1},{\"label\":\"Complete\",\"isCompletion\":true,\"order\":2}]",
             allowedPositions: "Operations Section Chief");
 
         var request = new UpdateItemStatusRequest { Status = "Complete" };
@@ -456,7 +456,7 @@ public class ChecklistItemServiceTests : IDisposable
             IsCompleted = isCompleted,
             CompletedBy = completedBy,
             AllowedPositions = allowedPositions,
-            StatusOptions = statusOptions,
+            StatusConfiguration = statusOptions,
             Notes = notes
         };
 

@@ -1,5 +1,6 @@
 using ChecklistAPI.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ChecklistAPI.Tests.Helpers;
 
@@ -14,8 +15,15 @@ public static class TestDbContextFactory
     /// </summary>
     public static ChecklistDbContext CreateInMemoryContext()
     {
+        // Create a service provider with in-memory database configured
+        var serviceProvider = new ServiceCollection()
+            .AddEntityFrameworkInMemoryDatabase()
+            .BuildServiceProvider();
+
         var options = new DbContextOptionsBuilder<ChecklistDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .UseInternalServiceProvider(serviceProvider)
+            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
         return new ChecklistDbContext(options);

@@ -687,7 +687,7 @@ public class ChecklistServiceTests : IDisposable
         var originalId = _context.ChecklistInstances.First().Id;
 
         // Act
-        var result = await _service.CloneChecklistAsync(originalId, "Cloned Checklist", _testUser);
+        var result = await _service.CloneChecklistAsync(originalId, "Cloned Checklist", preserveStatus: false, _testUser);
 
         // Assert
         Assert.NotNull(result);
@@ -705,7 +705,7 @@ public class ChecklistServiceTests : IDisposable
         var originalId = _context.ChecklistInstances.First().Id;
 
         // Act
-        var result = await _service.CloneChecklistAsync(originalId, "Cloned", _testUser);
+        var result = await _service.CloneChecklistAsync(originalId, "Cloned", preserveStatus: false, _testUser);
 
         // Assert
         Assert.NotNull(result);
@@ -718,7 +718,7 @@ public class ChecklistServiceTests : IDisposable
     public async Task CloneChecklistAsync_ReturnsNull_WhenChecklistNotFound()
     {
         // Act
-        var result = await _service.CloneChecklistAsync(Guid.NewGuid(), "Clone", _testUser);
+        var result = await _service.CloneChecklistAsync(Guid.NewGuid(), "Clone", preserveStatus: false, _testUser);
 
         // Assert
         Assert.Null(result);
@@ -759,7 +759,7 @@ public class ChecklistServiceTests : IDisposable
             ItemType = "status",
             DisplayOrder = 20,
             IsRequired = true,
-            StatusOptions = "[\"Not Started\", \"In Progress\", \"Complete\"]"
+            StatusConfiguration = "[{\"label\":\"Not Started\",\"isCompletion\":false,\"order\":1},{\"label\":\"In Progress\",\"isCompletion\":false,\"order\":2},{\"label\":\"Complete\",\"isCompletion\":true,\"order\":3}]"
         });
 
         template.Items.Add(new TemplateItem

@@ -160,7 +160,7 @@ public class TemplateService : ITemplateService
             ItemText = itemRequest.ItemText,
             ItemType = itemRequest.ItemType,
             DisplayOrder = itemRequest.DisplayOrder,
-            StatusOptions = itemRequest.StatusOptions,
+            StatusConfiguration = itemRequest.StatusConfiguration,
             DefaultNotes = itemRequest.Notes,
             CreatedAt = DateTime.UtcNow
         }).ToList();

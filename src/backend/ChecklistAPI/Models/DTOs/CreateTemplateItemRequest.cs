@@ -44,12 +44,12 @@ public record CreateTemplateItemRequest
     public int DisplayOrder { get; init; }
 
     /// <summary>
-    /// For "status" type items: JSON array of status options
-    /// Example: ["Not Started", "In Progress", "Completed", "Blocked"]
+    /// For "status" type items: JSON array of status configuration objects
+    /// Example: [{"label":"Not Started","isCompletion":false,"order":1}, ...]
     /// Must be null for "checkbox" type items
     /// </summary>
-    [MaxLength(1000, ErrorMessage = "Status options cannot exceed 1000 characters")]
-    public string? StatusOptions { get; init; }
+    [MaxLength(1000, ErrorMessage = "Status configuration cannot exceed 1000 characters")]
+    public string? StatusConfiguration { get; init; }
 
     /// <summary>
     /// Optional notes/instructions for this item

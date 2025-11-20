@@ -189,18 +189,25 @@ public class ChecklistItemService : IChecklistItemService
         ValidatePositionPermission(item, userContext);
 
         // Validate status value against allowed options
-        if (!string.IsNullOrEmpty(item.StatusOptions))
+        if (!string.IsNullOrEmpty(item.StatusConfiguration))
         {
-            var allowedStatuses = item.StatusOptions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (!allowedStatuses.Contains(request.Status, StringComparer.OrdinalIgnoreCase))
+            var statusOptions = System.Text.Json.JsonSerializer.Deserialize<List<StatusOption>>(
+                item.StatusConfiguration,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (statusOptions != null && statusOptions.Count > 0)
             {
-                _logger.LogError(
-                    "Invalid status '{Status}' for item {ItemId}. Allowed: {AllowedStatuses}",
-                    request.Status,
-                    itemId,
-                    item.StatusOptions);
-                throw new InvalidOperationException(
-                    $"Status '{request.Status}' is not valid. Allowed values: {item.StatusOptions}");
+                var allowedLabels = statusOptions.Select(s => s.Label).ToList();
+                if (!allowedLabels.Contains(request.Status, StringComparer.OrdinalIgnoreCase))
+                {
+                    _logger.LogError(
+                        "Invalid status '{Status}' for item {ItemId}. Allowed: {AllowedStatuses}",
+                        request.Status,
+                        itemId,
+                        string.Join(", ", allowedLabels));
+                    throw new InvalidOperationException(
+                        $"Status '{request.Status}' is not valid. Allowed values: {string.Join(", ", allowedLabels)}");
+                }
             }
         }
 
