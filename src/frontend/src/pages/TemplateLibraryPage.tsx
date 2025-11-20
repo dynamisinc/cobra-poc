@@ -231,8 +231,8 @@ export const TemplateLibraryPage: React.FC = () => {
           mode="from-template"
           templateId={selectedTemplate.id}
           templateName={selectedTemplate.name}
-          defaultEventId="Hurricane-Milton-2024" // TODO: Get from context
-          defaultEventName="Hurricane Milton Response" // TODO: Get from context
+          eventId="Hurricane-Milton-2024" // TODO: Get from C5 context
+          eventName="Hurricane Milton Response" // TODO: Get from C5 context
           onSave={handleDialogSave}
           onCancel={handleDialogCancel}
           saving={creating}

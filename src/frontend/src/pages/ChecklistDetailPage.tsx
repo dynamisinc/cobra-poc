@@ -26,9 +26,10 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Collapse,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faNoteSticky, faCopy } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faNoteSticky, faCopy, faCircleInfo } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 import { useChecklistDetail } from '../hooks/useChecklistDetail';
 import { useItemActions } from '../hooks/useItemActions';
@@ -82,6 +83,22 @@ export const ChecklistDetailPage: React.FC = () => {
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
   const [copyMode, setCopyMode] = useState<'clone-clean' | 'clone-direct'>('clone-clean');
   const [copying, setCopying] = useState(false);
+
+  // Item info expanded state
+  const [expandedItemInfo, setExpandedItemInfo] = useState<Set<string>>(new Set());
+
+  // Toggle item info display
+  const toggleItemInfo = (itemId: string) => {
+    setExpandedItemInfo((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
 
   // Fetch checklist on mount
   useEffect(() => {
@@ -361,93 +378,96 @@ export const ChecklistDetailPage: React.FC = () => {
                   : 'background.paper',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, width: '100%' }}>
-                {item.itemType === 'checkbox' && (
-                  <>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={item.isCompleted || false}
-                          onChange={() =>
-                            handleToggleComplete(item.id, item.isCompleted || false)
-                          }
-                          disabled={isProcessing(item.id)}
-                        />
-                      }
-                      label={
-                        <Box>
-                          <Typography
-                            variant="body1"
-                            sx={{
-                              textDecoration: item.isCompleted
-                                ? 'line-through'
-                                : 'none',
-                            }}
-                          >
-                            {item.itemText}
-                            {item.isRequired && (
-                              <Typography
-                                component="span"
-                                color="error"
-                                sx={{ ml: 1 }}
-                              >
-                                *
-                              </Typography>
-                            )}
-                          </Typography>
-
-                          {item.isCompleted && item.completedBy && (
+              <Box sx={{ width: '100%' }}>
+                {/* Top row: checkbox + text + action buttons */}
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 1 }}>
+                  {item.itemType === 'checkbox' && (
+                    <>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={item.isCompleted || false}
+                            onChange={() =>
+                              handleToggleComplete(item.id, item.isCompleted || false)
+                            }
+                            disabled={isProcessing(item.id)}
+                          />
+                        }
+                        label={
+                          <Box>
                             <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ display: 'block', mt: 0.5 }}
-                            >
-                              Completed by {item.completedBy} (
-                              {item.completedByPosition}) at{' '}
-                              {new Date(item.completedAt!).toLocaleString()}
-                            </Typography>
-                          )}
-
-                          {item.notes && (
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
+                              variant="body1"
                               sx={{
-                                mt: 1,
-                                p: 1,
-                                backgroundColor: c5Colors.whiteBlue,
-                                borderRadius: 1,
+                                textDecoration: item.isCompleted
+                                  ? 'line-through'
+                                  : 'none',
                               }}
                             >
-                              Note: {item.notes}
+                              {item.itemText}
+                              {item.isRequired && (
+                                <Typography
+                                  component="span"
+                                  color="error"
+                                  sx={{ ml: 1 }}
+                                >
+                                  *
+                                </Typography>
+                              )}
                             </Typography>
-                          )}
-                        </Box>
-                      }
-                      sx={{ alignItems: 'flex-start', flexGrow: 1 }}
-                    />
 
-                    {/* Add/Edit Note button */}
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<FontAwesomeIcon icon={faNoteSticky} />}
-                      onClick={() => handleOpenNotesDialog(item)}
-                      disabled={isProcessing(item.id)}
-                      sx={{
-                        minWidth: 120,
-                        minHeight: 48,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {item.notes ? 'Edit Note' : 'Add Note'}
-                    </Button>
-                  </>
-                )}
+                            {item.notes && (
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{
+                                  mt: 1,
+                                  p: 1,
+                                  backgroundColor: c5Colors.whiteBlue,
+                                  borderRadius: 1,
+                                }}
+                              >
+                                Note: {item.notes}
+                              </Typography>
+                            )}
+                          </Box>
+                        }
+                        sx={{ alignItems: 'flex-start', flexGrow: 1 }}
+                      />
 
-                {item.itemType === 'status' && (
-                  <>
-                    <Box sx={{ flexGrow: 1 }}>
+                      {/* Action Buttons */}
+                      <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+                        {/* Info button */}
+                        <IconButton
+                          size="small"
+                          onClick={() => toggleItemInfo(item.id)}
+                          sx={{
+                            color: expandedItemInfo.has(item.id) ? 'primary.main' : 'text.secondary',
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faCircleInfo} />
+                        </IconButton>
+
+                        {/* Add/Edit Note button */}
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<FontAwesomeIcon icon={faNoteSticky} />}
+                          onClick={() => handleOpenNotesDialog(item)}
+                          disabled={isProcessing(item.id)}
+                          sx={{
+                            minWidth: 120,
+                            minHeight: 48,
+                          }}
+                        >
+                          {item.notes ? 'Edit Note' : 'Add Note'}
+                        </Button>
+                      </Box>
+                    </>
+                  )}
+
+                  {item.itemType === 'status' && (
+                    <>
+                      <Box sx={{ flexGrow: 1 }}>
                       <Typography variant="body1" sx={{ mb: 2 }}>
                         {item.itemText}
                         {item.isRequired && (
@@ -501,24 +521,73 @@ export const ChecklistDetailPage: React.FC = () => {
                       )}
                     </Box>
 
-                    {/* Add/Edit Note button */}
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<FontAwesomeIcon icon={faNoteSticky} />}
-                      onClick={() => handleOpenNotesDialog(item)}
-                      disabled={isProcessing(item.id)}
-                      sx={{
-                        minWidth: 120,
-                        minHeight: 48,
-                        flexShrink: 0,
-                        alignSelf: 'flex-start',
-                      }}
-                    >
-                      {item.notes ? 'Edit Note' : 'Add Note'}
-                    </Button>
-                  </>
-                )}
+                      {/* Action Buttons */}
+                      <Box sx={{ display: 'flex', gap: 1, flexShrink: 0, alignSelf: 'flex-start' }}>
+                        {/* Info button */}
+                        <IconButton
+                          size="small"
+                          onClick={() => toggleItemInfo(item.id)}
+                          sx={{
+                            color: expandedItemInfo.has(item.id) ? 'primary.main' : 'text.secondary',
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faCircleInfo} />
+                        </IconButton>
+
+                        {/* Add/Edit Note button */}
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<FontAwesomeIcon icon={faNoteSticky} />}
+                          onClick={() => handleOpenNotesDialog(item)}
+                          disabled={isProcessing(item.id)}
+                          sx={{
+                            minWidth: 120,
+                            minHeight: 48,
+                          }}
+                        >
+                          {item.notes ? 'Edit Note' : 'Add Note'}
+                        </Button>
+                      </Box>
+                    </>
+                  )}
+                </Box>
+
+                {/* Collapsible Item Metadata */}
+                <Collapse in={expandedItemInfo.has(item.id)}>
+                  <Box
+                    sx={{
+                      mt: 2,
+                      p: 2,
+                      backgroundColor: '#FAFAFA',
+                      borderRadius: 1,
+                      borderLeft: `3px solid ${c5Colors.cobaltBlue}`,
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ fontWeight: 'bold', mb: 1, display: 'block' }}>
+                      Item Information
+                    </Typography>
+
+                    {/* Completion info (checkbox items) */}
+                    {item.itemType === 'checkbox' && item.isCompleted && item.completedBy && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                        <strong>Completed:</strong> {new Date(item.completedAt!).toLocaleString()} by {item.completedBy} ({item.completedByPosition})
+                      </Typography>
+                    )}
+
+                    {/* Last modified info */}
+                    {item.lastModifiedBy && item.lastModifiedAt && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                        <strong>Last modified:</strong> {new Date(item.lastModifiedAt).toLocaleString()} by {item.lastModifiedBy} ({item.lastModifiedByPosition})
+                      </Typography>
+                    )}
+
+                    {/* Created info */}
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      <strong>Created:</strong> {new Date(item.createdAt).toLocaleString()}
+                    </Typography>
+                  </Box>
+                </Collapse>
               </Box>
             </Paper>
           ))}
@@ -544,8 +613,8 @@ export const ChecklistDetailPage: React.FC = () => {
           mode={copyMode}
           sourceChecklistId={checklist.id}
           sourceChecklistName={checklist.name}
-          defaultEventId={checklist.eventId}
-          defaultEventName={checklist.eventName}
+          eventId={checklist.eventId}
+          eventName={checklist.eventName}
           defaultOperationalPeriodId={checklist.operationalPeriodId}
           defaultOperationalPeriodName={checklist.operationalPeriodName}
           onSave={handleSaveCopy}

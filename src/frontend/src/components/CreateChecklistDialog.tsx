@@ -7,7 +7,7 @@
  * - From existing checklist - direct copy (preserve status)
  *
  * Smart defaults minimize user friction:
- * - Auto-populates event/period from current context when available
+ * - Event ID/Name pulled from C5 context (not user input)
  * - Pre-fills name with sensible defaults
  * - Hides advanced options (positions) unless needed
  *
@@ -30,7 +30,7 @@ import {
   Collapse,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
+import { faChevronDown, faChevronUp, faClipboardList } from '@fortawesome/free-solid-svg-icons';
 
 /**
  * Mode of checklist creation
@@ -52,9 +52,11 @@ interface CreateChecklistDialogProps {
   sourceChecklistId?: string;
   sourceChecklistName?: string;
 
+  // Event context (from C5 - not user-editable)
+  eventId: string;
+  eventName: string;
+
   // Default values (smart defaults)
-  defaultEventId?: string;
-  defaultEventName?: string;
   defaultOperationalPeriodId?: string;
   defaultOperationalPeriodName?: string;
 
@@ -93,8 +95,8 @@ export const CreateChecklistDialog: React.FC<CreateChecklistDialogProps> = ({
   templateName,
   sourceChecklistId,
   sourceChecklistName,
-  defaultEventId = '',
-  defaultEventName = '',
+  eventId,
+  eventName,
   defaultOperationalPeriodId,
   defaultOperationalPeriodName,
   onSave,
@@ -103,9 +105,6 @@ export const CreateChecklistDialog: React.FC<CreateChecklistDialogProps> = ({
 }) => {
   // Form state
   const [name, setName] = useState('');
-  const [eventId, setEventId] = useState(defaultEventId);
-  const [eventName, setEventName] = useState(defaultEventName);
-  const [operationalPeriodId, setOperationalPeriodId] = useState(defaultOperationalPeriodId || '');
   const [operationalPeriodName, setOperationalPeriodName] = useState(defaultOperationalPeriodName || '');
   const [assignedPositions, setAssignedPositions] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -124,31 +123,18 @@ export const CreateChecklistDialog: React.FC<CreateChecklistDialogProps> = ({
         setName(sourceChecklistName ? `${sourceChecklistName} (Copy)` : '');
       }
 
-      // Set event defaults
-      setEventId(defaultEventId);
-      setEventName(defaultEventName);
-      setOperationalPeriodId(defaultOperationalPeriodId || '');
+      // Set defaults
       setOperationalPeriodName(defaultOperationalPeriodName || '');
       setAssignedPositions('');
       setShowAdvanced(false);
     }
-  }, [open, mode, templateName, sourceChecklistName, defaultEventId, defaultEventName, defaultOperationalPeriodId, defaultOperationalPeriodName]);
+  }, [open, mode, templateName, sourceChecklistName, defaultOperationalPeriodName]);
 
   // Handle save
   const handleSave = async () => {
     // Validation
     if (!name.trim()) {
       setError('Checklist name is required');
-      return;
-    }
-
-    if (!eventId.trim()) {
-      setError('Event ID is required');
-      return;
-    }
-
-    if (!eventName.trim()) {
-      setError('Event name is required');
       return;
     }
 
@@ -162,13 +148,13 @@ export const CreateChecklistDialog: React.FC<CreateChecklistDialogProps> = ({
       return;
     }
 
-    // Build data object
+    // Build data object (eventId/eventName from C5 context)
     const data: ChecklistCreationData = {
       mode,
       name: name.trim(),
-      eventId: eventId.trim(),
-      eventName: eventName.trim(),
-      operationalPeriodId: operationalPeriodId.trim() || undefined,
+      eventId,
+      eventName,
+      operationalPeriodId: defaultOperationalPeriodId,
       operationalPeriodName: operationalPeriodName.trim() || undefined,
       assignedPositions: assignedPositions.trim() || undefined,
     };
@@ -210,13 +196,14 @@ export const CreateChecklistDialog: React.FC<CreateChecklistDialogProps> = ({
 
   // Get dialog description based on mode
   const getDialogDescription = () => {
+    const eventInfo = `Event: ${eventName}`;
     switch (mode) {
       case 'from-template':
-        return `Creating a new checklist from template: "${templateName}"`;
+        return `Creating new checklist from template "${templateName}" for ${eventInfo}`;
       case 'clone-clean':
-        return `Creating a clean copy (all items reset to not completed) from: "${sourceChecklistName}"`;
+        return `Creating clean copy (all items reset) from "${sourceChecklistName}" for ${eventInfo}`;
       case 'clone-direct':
-        return `Creating a direct copy (preserves all completion status and notes) from: "${sourceChecklistName}"`;
+        return `Creating direct copy (preserves all status and notes) from "${sourceChecklistName}" for ${eventInfo}`;
       default:
         return '';
     }
@@ -236,7 +223,7 @@ export const CreateChecklistDialog: React.FC<CreateChecklistDialogProps> = ({
     >
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FontAwesomeIcon icon={faPlus} style={{ fontSize: '1.25rem' }} />
+          <FontAwesomeIcon icon={faClipboardList} style={{ fontSize: '1.25rem' }} />
           <Typography variant="h6">{getDialogTitle()}</Typography>
         </Box>
       </DialogTitle>
@@ -274,30 +261,6 @@ export const CreateChecklistDialog: React.FC<CreateChecklistDialogProps> = ({
           autoFocus
           sx={{ mb: 2 }}
           helperText="Give this checklist a unique name"
-        />
-
-        {/* Event ID */}
-        <TextField
-          fullWidth
-          label="Event ID"
-          value={eventId}
-          onChange={(e) => setEventId(e.target.value)}
-          disabled={saving}
-          required
-          sx={{ mb: 2 }}
-          helperText="Example: Hurricane-Milton-2024"
-        />
-
-        {/* Event Name */}
-        <TextField
-          fullWidth
-          label="Event Name"
-          value={eventName}
-          onChange={(e) => setEventName(e.target.value)}
-          disabled={saving}
-          required
-          sx={{ mb: 2 }}
-          helperText="Example: Hurricane Milton Response"
         />
 
         {/* Operational Period (Optional) */}
