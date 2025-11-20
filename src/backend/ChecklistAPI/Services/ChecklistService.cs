@@ -69,19 +69,39 @@ public class ChecklistService : IChecklistService
             query = query.Where(c => !c.IsArchived);
         }
 
-        // Filter by position: null AssignedPositions = visible to all
-        query = query.Where(c => c.AssignedPositions == null ||
-                                 c.AssignedPositions.Contains(userContext.Position));
+        // Filter by position: null or empty AssignedPositions = visible to all
+        // For comma-separated positions, we need to check exact matches
+        // Note: Using Contains for DB query, then filtering in-memory for exact match
+        query = query.Where(c =>
+            string.IsNullOrEmpty(c.AssignedPositions) ||
+            c.AssignedPositions.Contains(userContext.Position));
 
-        var checklists = await query
+        var allChecklists = await query
             .OrderByDescending(c => c.CreatedAt)
             .AsNoTracking()
             .ToListAsync();
 
+        // Filter for exact position match in comma-separated list
+        var checklists = allChecklists.Where(c =>
+        {
+            if (string.IsNullOrEmpty(c.AssignedPositions))
+                return true; // Null/empty = visible to all
+
+            var positions = c.AssignedPositions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var hasMatch = positions.Contains(userContext.Position);
+
+            _logger.LogDebug(
+                "Checklist {ChecklistId} assigned to '{Positions}' - User position '{UserPosition}' - Match: {HasMatch}",
+                c.Id, c.AssignedPositions, userContext.Position, hasMatch);
+
+            return hasMatch;
+        }).ToList();
+
         _logger.LogInformation(
-            "Retrieved {Count} checklists for position {Position}",
+            "Retrieved {Count} checklists for position {Position} (filtered from {TotalCount})",
             checklists.Count,
-            userContext.Position);
+            userContext.Position,
+            allChecklists.Count);
 
         return checklists.Select(ChecklistMapper.MapToDto).ToList();
     }
