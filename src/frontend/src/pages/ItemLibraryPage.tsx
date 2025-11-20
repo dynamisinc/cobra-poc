@@ -33,6 +33,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 import { itemLibraryService } from '../services/itemLibraryService';
+import { ItemLibraryItemDialog } from '../components/ItemLibraryItemDialog';
 import type { ItemLibraryEntry, ItemType } from '../types';
 import { c5Colors } from '../theme/c5Theme';
 
@@ -56,6 +57,8 @@ export const ItemLibraryPage: React.FC = () => {
   // Dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<ItemLibraryEntry | null>(null);
+  const [createEditDialogOpen, setCreateEditDialogOpen] = useState(false);
+  const [itemToEdit, setItemToEdit] = useState<ItemLibraryEntry | null>(null);
 
   useEffect(() => {
     fetchItems();
@@ -96,6 +99,20 @@ export const ItemLibraryPage: React.FC = () => {
     }
   };
 
+  const handleCreate = () => {
+    setItemToEdit(null);
+    setCreateEditDialogOpen(true);
+  };
+
+  const handleEdit = (item: ItemLibraryEntry) => {
+    setItemToEdit(item);
+    setCreateEditDialogOpen(true);
+  };
+
+  const handleSaved = () => {
+    fetchItems(); // Refresh the list
+  };
+
   const parseTags = (tagsJson?: string): string[] => {
     if (!tagsJson) return [];
     try {
@@ -120,8 +137,7 @@ export const ItemLibraryPage: React.FC = () => {
         <Button
           variant="contained"
           startIcon={<FontAwesomeIcon icon={faPlus} />}
-          // TODO: Navigate to create item page
-          onClick={() => toast.info('Create item feature coming soon')}
+          onClick={handleCreate}
           sx={{ minHeight: 48 }}
         >
           Create Library Item
@@ -295,7 +311,7 @@ export const ItemLibraryPage: React.FC = () => {
                       variant="outlined"
                       size="small"
                       startIcon={<FontAwesomeIcon icon={faEdit} />}
-                      onClick={() => toast.info('Edit feature coming soon')}
+                      onClick={() => handleEdit(item)}
                       sx={{ flex: 1 }}
                     >
                       Edit
@@ -316,6 +332,17 @@ export const ItemLibraryPage: React.FC = () => {
           })}
         </Grid>
       )}
+
+      {/* Create/Edit Item Dialog */}
+      <ItemLibraryItemDialog
+        open={createEditDialogOpen}
+        onClose={() => {
+          setCreateEditDialogOpen(false);
+          setItemToEdit(null);
+        }}
+        onSaved={handleSaved}
+        existingItem={itemToEdit || undefined}
+      />
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
