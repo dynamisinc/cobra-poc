@@ -2,43 +2,50 @@
  * My Checklists Page
  *
  * Landing page showing all checklists assigned to the current user's position.
- * Displays checklist cards with progress bars and metadata.
+ * Groups checklists by operational period with temporal hierarchy:
+ * - Current Operational Period (most prominent)
+ * - Incident-Level Checklists (always visible)
+ * - Previous Operational Periods (collapsible)
  *
  * User Story 2.3: View My Checklists
  */
 
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import {
   Container,
   Typography,
   Box,
   CircularProgress,
   Grid,
-  Card,
-  CardContent,
-  LinearProgress,
-  Chip,
+  Button,
+  Collapse,
 } from '@mui/material';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
 import { useChecklists } from '../hooks/useChecklists';
-import { c5Colors } from '../theme/c5Theme';
-
-/**
- * Get progress bar color based on completion percentage
- */
-const getProgressColor = (percentage: number): string => {
-  if (percentage === 100) return c5Colors.successGreen;
-  if (percentage >= 67) return c5Colors.cobaltBlue;
-  if (percentage >= 34) return c5Colors.canaryYellow;
-  return c5Colors.lavaRed;
-};
+import { useOperationalPeriodGrouping } from '../hooks/useOperationalPeriodGrouping';
+import { ChecklistCard } from '../components/ChecklistCard';
+import { SectionHeader } from '../components/SectionHeader';
 
 /**
  * My Checklists Page Component
  */
 export const MyChecklistsPage: React.FC = () => {
-  const navigate = useNavigate();
   const { checklists, loading, error, fetchMyChecklists } = useChecklists();
+  const [showPreviousPeriods, setShowPreviousPeriods] = useState(false);
+
+  // Group checklists by operational period
+  // TODO: Get currentOperationalPeriodId from C5 context when available
+  const {
+    sections,
+    currentSection,
+    incidentSection,
+    previousSections,
+    totalChecklists,
+  } = useOperationalPeriodGrouping(checklists, {
+    currentOperationalPeriodId: undefined, // Will come from C5 context
+    sortPreviousByDate: true,
+  });
 
   // Fetch checklists on mount
   useEffect(() => {
@@ -85,102 +92,138 @@ export const MyChecklistsPage: React.FC = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        My Checklists
-      </Typography>
+      {/* Page Header */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" sx={{ mb: 1 }}>
+          My Checklists
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {totalChecklists} checklist{totalChecklists !== 1 ? 's' : ''} assigned
+          to your position
+        </Typography>
+      </Box>
 
-      <Grid container spacing={3}>
-        {checklists.map((checklist) => (
-          <Grid item xs={12} md={6} lg={4} key={checklist.id}>
-            <Card
-              sx={{
-                cursor: 'pointer',
-                '&:hover': {
-                  boxShadow: 6,
-                },
-              }}
-              onClick={() => navigate(`/checklists/${checklist.id}`)}
+      {/* Current Operational Period Section */}
+      {currentSection && (
+        <Box sx={{ mb: 4 }}>
+          <SectionHeader
+            type="current"
+            title={currentSection.operationalPeriodName || 'Current Period'}
+            subtitle="Active operational period - focus here"
+            checklistCount={currentSection.checklists.length}
+            averageProgress={currentSection.averageProgress}
+          />
+
+          {currentSection.checklists.length === 0 ? (
+            <Typography
+              color="text.secondary"
+              sx={{ py: 3, textAlign: 'center' }}
             >
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  {checklist.name}
-                </Typography>
+              No checklists in current operational period
+            </Typography>
+          ) : (
+            <Grid container spacing={3}>
+              {currentSection.checklists.map((checklist) => (
+                <Grid item xs={12} sm={6} md={4} key={checklist.id}>
+                  <ChecklistCard checklist={checklist} />
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </Box>
+      )}
 
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  {checklist.eventName}
-                </Typography>
+      {/* Incident-Level Checklists Section */}
+      {incidentSection && (
+        <Box sx={{ mb: 4 }}>
+          <SectionHeader
+            type="incident"
+            title="Incident-Level Checklists"
+            subtitle="Applies to entire event - not tied to operational period"
+            checklistCount={incidentSection.checklists.length}
+            averageProgress={incidentSection.averageProgress}
+          />
 
-                {checklist.operationalPeriodName && (
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    gutterBottom
-                  >
-                    {checklist.operationalPeriodName}
-                  </Typography>
-                )}
+          {incidentSection.checklists.length === 0 ? (
+            <Typography
+              color="text.secondary"
+              sx={{ py: 3, textAlign: 'center' }}
+            >
+              No incident-level checklists
+            </Typography>
+          ) : (
+            <Grid container spacing={3}>
+              {incidentSection.checklists.map((checklist) => (
+                <Grid item xs={12} sm={6} md={4} key={checklist.id}>
+                  <ChecklistCard checklist={checklist} />
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </Box>
+      )}
 
-                <Box sx={{ mt: 2, mb: 1 }}>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      mb: 0.5,
-                    }}
-                  >
-                    <Typography variant="caption" color="text.secondary">
-                      Progress
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {checklist.completedItems} / {checklist.totalItems} items
-                    </Typography>
-                  </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={Number(checklist.progressPercentage)}
-                    sx={{
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: '#E0E0E0',
-                      '& .MuiLinearProgress-bar': {
-                        backgroundColor: getProgressColor(
-                          Number(checklist.progressPercentage)
-                        ),
-                      },
-                    }}
-                  />
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ display: 'block', mt: 0.5 }}
-                  >
-                    {Number(checklist.progressPercentage).toFixed(0)}% complete
-                  </Typography>
-                </Box>
+      {/* Previous Operational Periods Section */}
+      {previousSections.length > 0 && (
+        <Box sx={{ mb: 4 }}>
+          <Button
+            variant="text"
+            onClick={() => setShowPreviousPeriods(!showPreviousPeriods)}
+            endIcon={
+              <FontAwesomeIcon
+                icon={showPreviousPeriods ? faChevronUp : faChevronDown}
+              />
+            }
+            sx={{
+              mb: 2,
+              textTransform: 'none',
+              fontSize: '1rem',
+              minHeight: 48,
+              minWidth: 48,
+            }}
+          >
+            {showPreviousPeriods ? 'Hide' : 'Show'} {previousSections.length}{' '}
+            Previous Operational Period{previousSections.length !== 1 ? 's' : ''}
+          </Button>
 
-                {checklist.assignedPositions && (
-                  <Box sx={{ mt: 2 }}>
-                    {checklist.assignedPositions
-                      .split(',')
-                      .map((position, idx) => (
-                        <Chip
-                          key={idx}
-                          label={position.trim()}
-                          size="small"
-                          sx={{ mr: 0.5, mb: 0.5 }}
-                        />
-                      ))}
-                  </Box>
-                )}
+          <Collapse in={showPreviousPeriods}>
+            {previousSections.map((section) => (
+              <Box key={section.operationalPeriodId} sx={{ mb: 4 }}>
+                <SectionHeader
+                  type="previous"
+                  title={section.operationalPeriodName || 'Previous Period'}
+                  checklistCount={section.checklists.length}
+                  averageProgress={section.averageProgress}
+                />
 
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-                  Created by {checklist.createdBy} ({checklist.createdByPosition})
-                </Typography>
-              </CardContent>
-            </Card>
+                <Grid container spacing={3}>
+                  {section.checklists.map((checklist) => (
+                    <Grid item xs={12} sm={6} md={4} key={checklist.id}>
+                      <ChecklistCard checklist={checklist} />
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+            ))}
+          </Collapse>
+        </Box>
+      )}
+
+      {/* Show all checklists in ungrouped view if no sections */}
+      {!currentSection && !incidentSection && previousSections.length === 0 && (
+        <Box>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            All Checklists
+          </Typography>
+          <Grid container spacing={3}>
+            {checklists.map((checklist) => (
+              <Grid item xs={12} sm={6} md={4} key={checklist.id}>
+                <ChecklistCard checklist={checklist} />
+              </Grid>
+            ))}
           </Grid>
-        ))}
-      </Grid>
+        </Box>
+      )}
     </Container>
   );
 };
