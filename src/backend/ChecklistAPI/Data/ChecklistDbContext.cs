@@ -15,6 +15,7 @@ public class ChecklistDbContext : DbContext
     public DbSet<ChecklistInstance> ChecklistInstances { get; set; }
     public DbSet<ChecklistItem> ChecklistItems { get; set; }
     public DbSet<OperationalPeriod> OperationalPeriods { get; set; }
+    public DbSet<ItemLibraryEntry> ItemLibraryEntries { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -105,6 +106,31 @@ public class ChecklistDbContext : DbContext
             entity.HasIndex(e => e.EventId);
             entity.HasIndex(e => new { e.EventId, e.IsCurrent });
             entity.HasIndex(e => e.IsArchived);
+        });
+
+        // ItemLibraryEntry configuration
+        modelBuilder.Entity<ItemLibraryEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ItemText).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.ItemType).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Category).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.CreatedBy).IsRequired().HasMaxLength(200);
+
+            // Only configure column types for relational databases
+            if (Database.IsRelational())
+            {
+                entity.Property(e => e.StatusConfiguration).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.AllowedPositions).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.DefaultNotes).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.Tags).HasColumnType("nvarchar(max)");
+            }
+
+            // Indexes for search and filtering
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => e.ItemType);
+            entity.HasIndex(e => e.IsArchived);
+            entity.HasIndex(e => e.UsageCount); // For sorting by popularity
         });
     }
 }
