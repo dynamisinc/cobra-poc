@@ -103,6 +103,7 @@ export interface UpdateChecklistRequest {
  */
 export interface CloneChecklistRequest {
   newName: string;
+  preserveStatus?: boolean; // If true, preserves completion status and notes (direct copy); if false, resets (clean copy)
 }
 
 /**
@@ -249,16 +250,18 @@ export const checklistService = {
    * Clone an existing checklist
    * @param checklistId Checklist ID to clone
    * @param newName Name for the cloned checklist
+   * @param preserveStatus If true, preserves completion status and notes (direct copy); if false, resets (clean copy)
    * @returns Newly created cloned checklist
    */
   async cloneChecklist(
     checklistId: string,
-    newName: string
+    newName: string,
+    preserveStatus = false
   ): Promise<ChecklistInstanceDto> {
     try {
       const response = await apiClient.post<ChecklistInstanceDto>(
         `/api/checklists/${checklistId}/clone`,
-        { newName }
+        { newName, preserveStatus }
       );
       return response.data;
     } catch (error) {
