@@ -312,10 +312,12 @@ export const ChecklistDetailPage: React.FC = () => {
           position: 'sticky',
           top: 64, // Height of AppBar
           zIndex: 100,
-          backgroundColor: '#F5F5F5',
+          backgroundColor: 'white',
           py: 1.5,
+          px: 2,
           mb: 2,
-          borderRadius: 1,
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+          borderBottom: '1px solid #E0E0E0',
         }}
       >
         <Box
