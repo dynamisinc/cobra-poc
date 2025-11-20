@@ -64,17 +64,34 @@ public class MockUserMiddleware
 
         if (mockAuthEnabled)
         {
-            // Read mock user settings from configuration
-            var email = _configuration["MockAuth:DefaultUser"] ?? "admin@cobra.mil";
-            var position = _configuration["MockAuth:DefaultPosition"] ?? "Incident Commander";
+            // Try to read from custom headers first (for testing), then fall back to config
+            var email = context.Request.Headers["X-User-Email"].FirstOrDefault()
+                        ?? _configuration["MockAuth:DefaultUser"]
+                        ?? "admin@cobra.mil";
+
+            var fullName = context.Request.Headers["X-User-FullName"].FirstOrDefault()
+                           ?? ExtractNameFromEmail(email);
+
+            var position = context.Request.Headers["X-User-Position"].FirstOrDefault()
+                           ?? _configuration["MockAuth:DefaultPosition"]
+                           ?? "Incident Commander";
+
+            var isAdminStr = context.Request.Headers["X-User-IsAdmin"].FirstOrDefault();
+            var isAdmin = !string.IsNullOrEmpty(isAdminStr) && bool.Parse(isAdminStr);
+
+            // If no header provided, default to true for POC
+            if (string.IsNullOrEmpty(isAdminStr))
+            {
+                isAdmin = true; // POC: All mock users are admins by default
+            }
 
             // Create mock user context
             var userContext = new UserContext
             {
                 Email = email,
-                FullName = ExtractNameFromEmail(email),
+                FullName = fullName,
                 Position = position,
-                IsAdmin = true, // POC: All mock users are admins
+                IsAdmin = isAdmin,
                 CurrentEventId = null, // Could be set from query string in future
                 CurrentOperationalPeriod = null
             };
@@ -82,7 +99,7 @@ public class MockUserMiddleware
             // Inject into HttpContext for controller access
             context.Items["UserContext"] = userContext;
 
-            // Log for debugging (only on first request to avoid spam)
+            // Log for debugging
             _logger.LogInformation(
                 "Mock user context created: {Email} ({Position})",
                 userContext.Email,
