@@ -51,8 +51,9 @@ public class ChecklistServiceTests : IDisposable
         var result = await _service.GetMyChecklistsAsync(opsUser, includeArchived: false);
 
         // Assert
-        Assert.Single(result); // Only checklist assigned to Operations Section Chief
-        Assert.Contains("Operations", result[0].AssignedPositions);
+        Assert.Equal(2, result.Count); // Operations checklist + General checklist (null AssignedPositions)
+        Assert.Contains(result, c => c.AssignedPositions == "Operations Section Chief");
+        Assert.Contains(result, c => c.AssignedPositions == null || c.AssignedPositions == string.Empty);
     }
 
     [Fact]
@@ -155,7 +156,7 @@ public class ChecklistServiceTests : IDisposable
         var result = await _service.GetChecklistsByEventAsync("EVENT-001", includeArchived: false);
 
         // Assert
-        Assert.Equal(2, result.Count);
+        Assert.Equal(3, result.Count); // Safety, Operations, and General checklists (excluding archived)
         Assert.All(result, c => Assert.Equal("EVENT-001", c.EventId));
     }
 

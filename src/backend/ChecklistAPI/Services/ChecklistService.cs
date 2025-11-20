@@ -220,7 +220,7 @@ public class ChecklistService : IChecklistService
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == id);
 
-        return updated == null ? null : MapToDto(updated);
+        return updated == null ? null : ChecklistMapper.MapToDto(updated);
     }
 
     public async Task<bool> ArchiveChecklistAsync(Guid id, UserContext userContext)
