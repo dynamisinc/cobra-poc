@@ -14,6 +14,7 @@ public class ChecklistDbContext : DbContext
     public DbSet<TemplateItem> TemplateItems { get; set; }
     public DbSet<ChecklistInstance> ChecklistInstances { get; set; }
     public DbSet<ChecklistItem> ChecklistItems { get; set; }
+    public DbSet<OperationalPeriod> OperationalPeriods { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,8 +56,15 @@ public class ChecklistDbContext : DbContext
                 .WithOne(e => e.ChecklistInstance)
                 .HasForeignKey(e => e.ChecklistInstanceId)
                 .OnDelete(DeleteBehavior.Cascade);
-                
+
+            // Optional FK to OperationalPeriod - SET NULL on delete (checklists survive period deletion)
+            entity.HasOne(e => e.OperationalPeriod)
+                .WithMany(op => op.Checklists)
+                .HasForeignKey(e => e.OperationalPeriodId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             entity.HasIndex(e => e.EventId);
+            entity.HasIndex(e => e.OperationalPeriodId);
             entity.HasIndex(e => e.IsArchived);
         });
         
@@ -70,6 +78,20 @@ public class ChecklistDbContext : DbContext
 
             entity.HasIndex(e => new { e.ChecklistInstanceId, e.DisplayOrder });
             entity.HasIndex(e => e.LastModifiedAt);
+        });
+
+        // OperationalPeriod configuration
+        modelBuilder.Entity<OperationalPeriod>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.EventId).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.StartTime).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(1000);
+
+            entity.HasIndex(e => e.EventId);
+            entity.HasIndex(e => new { e.EventId, e.IsCurrent });
+            entity.HasIndex(e => e.IsArchived);
         });
     }
 }

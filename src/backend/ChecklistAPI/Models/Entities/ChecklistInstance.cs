@@ -9,8 +9,17 @@ public class ChecklistInstance
     // Event context
     public string EventId { get; set; } = string.Empty;
     public string EventName { get; set; } = string.Empty;
-    public string? OperationalPeriodId { get; set; }
+
+    /// <summary>
+    /// Optional FK to OperationalPeriod. NULL = incident-level checklist (no specific period)
+    /// </summary>
+    public Guid? OperationalPeriodId { get; set; }
+
+    /// <summary>
+    /// Denormalized operational period name for performance (avoid JOINs)
+    /// </summary>
     public string? OperationalPeriodName { get; set; }
+
     public string? AssignedPositions { get; set; }
     
     // Progress tracking
@@ -34,5 +43,6 @@ public class ChecklistInstance
     
     // Navigation
     public Template Template { get; set; } = null!;
+    public OperationalPeriod? OperationalPeriod { get; set; }
     public ICollection<ChecklistItem> Items { get; set; } = new List<ChecklistItem>();
 }
