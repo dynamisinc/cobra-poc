@@ -180,7 +180,7 @@ public class TemplateService : ITemplateService
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == id);
 
-        return template == null ? null : MapToDto(template);
+        return template == null ? null : TemplateMapper.MapToDto(template);
     }
 
     public async Task<bool> ArchiveTemplateAsync(Guid id, UserContext userContext)

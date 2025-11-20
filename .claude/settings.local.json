@@ -29,7 +29,8 @@
       "Bash(timeout /t 6 /nobreak)",
       "Bash(gh issue list:*)",
       "Bash(timeout /t 2 /nobreak)",
-      "Bash(Select-String -Pattern \"(Test 8:)|(Test 9:)|(Looking for)|(IDs in)|(Comparing)|(PASS|FAIL).*(Archived|Restored)\" -Context 0,2)"
+      "Bash(Select-String -Pattern \"(Test 8:)|(Test 9:)|(Looking for)|(IDs in)|(Comparing)|(PASS|FAIL).*(Archived|Restored)\" -Context 0,2)",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": []
