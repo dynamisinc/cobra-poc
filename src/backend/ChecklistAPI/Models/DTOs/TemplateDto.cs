@@ -1,3 +1,5 @@
+using ChecklistAPI.Models.Enums;
+
 namespace ChecklistAPI.Models.DTOs;
 
 /// <summary>
@@ -20,8 +22,13 @@ namespace ChecklistAPI.Models.DTOs;
 ///   - "Logistics" - Resource and supply tracking
 ///   - "Planning" - Planning section checklists
 ///
+/// Template Types:
+///   - Manual: User manually creates checklist from template library
+///   - AutoCreate: Automatically creates when event category matches
+///   - Recurring: Creates on schedule (future feature)
+///
 /// Author: Checklist POC Team
-/// Last Modified: 2025-11-19
+/// Last Modified: 2025-11-20
 /// </summary>
 public record TemplateDto
 {
@@ -112,6 +119,27 @@ public record TemplateDto
     /// Null if not archived
     /// </summary>
     public DateTime? ArchivedAt { get; init; }
+
+    /// <summary>
+    /// Template type - determines how checklist instances are created
+    /// Manual (default), AutoCreate, or Recurring
+    /// </summary>
+    public TemplateType TemplateType { get; init; }
+
+    /// <summary>
+    /// JSON array of incident categories that trigger auto-creation
+    /// Only applicable when TemplateType = AutoCreate
+    /// Example: "Hurricane", "Flood", "Wildfire"
+    /// Null for Manual and Recurring types
+    /// </summary>
+    public string? AutoCreateForCategories { get; init; }
+
+    /// <summary>
+    /// JSON configuration for recurring template schedule
+    /// Only applicable when TemplateType = Recurring
+    /// Future feature - not yet implemented
+    /// </summary>
+    public string? RecurrenceConfig { get; init; }
 
     /// <summary>
     /// Collection of items in this template

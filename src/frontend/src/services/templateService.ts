@@ -16,12 +16,16 @@ import type { Template } from '../types';
 /**
  * Create Template Request
  * Note: tags must be sent as comma-separated string, not array
+ * Note: autoCreateForCategories must be sent as JSON string, not array
  */
 export interface CreateTemplateRequest {
   name: string;
   description: string;
   category: string;
   tags: string; // Comma-separated string like "tag1, tag2, tag3"
+  templateType?: number; // 0 = Manual, 1 = AutoCreate, 2 = Recurring
+  autoCreateForCategories?: string; // JSON string of incident types array (only for AUTO_CREATE)
+  recurrenceConfig?: string; // JSON configuration for recurring templates (future feature)
   items: CreateTemplateItemRequest[];
 }
 
@@ -38,12 +42,16 @@ export interface CreateTemplateItemRequest {
 /**
  * Update Template Request
  * Note: tags must be sent as comma-separated string, not array
+ * Note: autoCreateForCategories must be sent as JSON string, not array
  */
 export interface UpdateTemplateRequest {
   name: string;
   description: string;
   category: string;
   tags: string; // Comma-separated string like "tag1, tag2, tag3"
+  templateType?: number; // 0 = Manual, 1 = AutoCreate, 2 = Recurring
+  autoCreateForCategories?: string; // JSON string of incident types array (only for AUTO_CREATE)
+  recurrenceConfig?: string; // JSON configuration for recurring templates (future feature)
   items: CreateTemplateItemRequest[];
 }
 

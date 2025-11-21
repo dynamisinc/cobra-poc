@@ -30,6 +30,9 @@ import {
   MenuItem,
   Paper,
   Divider,
+  Chip,
+  OutlinedInput,
+  FormHelperText,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft, faPlus, faSave, faBoxArchive } from '@fortawesome/free-solid-svg-icons';
@@ -52,7 +55,7 @@ import { toast } from 'react-toastify';
 import { TemplateItemEditor, type TemplateItemFormData } from '../components/TemplateItemEditor';
 import { AddFromLibraryDialog } from '../components/AddFromLibraryDialog';
 import { SaveToLibraryDialog } from '../components/SaveToLibraryDialog';
-import { ItemType, TemplateCategory, type ItemLibraryEntry } from '../types';
+import { ItemType, TemplateCategory, TemplateType, ICS_INCIDENT_TYPES, type ItemLibraryEntry } from '../types';
 import { templateService } from '../services/templateService';
 import { itemLibraryService } from '../services/itemLibraryService';
 
@@ -83,6 +86,8 @@ export const TemplateEditorPage: React.FC = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<TemplateCategory | ''>('');
+  const [templateType, setTemplateType] = useState<TemplateType>(TemplateType.MANUAL);
+  const [autoCreateCategories, setAutoCreateCategories] = useState<string[]>([]);
   const [items, setItems] = useState<TemplateItemFormData[]>([]);
 
   // UI state
@@ -127,6 +132,12 @@ export const TemplateEditorPage: React.FC = () => {
       setName(isDuplicate ? `${template.name} (Copy)` : template.name);
       setDescription(template.description || '');
       setCategory(template.category);
+      setTemplateType(template.templateType ?? TemplateType.MANUAL);
+      setAutoCreateCategories(
+        template.autoCreateForCategories
+          ? JSON.parse(template.autoCreateForCategories)
+          : []
+      );
 
       // Convert template items to form data
       const formItems: TemplateItemFormData[] = template.items?.map((item) => ({
@@ -418,6 +429,11 @@ export const TemplateEditorPage: React.FC = () => {
         description: description.trim(),
         category: category as TemplateCategory,
         tags: '', // Empty string - tags field not yet implemented in UI
+        templateType,
+        autoCreateForCategories:
+          templateType === TemplateType.AUTO_CREATE && autoCreateCategories.length > 0
+            ? JSON.stringify(autoCreateCategories)
+            : undefined,
         items: items.map((item) => ({
           itemText: item.itemText.trim(),
           itemType: item.itemType,
@@ -529,6 +545,86 @@ export const TemplateEditorPage: React.FC = () => {
             </Typography>
           )}
         </FormControl>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          Template Type
+        </Typography>
+
+        <FormControl fullWidth sx={{ mb: 2 }}>
+          <InputLabel>How should checklists be created from this template?</InputLabel>
+          <Select
+            value={templateType}
+            onChange={(e) => {
+              setTemplateType(e.target.value as TemplateType);
+              // Clear auto-create categories if switching away from AUTO_CREATE
+              if (e.target.value !== TemplateType.AUTO_CREATE) {
+                setAutoCreateCategories([]);
+              }
+            }}
+            label="How should checklists be created from this template?"
+          >
+            <MenuItem value={TemplateType.MANUAL}>
+              <Box>
+                <Typography variant="body1" fontWeight="medium">Manual (Default)</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Users manually create checklists from the template library
+                </Typography>
+              </Box>
+            </MenuItem>
+            <MenuItem value={TemplateType.AUTO_CREATE}>
+              <Box>
+                <Typography variant="body1" fontWeight="medium">Auto-Create on Incident Type</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Automatically creates when event matches selected incident types
+                </Typography>
+              </Box>
+            </MenuItem>
+            <MenuItem value={TemplateType.RECURRING}>
+              <Box>
+                <Typography variant="body1" fontWeight="medium">Recurring (Future Feature)</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Creates checklists on a schedule (daily, per-shift, etc.)
+                </Typography>
+              </Box>
+            </MenuItem>
+          </Select>
+          <FormHelperText>
+            {templateType === TemplateType.MANUAL && 'This is the default. Users will select this template from the library when creating checklists.'}
+            {templateType === TemplateType.AUTO_CREATE && 'Checklist will be automatically created when an event matches the selected incident type(s).'}
+            {templateType === TemplateType.RECURRING && 'Recurring templates are not yet implemented in this POC.'}
+          </FormHelperText>
+        </FormControl>
+
+        {/* Auto-Create Categories - Only shown when AUTO_CREATE is selected */}
+        {templateType === TemplateType.AUTO_CREATE && (
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Incident Types for Auto-Creation</InputLabel>
+            <Select
+              multiple
+              value={autoCreateCategories}
+              onChange={(e) => setAutoCreateCategories(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
+              input={<OutlinedInput label="Incident Types for Auto-Creation" />}
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {selected.map((value) => (
+                    <Chip key={value} label={value} size="small" />
+                  ))}
+                </Box>
+              )}
+            >
+              {ICS_INCIDENT_TYPES.map((type) => (
+                <MenuItem key={type} value={type}>
+                  {type}
+                </MenuItem>
+              ))}
+            </Select>
+            <FormHelperText>
+              Select one or more incident types. When an event is assigned one of these types, a checklist will be automatically created from this template.
+            </FormHelperText>
+          </FormControl>
+        )}
       </Paper>
 
       {/* Items Section */}

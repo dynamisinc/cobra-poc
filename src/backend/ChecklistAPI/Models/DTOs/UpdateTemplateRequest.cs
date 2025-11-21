@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ChecklistAPI.Models.Enums;
 
 namespace ChecklistAPI.Models.DTOs;
 
@@ -55,6 +56,25 @@ public record UpdateTemplateRequest
     /// Set to false to hide from template library
     /// </summary>
     public bool IsActive { get; init; } = true;
+
+    /// <summary>
+    /// Template type - determines how checklist instances are created
+    /// </summary>
+    public TemplateType? TemplateType { get; init; }
+
+    /// <summary>
+    /// JSON array of incident categories that trigger auto-creation
+    /// Only used when TemplateType = AutoCreate
+    /// </summary>
+    [MaxLength(1000, ErrorMessage = "AutoCreateForCategories cannot exceed 1000 characters")]
+    public string? AutoCreateForCategories { get; init; }
+
+    /// <summary>
+    /// JSON configuration for recurring template schedule
+    /// Only used when TemplateType = Recurring (future feature)
+    /// </summary>
+    [MaxLength(2000, ErrorMessage = "RecurrenceConfig cannot exceed 2000 characters")]
+    public string? RecurrenceConfig { get; init; }
 
     /// <summary>
     /// Complete replacement of template items

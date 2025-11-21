@@ -2,6 +2,7 @@ using ChecklistAPI.Data;
 using ChecklistAPI.Models;
 using ChecklistAPI.Models.DTOs;
 using ChecklistAPI.Models.Entities;
+using ChecklistAPI.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChecklistAPI.Services.Helpers;
@@ -57,7 +58,10 @@ public static class TemplateCreationHelper
             IsArchived = false,
             CreatedBy = userContext.Email,
             CreatedByPosition = userContext.Position,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            TemplateType = request.TemplateType ?? TemplateType.Manual,
+            AutoCreateForCategories = request.AutoCreateForCategories,
+            RecurrenceConfig = request.RecurrenceConfig
         };
 
         // Add items with proper ordering
@@ -122,7 +126,10 @@ public static class TemplateCreationHelper
             IsArchived = false,
             CreatedBy = userContext.Email,
             CreatedByPosition = userContext.Position,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            TemplateType = original.TemplateType,
+            AutoCreateForCategories = original.AutoCreateForCategories,
+            RecurrenceConfig = original.RecurrenceConfig
         };
 
         // Copy items

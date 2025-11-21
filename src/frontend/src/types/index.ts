@@ -23,6 +23,9 @@ export interface Template {
   tags: string; // Comma-separated string from backend
   isActive: boolean;
   isArchived: boolean;
+  templateType: TemplateType; // How checklist instances are created
+  autoCreateForCategories?: string; // JSON array of incident categories (for AUTO_CREATE type)
+  recurrenceConfig?: string; // JSON configuration for recurring templates (future feature)
   items: TemplateItem[];
   createdBy: string;
   createdByPosition: string;
@@ -70,6 +73,15 @@ export enum TemplateCategory {
   FINANCE_ADMIN = 'Finance/Admin',
   COMMUNICATIONS = 'Communications',
   GENERAL = 'General',
+}
+
+/**
+ * Template type - determines how checklist instances are created
+ */
+export enum TemplateType {
+  MANUAL = 0,       // User manually creates from template library (default)
+  AUTO_CREATE = 1,  // Automatically creates when event category matches
+  RECURRING = 2,    // Scheduled auto-creation (future feature)
 }
 
 /**
@@ -188,6 +200,9 @@ export interface CreateTemplateRequest {
   description: string;
   category: TemplateCategory;
   tags: string[];
+  templateType?: TemplateType; // Defaults to MANUAL if not specified
+  autoCreateForCategories?: string[]; // Only used when templateType = AUTO_CREATE
+  recurrenceConfig?: string; // Only used when templateType = RECURRING (future)
   items: CreateTemplateItemRequest[];
 }
 
@@ -209,6 +224,9 @@ export interface UpdateTemplateRequest {
   description: string;
   category: TemplateCategory;
   tags: string[];
+  templateType?: TemplateType; // Can update the type
+  autoCreateForCategories?: string[]; // Only used when templateType = AUTO_CREATE
+  recurrenceConfig?: string; // Only used when templateType = RECURRING (future)
   items: UpdateTemplateItemRequest[];
 }
 
@@ -585,6 +603,30 @@ export const ICS_POSITIONS = [
 ] as const;
 
 export type ICSPosition = typeof ICS_POSITIONS[number];
+
+/**
+ * ICS Standard Incident Types (for POC - will come from C5 in production)
+ * Based on FEMA Incident Types
+ */
+export const ICS_INCIDENT_TYPES = [
+  'Hurricane',
+  'Flood',
+  'Wildfire',
+  'Earthquake',
+  'Tornado',
+  'Winter Storm',
+  'Hazmat',
+  'Search and Rescue',
+  'Mass Casualty',
+  'Civil Unrest',
+  'Cyber Incident',
+  'Infrastructure Failure',
+  'Public Health Emergency',
+  'Terrorism',
+  'Other',
+] as const;
+
+export type ICSIncidentType = typeof ICS_INCIDENT_TYPES[number];
 
 // ============================================================================
 // Analytics Types

@@ -144,6 +144,9 @@ public class TemplateService : ITemplateService
         template.Category = request.Category;
         template.Tags = request.Tags;
         template.IsActive = request.IsActive;
+        template.TemplateType = request.TemplateType ?? template.TemplateType;
+        template.AutoCreateForCategories = request.AutoCreateForCategories;
+        template.RecurrenceConfig = request.RecurrenceConfig;
         template.LastModifiedBy = userContext.Email;
         template.LastModifiedByPosition = userContext.Position;
         template.LastModifiedAt = DateTime.UtcNow;

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ChecklistAPI.Models.Enums;
 
 namespace ChecklistAPI.Models.DTOs;
 
@@ -55,6 +56,28 @@ public record CreateTemplateRequest
     /// </summary>
     [MaxLength(500, ErrorMessage = "Tags cannot exceed 500 characters")]
     public string Tags { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Template type - determines how checklist instances are created
+    /// Defaults to Manual if not specified
+    /// </summary>
+    public TemplateType? TemplateType { get; init; }
+
+    /// <summary>
+    /// JSON array of incident categories that trigger auto-creation
+    /// Only used when TemplateType = AutoCreate
+    /// Example: ["Hurricane", "Flood", "Wildfire"]
+    /// </summary>
+    [MaxLength(1000, ErrorMessage = "AutoCreateForCategories cannot exceed 1000 characters")]
+    public string? AutoCreateForCategories { get; init; }
+
+    /// <summary>
+    /// JSON configuration for recurring template schedule
+    /// Only used when TemplateType = Recurring
+    /// Future feature - not yet implemented
+    /// </summary>
+    [MaxLength(2000, ErrorMessage = "RecurrenceConfig cannot exceed 2000 characters")]
+    public string? RecurrenceConfig { get; init; }
 
     /// <summary>
     /// Collection of items to create with this template

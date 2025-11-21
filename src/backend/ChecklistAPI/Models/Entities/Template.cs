@@ -1,4 +1,6 @@
-﻿namespace ChecklistAPI.Models.Entities;
+﻿using ChecklistAPI.Models.Enums;
+
+namespace ChecklistAPI.Models.Entities;
 
 public class Template
 {
@@ -11,7 +13,12 @@ public class Template
     public bool IsArchived { get; set; } = false;
     public string? ArchivedBy { get; set; }
     public DateTime? ArchivedAt { get; set; }
-    
+
+    // Template type and auto-creation configuration
+    public TemplateType TemplateType { get; set; } = TemplateType.Manual;
+    public string? AutoCreateForCategories { get; set; } // JSON array of incident categories (e.g., ["Hurricane", "Flood"])
+    public string? RecurrenceConfig { get; set; } // JSON configuration for recurring templates (future feature)
+
     // Audit fields
     public string CreatedBy { get; set; } = string.Empty;
     public string CreatedByPosition { get; set; } = string.Empty;
