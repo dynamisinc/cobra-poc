@@ -1,15 +1,12 @@
 /**
  * TemplatePickerDialog Component
  *
- * Phase 1: Basic template selection dialog
- * - Shows list of active templates
- * - Allows user to select one and create checklist
- *
- * Phase 2 (Future): Smart suggestions
+ * Phase 2: Smart template suggestions
  * - Position-based recommendations
- * - Event category matching
+ * - Event category matching (future)
  * - Recently used templates
- * - Usage statistics
+ * - Usage statistics and popularity
+ * - Template type indicators (MANUAL, AUTO_CREATE, RECURRING)
  */
 
 import React, { useState, useEffect } from 'react';
@@ -28,11 +25,12 @@ import {
   CircularProgress,
   Chip,
   Divider,
+  Collapse,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheck } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faChevronDown, faChevronUp, faStar, faClock } from '@fortawesome/free-solid-svg-icons';
 import { c5Colors } from '../theme/c5Theme';
-import type { Template } from '../types';
+import { TemplateType, type Template } from '../types';
 
 interface TemplatePickerDialogProps {
   open: boolean;
@@ -41,19 +39,21 @@ interface TemplatePickerDialogProps {
 }
 
 /**
- * TemplatePickerDialog Component
+ * TemplatePickerDialog Component with Smart Suggestions
  */
 export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
   open,
   onClose,
   onCreateChecklist,
 }) => {
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [suggestedTemplates, setSuggestedTemplates] = useState<Template[]>([]);
+  const [allTemplates, setAllTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [checklistName, setChecklistName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showAllTemplates, setShowAllTemplates] = useState(false);
 
   // Fetch templates when dialog opens
   useEffect(() => {
@@ -64,6 +64,7 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
       setSelectedTemplate(null);
       setChecklistName('');
       setError(null);
+      setShowAllTemplates(false);
     }
   }, [open]);
 
@@ -79,18 +80,42 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
       setLoading(true);
       setError(null);
 
-      // Fetch active templates from API
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/templates?includeArchived=false`);
-      if (!response.ok) {
+      // Get user position from localStorage (ProfileMenu)
+      const storedProfile = localStorage.getItem('mockUserProfile');
+      const profile = storedProfile ? JSON.parse(storedProfile) : null;
+      const position = profile?.positions?.[0] || 'Unknown';
+
+      // Fetch smart suggestions based on position
+      const suggestionsResponse = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/templates/suggestions?position=${encodeURIComponent(position)}&limit=10`
+      );
+
+      if (suggestionsResponse.ok) {
+        const suggestions: Template[] = await suggestionsResponse.json();
+        setSuggestedTemplates(suggestions.filter(t => t.templateType === TemplateType.MANUAL));
+      } else {
+        console.warn('Failed to fetch suggestions, falling back to all templates');
+      }
+
+      // Fetch all templates as fallback
+      const allResponse = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/templates?includeArchived=false`
+      );
+
+      if (!allResponse.ok) {
         throw new Error('Failed to load templates');
       }
 
-      const data: Template[] = await response.json();
+      const allData: Template[] = await allResponse.json();
+      const manualTemplates = allData.filter(
+        t => t.isActive && !t.isArchived && t.templateType === TemplateType.MANUAL
+      );
+      setAllTemplates(manualTemplates);
 
-      // Filter to only active templates
-      const activeTemplates = data.filter(t => t.isActive && !t.isArchived);
-
-      setTemplates(activeTemplates);
+      // If suggestions failed or empty, show all templates expanded
+      if (suggestedTemplates.length === 0) {
+        setShowAllTemplates(true);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load templates';
       setError(message);
@@ -121,6 +146,175 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
       onClose();
     }
   };
+
+  /**
+   * Check if template matches user's position
+   */
+  const matchesPosition = (template: Template): boolean => {
+    if (!template.recommendedPositions) return false;
+
+    try {
+      const storedProfile = localStorage.getItem('mockUserProfile');
+      const profile = storedProfile ? JSON.parse(storedProfile) : null;
+      const userPosition = profile?.positions?.[0] || '';
+
+      const positions: string[] = JSON.parse(template.recommendedPositions);
+      return positions.some(p => p.toLowerCase() === userPosition.toLowerCase());
+    } catch {
+      return false;
+    }
+  };
+
+  /**
+   * Check if template was recently used (within 30 days)
+   */
+  const isRecentlyUsed = (template: Template): boolean => {
+    if (!template.lastUsedAt) return false;
+
+    const lastUsed = new Date(template.lastUsedAt);
+    const daysAgo = (Date.now() - lastUsed.getTime()) / (1000 * 60 * 60 * 24);
+    return daysAgo <= 30;
+  };
+
+  /**
+   * Format relative time for last used
+   */
+  const formatLastUsed = (template: Template): string => {
+    if (!template.lastUsedAt) return '';
+
+    const lastUsed = new Date(template.lastUsedAt);
+    const daysAgo = Math.floor((Date.now() - lastUsed.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (daysAgo === 0) return 'today';
+    if (daysAgo === 1) return 'yesterday';
+    if (daysAgo < 7) return `${daysAgo} days ago`;
+    if (daysAgo < 30) return `${Math.floor(daysAgo / 7)} weeks ago`;
+    return `${Math.floor(daysAgo / 30)} months ago`;
+  };
+
+  /**
+   * Render a single template item
+   */
+  const renderTemplateItem = (template: Template) => {
+    const positionMatch = matchesPosition(template);
+    const recentlyUsed = isRecentlyUsed(template);
+    const isPopular = template.usageCount >= 5;
+
+    return (
+      <ListItemButton
+        key={template.id}
+        selected={selectedTemplate?.id === template.id}
+        onClick={() => setSelectedTemplate(template)}
+        sx={{
+          border: '1px solid',
+          borderColor: selectedTemplate?.id === template.id ? c5Colors.cobaltBlue : 'divider',
+          borderRadius: 1,
+          mb: 1,
+          backgroundColor: selectedTemplate?.id === template.id ? c5Colors.whiteBlue : 'transparent',
+          '&:hover': {
+            backgroundColor: selectedTemplate?.id === template.id ? c5Colors.whiteBlue : 'action.hover',
+          },
+        }}
+      >
+        <ListItemText
+          primary={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                {template.name}
+              </Typography>
+              {selectedTemplate?.id === template.id && (
+                <FontAwesomeIcon icon={faCheck} color={c5Colors.cobaltBlue} />
+              )}
+            </Box>
+          }
+          secondary={
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                {template.description || 'No description'}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5 }}>
+                {/* Position match badge */}
+                {positionMatch && (
+                  <Chip
+                    label="Matches your position"
+                    size="small"
+                    sx={{
+                      height: 20,
+                      fontSize: '0.7rem',
+                      backgroundColor: c5Colors.successGreen,
+                      color: 'white',
+                      fontWeight: 'bold',
+                    }}
+                  />
+                )}
+
+                {/* Category badge */}
+                {template.category && (
+                  <Chip label={template.category} size="small" sx={{ height: 20, fontSize: '0.7rem' }} />
+                )}
+
+                {/* Item count */}
+                <Chip label={`${template.items.length} items`} size="small" sx={{ height: 20, fontSize: '0.7rem' }} />
+
+                {/* Popularity indicator */}
+                {isPopular && (
+                  <Chip
+                    icon={<FontAwesomeIcon icon={faStar} style={{ fontSize: '0.6rem', marginLeft: 4 }} />}
+                    label={`Used ${template.usageCount}x`}
+                    size="small"
+                    sx={{ height: 20, fontSize: '0.7rem' }}
+                  />
+                )}
+
+                {/* Recently used indicator */}
+                {recentlyUsed && (
+                  <Chip
+                    icon={<FontAwesomeIcon icon={faClock} style={{ fontSize: '0.6rem', marginLeft: 4 }} />}
+                    label={`Used ${formatLastUsed(template)}`}
+                    size="small"
+                    sx={{ height: 20, fontSize: '0.7rem' }}
+                  />
+                )}
+
+                {/* Template type badge (for non-manual) */}
+                {template.templateType === TemplateType.AUTO_CREATE && (
+                  <Chip
+                    label="AUTO-CREATE"
+                    size="small"
+                    sx={{
+                      height: 20,
+                      fontSize: '0.7rem',
+                      backgroundColor: '#FFA500',
+                      color: 'white',
+                      fontWeight: 'bold',
+                    }}
+                  />
+                )}
+                {template.templateType === TemplateType.RECURRING && (
+                  <Chip
+                    label="RECURRING"
+                    size="small"
+                    sx={{
+                      height: 20,
+                      fontSize: '0.7rem',
+                      backgroundColor: '#9C27B0',
+                      color: 'white',
+                      fontWeight: 'bold',
+                    }}
+                  />
+                )}
+              </Box>
+            </Box>
+          }
+        />
+      </ListItemButton>
+    );
+  };
+
+  // Separate suggested templates into categories
+  const recommendedTemplates = suggestedTemplates.filter(t => matchesPosition(t));
+  const recentlyUsedTemplates = suggestedTemplates.filter(t => isRecentlyUsed(t) && !matchesPosition(t));
+  const otherSuggestions = suggestedTemplates.filter(t => !matchesPosition(t) && !isRecentlyUsed(t));
 
   return (
     <Dialog
@@ -166,60 +360,65 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
         {/* Template List */}
         {!loading && !error && (
           <>
-            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-              Available Templates ({templates.length})
-            </Typography>
+            {/* Recommended for You Section */}
+            {recommendedTemplates.length > 0 && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold', color: c5Colors.cobaltBlue }}>
+                  ⭐ Recommended for You ({recommendedTemplates.length})
+                </Typography>
+                <List sx={{ maxHeight: 250, overflowY: 'auto' }}>
+                  {recommendedTemplates.map(renderTemplateItem)}
+                </List>
+              </Box>
+            )}
 
-            {templates.length === 0 ? (
+            {/* Recently Used Section */}
+            {recentlyUsedTemplates.length > 0 && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  🕐 Recently Used ({recentlyUsedTemplates.length})
+                </Typography>
+                <List sx={{ maxHeight: 200, overflowY: 'auto' }}>
+                  {recentlyUsedTemplates.map(renderTemplateItem)}
+                </List>
+              </Box>
+            )}
+
+            {/* Other Suggestions Section */}
+            {otherSuggestions.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  Other Suggestions ({otherSuggestions.length})
+                </Typography>
+                <List sx={{ maxHeight: 200, overflowY: 'auto' }}>
+                  {otherSuggestions.map(renderTemplateItem)}
+                </List>
+              </Box>
+            )}
+
+            {/* All Templates Section (Collapsible) */}
+            {allTemplates.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Button
+                  onClick={() => setShowAllTemplates(!showAllTemplates)}
+                  endIcon={<FontAwesomeIcon icon={showAllTemplates ? faChevronUp : faChevronDown} />}
+                  sx={{ mb: 1 }}
+                >
+                  {showAllTemplates ? 'Hide' : 'Show'} All Templates ({allTemplates.length})
+                </Button>
+                <Collapse in={showAllTemplates}>
+                  <List sx={{ maxHeight: 300, overflowY: 'auto' }}>
+                    {allTemplates.map(renderTemplateItem)}
+                  </List>
+                </Collapse>
+              </Box>
+            )}
+
+            {/* Empty State */}
+            {allTemplates.length === 0 && (
               <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
                 No templates available. Contact an administrator to create templates.
               </Typography>
-            ) : (
-              <List sx={{ maxHeight: 300, overflowY: 'auto', mb: 2 }}>
-                {templates.map((template) => (
-                  <ListItemButton
-                    key={template.id}
-                    selected={selectedTemplate?.id === template.id}
-                    onClick={() => setSelectedTemplate(template)}
-                    sx={{
-                      border: '1px solid',
-                      borderColor: selectedTemplate?.id === template.id ? c5Colors.cobaltBlue : 'divider',
-                      borderRadius: 1,
-                      mb: 1,
-                      backgroundColor: selectedTemplate?.id === template.id ? c5Colors.whiteBlue : 'transparent',
-                      '&:hover': {
-                        backgroundColor: selectedTemplate?.id === template.id ? c5Colors.whiteBlue : 'action.hover',
-                      },
-                    }}
-                  >
-                    <ListItemText
-                      primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                            {template.name}
-                          </Typography>
-                          {selectedTemplate?.id === template.id && (
-                            <FontAwesomeIcon icon={faCheck} color={c5Colors.cobaltBlue} />
-                          )}
-                        </Box>
-                      }
-                      secondary={
-                        <Box>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                            {template.description || 'No description'}
-                          </Typography>
-                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5 }}>
-                            {template.category && (
-                              <Chip label={template.category} size="small" sx={{ height: 20, fontSize: '0.7rem' }} />
-                            )}
-                            <Chip label={`${template.items.length} items`} size="small" sx={{ height: 20, fontSize: '0.7rem' }} />
-                          </Box>
-                        </Box>
-                      }
-                    />
-                  </ListItemButton>
-                ))}
-              </List>
             )}
 
             {/* Checklist Name Input */}
