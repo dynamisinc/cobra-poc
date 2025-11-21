@@ -23,7 +23,8 @@ DECLARE @SafetyBriefingId UNIQUEIDENTIFIER = NEWID();
 INSERT INTO Templates (
     Id, Name, Description, Category, Tags,
     IsActive, IsArchived,
-    CreatedBy, CreatedByPosition, CreatedAt
+    CreatedBy, CreatedByPosition, CreatedAt,
+    RecommendedPositions, EventCategories, UsageCount, LastUsedAt
 )
 VALUES (
     @SafetyBriefingId,
@@ -32,11 +33,15 @@ VALUES (
     'Safety',
     'daily, safety, briefing, operational period',
     1, 0,
-    'admin@cobra.mil', 'Incident Commander', GETUTCDATE()
+    'admin@cobra.mil', 'Incident Commander', GETUTCDATE(),
+    '["Safety Officer", "Incident Commander", "Operations Section Chief"]',
+    '["All Hazards", "Hurricane", "Wildfire", "Flood", "Earthquake"]',
+    42,
+    DATEADD(DAY, -2, GETUTCDATE())
 );
 
 -- Safety Briefing Items (all checkbox type)
-INSERT INTO TemplateItems (Id, TemplateId, ItemText, ItemType, DisplayOrder, IsRequired, StatusOptions, DefaultNotes, CreatedAt)
+INSERT INTO TemplateItems (Id, TemplateId, ItemText, ItemType, DisplayOrder, IsRequired, StatusConfiguration, DefaultNotes, CreatedAt)
 VALUES
     (NEWID(), @SafetyBriefingId, 'Review weather forecast and conditions for operational period', 'checkbox', 10, 0, NULL, 'Check NOAA weather radio and local forecasts', GETUTCDATE()),
     (NEWID(), @SafetyBriefingId, 'Identify and brief all known hazards in operational area', 'checkbox', 20, 0, NULL, 'Include environmental, structural, and operational hazards', GETUTCDATE()),
@@ -54,7 +59,8 @@ DECLARE @ICInitialActionsId UNIQUEIDENTIFIER = NEWID();
 INSERT INTO Templates (
     Id, Name, Description, Category, Tags,
     IsActive, IsArchived,
-    CreatedBy, CreatedByPosition, CreatedAt
+    CreatedBy, CreatedByPosition, CreatedAt,
+    RecommendedPositions, EventCategories, UsageCount, LastUsedAt
 )
 VALUES (
     @ICInitialActionsId,
@@ -63,11 +69,15 @@ VALUES (
     'ICS Forms',
     'incident commander, initial actions, ICS, command',
     1, 0,
-    'admin@cobra.mil', 'Incident Commander', GETUTCDATE()
+    'admin@cobra.mil', 'Incident Commander', GETUTCDATE(),
+    '["Incident Commander"]',
+    '["All Hazards", "Hurricane", "Wildfire", "Flood", "Earthquake", "Tornado"]',
+    156,
+    DATEADD(DAY, -1, GETUTCDATE())
 );
 
 -- IC Initial Actions Items (mix of checkbox and status)
-INSERT INTO TemplateItems (Id, TemplateId, ItemText, ItemType, DisplayOrder, IsRequired, StatusOptions, DefaultNotes, CreatedAt)
+INSERT INTO TemplateItems (Id, TemplateId, ItemText, ItemType, DisplayOrder, IsRequired, StatusConfiguration, DefaultNotes, CreatedAt)
 VALUES
     (NEWID(), @ICInitialActionsId, 'Establish command and assume Incident Commander role', 'checkbox', 10, 0, NULL, 'Notify EOC and relevant authorities', GETUTCDATE()),
     (NEWID(), @ICInitialActionsId, 'Complete initial situation assessment', 'status', 20, 0, '["Not Started", "In Progress", "Completed", "Delayed"]', 'Document findings in ICS 201', GETUTCDATE()),
@@ -90,7 +100,8 @@ DECLARE @ShelterOpeningId UNIQUEIDENTIFIER = NEWID();
 INSERT INTO Templates (
     Id, Name, Description, Category, Tags,
     IsActive, IsArchived,
-    CreatedBy, CreatedByPosition, CreatedAt
+    CreatedBy, CreatedByPosition, CreatedAt,
+    RecommendedPositions, EventCategories, UsageCount, LastUsedAt
 )
 VALUES (
     @ShelterOpeningId,
@@ -99,11 +110,15 @@ VALUES (
     'Logistics',
     'shelter, evacuation, logistics, facility',
     1, 0,
-    'admin@cobra.mil', 'Logistics Section Chief', GETUTCDATE()
+    'admin@cobra.mil', 'Logistics Section Chief', GETUTCDATE(),
+    '["Logistics Section Chief", "Shelter Manager"]',
+    '["Hurricane", "Flood", "Wildfire", "Tornado", "Evacuation"]',
+    89,
+    DATEADD(DAY, -5, GETUTCDATE())
 );
 
 -- Shelter Opening Items (mostly status for detailed tracking)
-INSERT INTO TemplateItems (Id, TemplateId, ItemText, ItemType, DisplayOrder, IsRequired, StatusOptions, DefaultNotes, CreatedAt)
+INSERT INTO TemplateItems (Id, TemplateId, ItemText, ItemType, DisplayOrder, IsRequired, StatusConfiguration, DefaultNotes, CreatedAt)
 VALUES
     (NEWID(), @ShelterOpeningId, 'Complete facility safety inspection', 'status', 10, 0, '["Not Started", "In Progress", "Completed", "Failed - Do Not Occupy"]', 'Check for structural damage, hazardous materials, utilities', GETUTCDATE()),
     (NEWID(), @ShelterOpeningId, 'Verify utilities are functional (power, water, HVAC)', 'status', 20, 0, '["Not Verified", "Partial", "Fully Functional", "Non-Functional"]', NULL, GETUTCDATE()),
