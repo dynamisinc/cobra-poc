@@ -28,6 +28,11 @@
 
 **Story Points:** 5
 
+**Implementation Status:** ✅ Complete
+- Frontend: TemplateEditorPage.tsx
+- Backend: POST /api/templates
+- All acceptance criteria met
+
 ---
 
 ### Story 1.2: Edit Existing Template
@@ -52,6 +57,11 @@
 - Consider versioning strategy for templates with active instances
 
 **Story Points:** 3
+
+**Implementation Status:** ✅ Complete
+- Frontend: TemplateEditorPage.tsx (edit mode)
+- Backend: PUT /api/templates/{id}
+- All acceptance criteria met
 
 ---
 
@@ -79,6 +89,11 @@
 
 **Story Points:** 3
 
+**Implementation Status:** ✅ Complete
+- Frontend: TemplateLibraryPage.tsx
+- Backend: GET /api/templates, GET /api/templates/category/{category}
+- All acceptance criteria met
+
 ---
 
 ### Story 1.4: Duplicate Template
@@ -99,6 +114,11 @@
 - Consider deep copy of all related entities
 
 **Story Points:** 2
+
+**Implementation Status:** ✅ Complete
+- Frontend: TemplateLibraryPage.tsx, TemplateEditorPage.tsx
+- Backend: POST /api/templates/{id}/duplicate
+- All acceptance criteria met
 
 ---
 
@@ -123,6 +143,11 @@
 
 **Story Points:** 2
 
+**Implementation Status:** ✅ Complete
+- Frontend: TemplateLibraryPage.tsx
+- Backend: DELETE /api/templates/{id}, GET /api/templates/archived, POST /api/templates/{id}/restore, DELETE /api/templates/{id}/permanent
+- All acceptance criteria met including soft delete pattern
+
 ---
 
 ### Story 1.6: Template Categories and Tags
@@ -144,6 +169,11 @@
 - API returns distinct tag list for autocomplete
 
 **Story Points:** 3
+
+**Implementation Status:** ✅ Complete
+- Frontend: TemplateLibraryPage.tsx with category filtering
+- Backend: GET /api/templates/category/{category}
+- Category enum and filtering implemented
 
 ---
 
@@ -198,6 +228,111 @@
 **Story Points:** 8
 
 **Implementation Status:** ✅ Complete (Phase 2)
+
+---
+
+### Story 1.8: Template Preview
+**As a** COBRA operational user
+**I want to** preview a template's structure and items before creating a checklist from it
+**So that** I can verify it's the right template for my needs without creating an instance
+
+**Acceptance Criteria:**
+- "Preview" button available on template library list and template detail view
+- Preview opens in read-only mode showing:
+  - Template name, description, and category
+  - All template items in display order
+  - Item types (checkbox vs. status dropdown)
+  - Required item indicators
+  - Item notes/instructions
+- Cannot edit template in preview mode
+- "Create Checklist" button available in preview to quickly instantiate
+- "Close" button returns to template library
+- Mobile-responsive preview layout
+- Preview accessible to all roles (not just Manage role)
+
+**Technical Notes:**
+- Frontend: TemplatePreviewPage.tsx
+- Backend: GET /api/templates/{id} (read-only access)
+- Route: `/templates/{templateId}/preview`
+- Uses same template DTO as editor but renders in read-only mode
+- Contributors and Readonly users can preview but not edit
+
+**Story Points:** 2
+
+**Implementation Status:** ✅ Complete
+- Frontend: TemplatePreviewPage.tsx
+- Backend: GET /api/templates/{id}
+- All acceptance criteria met
+
+---
+
+## Epic: Item Library Management
+
+### Story 1.9: Item Library
+**As a** COBRA administrator
+**I want to** maintain a library of reusable checklist items
+**So that** I can quickly build templates from pre-defined, standardized items
+
+**Acceptance Criteria:**
+- **Item Library Page** accessible from main navigation (Manage role only)
+- **List view** displays all library items with columns:
+  - Item text
+  - Item type (Checkbox/Status Dropdown)
+  - Category
+  - Usage count (how many templates use this item)
+  - Last modified date
+- **Create new library item** with:
+  - Item text (required, max 500 characters)
+  - Item type selection (Checkbox or Status Dropdown)
+  - Category (single select from predefined list)
+  - Default notes/instructions
+  - Status options (if dropdown type)
+- **Edit existing library item**:
+  - Modify all fields
+  - Track modification history
+  - Show usage count (templates using this item)
+- **Delete library item** (soft delete):
+  - Archive item instead of hard delete
+  - Archived items hidden from default view
+  - Can restore archived items
+  - Cannot delete items currently in use by active templates (show warning)
+- **Search and filter**:
+  - Search by item text
+  - Filter by category
+  - Filter by item type
+  - Sort by usage count, last modified, or name
+- **Drag-and-drop to templates**:
+  - Drag library item into template editor
+  - Item automatically inserted with all configured properties
+- **Usage tracking**:
+  - Usage count increments when item added to template
+  - "View Usage" shows which templates use this item
+- **Empty state**: "No library items found. Create your first reusable item to get started."
+
+**Technical Notes:**
+- Frontend: ItemLibraryPage.tsx
+- Backend:
+  - GET /api/itemlibrary - List all library items
+  - GET /api/itemlibrary/{id} - Get single library item
+  - POST /api/itemlibrary - Create library item
+  - PUT /api/itemlibrary/{id} - Update library item
+  - DELETE /api/itemlibrary/{id} - Archive library item (soft delete)
+  - POST /api/itemlibrary/{id}/restore - Restore archived item
+  - DELETE /api/itemlibrary/{id}/permanent - Permanent delete (admin only)
+  - POST /api/itemlibrary/{id}/increment-usage - Track usage
+- Database: ItemLibrary table with:
+  - Id, ItemText, ItemType, Category, DefaultNotes
+  - StatusOptions (JSON for dropdown items)
+  - UsageCount, IsArchived, CreatedBy, CreatedAt, ModifiedBy, ModifiedAt
+- Permission: Only Manage role can access Item Library
+- Drag-and-drop integration with template editor
+
+**Story Points:** 8
+
+**Implementation Status:** ✅ Complete
+- Frontend: ItemLibraryPage.tsx
+- Backend: Full ItemLibraryController with 8 endpoints
+- All acceptance criteria met
 
 ---
 
@@ -275,6 +410,11 @@
 
 **Story Points:** 5
 
+**Implementation Status:** ✅ Complete
+- Frontend: TemplatePickerDialog.tsx, MyChecklistsPage.tsx
+- Backend: POST /api/checklists
+- All acceptance criteria met
+
 ---
 
 ### Story 2.2: Create Checklist Instance from Multiple Templates
@@ -323,6 +463,11 @@
 
 **Story Points:** 5
 
+**Implementation Status:** ✅ Complete
+- Frontend: MyChecklistsPage.tsx with operational period grouping
+- Backend: GET /api/checklists/my-checklists
+- All acceptance criteria met
+
 ---
 
 ### Story 2.4: View Checklist Instance Detail
@@ -348,6 +493,11 @@
 
 **Story Points:** 5
 
+**Implementation Status:** ✅ Complete
+- Frontend: ChecklistDetailPage.tsx with full item display and interaction
+- Backend: GET /api/checklists/{id}
+- All acceptance criteria met (real-time updates not yet implemented - see Story 2.7)
+
 ---
 
 ### Story 2.5: Clone Checklist Instance
@@ -370,6 +520,11 @@
 
 **Story Points:** 3
 
+**Implementation Status:** ✅ Complete
+- Frontend: ChecklistDetailPage.tsx with clone functionality
+- Backend: POST /api/checklists/{id}/clone
+- All acceptance criteria met
+
 ---
 
 ### Story 2.6: Archive Checklist Instance
@@ -390,6 +545,11 @@
 - Soft delete using IsArchived flag
 
 **Story Points:** 2
+
+**Implementation Status:** ✅ Complete
+- Frontend: MyChecklistsPage.tsx with archive toggle
+- Backend: DELETE /api/checklists/{id}, POST /api/checklists/{id}/restore, GET /api/checklists/archived
+- All acceptance criteria met with soft delete pattern
 
 ---
 
@@ -439,6 +599,11 @@
 
 **Story Points:** 3
 
+**Implementation Status:** ✅ Complete
+- Frontend: ChecklistDetailPage.tsx with checkbox toggle
+- Backend: PATCH /api/checklists/{checklistId}/items/{itemId}/completion
+- All acceptance criteria met (real-time broadcast not yet implemented - see Story 2.7)
+
 ---
 
 ### Story 3.2: Update Status Dropdown Item
@@ -461,6 +626,11 @@
 - Store status change history in ItemStatusHistory table
 
 **Story Points:** 3
+
+**Implementation Status:** ✅ Complete
+- Frontend: ChecklistDetailPage.tsx with status dropdown
+- Backend: PATCH /api/checklists/{checklistId}/items/{itemId}/status
+- All acceptance criteria met (real-time broadcast not yet implemented - see Story 2.7)
 
 ---
 
@@ -486,6 +656,11 @@
 - Consider notification preference for note additions
 
 **Story Points:** 5
+
+**Implementation Status:** ✅ Complete
+- Frontend: ChecklistDetailPage.tsx with notes dialog
+- Backend: PATCH /api/checklists/{checklistId}/items/{itemId}/notes
+- All acceptance criteria met (real-time updates not yet implemented - see Story 2.7)
 
 ---
 
@@ -898,6 +1073,11 @@
 - API Endpoint to reassign: `PUT /api/checklists/instances/{id}/operational-period`
 
 **Story Points:** 3
+
+**Implementation Status:** ✅ Complete
+- Frontend: MyChecklistsPage.tsx with operational period grouping and filtering
+- Backend: GET /api/operationalperiods, POST /api/operationalperiods, POST /api/operationalperiods/{id}/set-current, DELETE /api/operationalperiods/{id}
+- Full operational period management system implemented
 
 ---
 
