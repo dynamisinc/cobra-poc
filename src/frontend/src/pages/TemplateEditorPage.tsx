@@ -95,6 +95,7 @@ export const TemplateEditorPage: React.FC = () => {
 
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -110,6 +111,12 @@ export const TemplateEditorPage: React.FC = () => {
       loadTemplate(templateId, isDuplicateMode);
     }
   }, [shouldLoadTemplate, templateId, isDuplicateMode]);
+
+  // Update warnings when items change
+  useEffect(() => {
+    const newWarnings = getTemplateWarnings();
+    setWarnings(newWarnings);
+  }, [items]);
 
   const loadTemplate = async (id: string, isDuplicate: boolean) => {
     try {
@@ -335,6 +342,67 @@ export const TemplateEditorPage: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  /**
+   * Generate non-blocking warnings to help users create better templates
+   */
+  const getTemplateWarnings = (): string[] => {
+    const newWarnings: string[] = [];
+
+    if (items.length === 0) {
+      return newWarnings; // No warnings if no items yet
+    }
+
+    // Warning 1: No required items
+    const hasRequiredItems = items.some((item) => item.isRequired);
+    if (!hasRequiredItems) {
+      newWarnings.push(
+        'No items are marked as "Required". Consider marking critical items as required to ensure they are completed.'
+      );
+    }
+
+    // Warning 2: All items same type
+    const checkboxCount = items.filter((item) => item.itemType === ItemType.CHECKBOX).length;
+    const statusCount = items.filter((item) => item.itemType === ItemType.STATUS).length;
+    if (items.length > 1 && checkboxCount === items.length) {
+      newWarnings.push(
+        'All items are checkboxes. Consider using status dropdowns for tasks that require multi-step tracking or additional context.'
+      );
+    } else if (items.length > 1 && statusCount === items.length) {
+      newWarnings.push(
+        'All items are status dropdowns. Consider using checkboxes for simple yes/no tasks to improve usability.'
+      );
+    }
+
+    // Warning 3: Duplicate item text
+    const itemTexts = items.map((item) => item.itemText.trim().toLowerCase());
+    const duplicates = itemTexts.filter((text, index) => itemTexts.indexOf(text) !== index);
+    if (duplicates.length > 0) {
+      newWarnings.push(
+        'Some items have identical text. Consider making item descriptions more specific to avoid confusion.'
+      );
+    }
+
+    // Warning 4: Very short or unclear item text
+    const shortItems = items.filter((item) => item.itemText.trim().length < 10);
+    if (shortItems.length > 0) {
+      newWarnings.push(
+        `${shortItems.length} item${shortItems.length > 1 ? 's have' : ' has'} very short descriptions (less than 10 characters). Consider adding more context for clarity.`
+      );
+    }
+
+    // Warning 5: Many items without position restrictions (could lead to confusion)
+    if (items.length >= 10) {
+      const itemsWithoutPositions = items.filter((item) => item.allowedPositions.length === 0);
+      if (itemsWithoutPositions.length === items.length) {
+        newWarnings.push(
+          'None of your items have position restrictions. For large templates, consider assigning items to specific ICS positions to avoid confusion.'
+        );
+      }
+    }
+
+    return newWarnings;
+  };
+
   const handleSave = async () => {
     if (!validate()) {
       toast.error('Please fix validation errors before saving');
@@ -502,6 +570,17 @@ export const TemplateEditorPage: React.FC = () => {
               {errors[key]}
             </Alert>
           ))}
+
+        {/* Template Quality Warnings (non-blocking) */}
+        {warnings.length > 0 && (
+          <Box sx={{ mb: 2 }}>
+            {warnings.map((warning, index) => (
+              <Alert key={index} severity="warning" sx={{ mb: 1 }}>
+                {warning}
+              </Alert>
+            ))}
+          </Box>
+        )}
 
         {/* Items List with Drag and Drop */}
         {items.length > 0 && (

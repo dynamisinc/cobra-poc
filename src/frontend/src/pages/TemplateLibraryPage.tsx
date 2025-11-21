@@ -23,11 +23,12 @@ import {
   Chip,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faClipboardList, faEdit, faEye, faCopy } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faClipboardList, faEdit, faEye, faCopy, faChartLine, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 import { templateService } from '../services/templateService';
 import { checklistService, type CreateFromTemplateRequest } from '../services/checklistService';
 import { CreateChecklistDialog, type ChecklistCreationData } from '../components/CreateChecklistDialog';
+import { AnalyticsDashboard } from '../components/AnalyticsDashboard';
 import { c5Colors } from '../theme/c5Theme';
 import type { Template } from '../types';
 
@@ -44,6 +45,9 @@ export const TemplateLibraryPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [creating, setCreating] = useState(false);
+
+  // Analytics state
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   // Fetch templates on mount
   useEffect(() => {
@@ -151,15 +155,33 @@ export const TemplateLibraryPage: React.FC = () => {
             Select a template to create a new checklist for your event or operational period.
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<FontAwesomeIcon icon={faPlus} />}
-          onClick={() => navigate('/templates/new')}
-          sx={{ minHeight: 48 }}
-        >
-          Create New Template
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<FontAwesomeIcon icon={faChartLine} />}
+            onClick={() => setShowAnalytics(!showAnalytics)}
+            sx={{ minHeight: 48 }}
+          >
+            {showAnalytics ? 'Hide Analytics' : 'Show Analytics'}
+            <FontAwesomeIcon icon={showAnalytics ? faChevronUp : faChevronDown} style={{ marginLeft: 8 }} />
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<FontAwesomeIcon icon={faPlus} />}
+            onClick={() => navigate('/templates/new')}
+            sx={{ minHeight: 48 }}
+          >
+            Create New Template
+          </Button>
+        </Box>
       </Box>
+
+      {/* Analytics Dashboard (Collapsible) */}
+      {showAnalytics && (
+        <Box sx={{ mb: 4, p: 3, backgroundColor: '#f5f5f5', borderRadius: 2 }}>
+          <AnalyticsDashboard />
+        </Box>
+      )}
 
       {/* Templates Grid */}
       {templates.length === 0 ? (

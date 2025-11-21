@@ -572,3 +572,53 @@ export const ICS_POSITIONS = [
 ] as const;
 
 export type ICSPosition = typeof ICS_POSITIONS[number];
+
+// ============================================================================
+// Analytics Types
+// ============================================================================
+
+/**
+ * Analytics Dashboard Data
+ * Comprehensive analytics and insights about templates and library items
+ */
+export interface AnalyticsDashboard {
+  overview: AnalyticsOverview;
+  mostUsedTemplates: TemplateUsage[];
+  neverUsedTemplates: TemplateUsage[];
+  mostPopularLibraryItems: ItemLibraryUsage[];
+  recentlyCreatedTemplates: Template[];
+}
+
+/**
+ * Overview statistics
+ */
+export interface AnalyticsOverview {
+  totalTemplates: number;
+  totalChecklistInstances: number;
+  totalLibraryItems: number;
+  activeTemplates: number;      // Templates with at least one instance
+  unusedTemplates: number;      // Templates with zero instances
+}
+
+/**
+ * Template usage statistics
+ */
+export interface TemplateUsage {
+  id: string;
+  name: string;
+  category: string;
+  usageCount: number;
+  createdAt: string;
+  createdBy: string;
+}
+
+/**
+ * Library item usage statistics
+ */
+export interface ItemLibraryUsage {
+  id: string;
+  itemText: string;
+  category: string;
+  itemType: string;
+  usageCount: number;
+}
