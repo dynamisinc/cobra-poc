@@ -165,9 +165,11 @@ export const TemplatePreviewPage: React.FC = () => {
             color="primary"
             variant="outlined"
           />
-          {template.tags && template.tags.length > 0 && template.tags.map(tag => (
-            <Chip key={tag} label={tag} size="small" />
-          ))}
+          {template.tags && template.tags.trim().length > 0 &&
+            template.tags.split(',').map(tag => tag.trim()).filter(Boolean).map(tag => (
+              <Chip key={tag} label={tag} size="small" />
+            ))
+          }
         </Box>
 
         <Divider sx={{ my: 2 }} />

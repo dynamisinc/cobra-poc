@@ -20,7 +20,7 @@ export interface Template {
   name: string;
   description: string;
   category: TemplateCategory;
-  tags: string[];
+  tags: string; // Comma-separated string from backend
   isActive: boolean;
   isArchived: boolean;
   items: TemplateItem[];
