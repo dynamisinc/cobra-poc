@@ -182,6 +182,41 @@ export const MyChecklistsPage: React.FC = () => {
   if (checklists.length === 0) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
+        {/* Page Header with Create Button */}
+        <Box sx={{ mb: 3, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <Box>
+            <Typography variant="h4" sx={{ mb: 1 }}>
+              My Checklists
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              No checklists assigned to your position
+            </Typography>
+          </Box>
+
+          {/* Create Checklist Button - Contributors and Manage roles */}
+          {permissions.canCreateInstance && (
+            <Button
+              variant="contained"
+              startIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() => setTemplatePickerOpen(true)}
+              sx={{
+                backgroundColor: c5Colors.cobaltBlue,
+                minHeight: 48,
+                minWidth: 48,
+                px: 3,
+                fontWeight: 'bold',
+                '&:hover': {
+                  backgroundColor: c5Colors.cobaltBlue,
+                  opacity: 0.9,
+                },
+              }}
+            >
+              Create Checklist
+            </Button>
+          )}
+        </Box>
+
+        {/* Empty State Message */}
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography variant="h5" color="text.secondary">
             No checklists assigned
@@ -189,7 +224,19 @@ export const MyChecklistsPage: React.FC = () => {
           <Typography variant="body1" color="text.secondary" sx={{ mt: 2 }}>
             You don't have any active checklists assigned to your position.
           </Typography>
+          {permissions.canCreateInstance && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Click "Create Checklist" above to get started.
+            </Typography>
+          )}
         </Box>
+
+        {/* Template Picker Dialog */}
+        <TemplatePickerDialog
+          open={templatePickerOpen}
+          onClose={() => setTemplatePickerOpen(false)}
+          onCreateChecklist={handleCreateChecklist}
+        />
       </Container>
     );
   }
