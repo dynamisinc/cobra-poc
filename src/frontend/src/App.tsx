@@ -16,18 +16,21 @@ import { TemplateLibraryPage } from './pages/TemplateLibraryPage';
 import { TemplateEditorPage } from './pages/TemplateEditorPage';
 import { TemplatePreviewPage } from './pages/TemplatePreviewPage';
 import { ItemLibraryPage } from './pages/ItemLibraryPage';
-import { PositionSelector } from './components/PositionSelector';
+import { ProfileMenu } from './components/ProfileMenu';
+import { usePermissions } from './hooks/usePermissions';
+import { PermissionRole } from './types';
 import { c5Colors } from './theme/c5Theme';
 
 interface AppNavBarProps {
-  onPositionChange: (positions: string[]) => void;
+  onProfileChange: (positions: string[], role: PermissionRole) => void;
 }
 
 /**
  * App Navigation Bar
  */
-const AppNavBar: React.FC<AppNavBarProps> = ({ onPositionChange }) => {
+const AppNavBar: React.FC<AppNavBarProps> = ({ onProfileChange }) => {
   const location = useLocation();
+  const permissions = usePermissions();
 
   return (
     <AppBar
@@ -49,6 +52,7 @@ const AppNavBar: React.FC<AppNavBarProps> = ({ onPositionChange }) => {
 
         {/* Navigation Links */}
         <Box sx={{ flexGrow: 1, ml: 4, display: 'flex', gap: 2 }}>
+          {/* My Checklists - visible to all except None */}
           <Button
             component={Link}
             to="/checklists"
@@ -64,39 +68,47 @@ const AppNavBar: React.FC<AppNavBarProps> = ({ onPositionChange }) => {
             <FontAwesomeIcon icon={faClipboardList} style={{ marginRight: 8 }} />
             My Checklists
           </Button>
-          <Button
-            component={Link}
-            to="/templates"
-            sx={{
-              color: 'white',
-              fontWeight: location.pathname === '/templates' ? 'bold' : 'normal',
-              textDecoration: location.pathname === '/templates' ? 'underline' : 'none',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              },
-            }}
-          >
-            <FontAwesomeIcon icon={faBook} style={{ marginRight: 8 }} />
-            Template Library
-          </Button>
-          <Button
-            component={Link}
-            to="/item-library"
-            sx={{
-              color: 'white',
-              fontWeight: location.pathname === '/item-library' ? 'bold' : 'normal',
-              textDecoration: location.pathname === '/item-library' ? 'underline' : 'none',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              },
-            }}
-          >
-            <FontAwesomeIcon icon={faBoxArchive} style={{ marginRight: 8 }} />
-            Item Library
-          </Button>
+
+          {/* Template Library - only visible to Manage role */}
+          {permissions.canViewTemplateLibrary && (
+            <Button
+              component={Link}
+              to="/templates"
+              sx={{
+                color: 'white',
+                fontWeight: location.pathname === '/templates' ? 'bold' : 'normal',
+                textDecoration: location.pathname === '/templates' ? 'underline' : 'none',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                },
+              }}
+            >
+              <FontAwesomeIcon icon={faBook} style={{ marginRight: 8 }} />
+              Template Library
+            </Button>
+          )}
+
+          {/* Item Library - only visible to Manage role */}
+          {permissions.canAccessItemLibrary && (
+            <Button
+              component={Link}
+              to="/item-library"
+              sx={{
+                color: 'white',
+                fontWeight: location.pathname === '/item-library' ? 'bold' : 'normal',
+                textDecoration: location.pathname === '/item-library' ? 'underline' : 'none',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                },
+              }}
+            >
+              <FontAwesomeIcon icon={faBoxArchive} style={{ marginRight: 8 }} />
+              Item Library
+            </Button>
+          )}
         </Box>
 
-        <PositionSelector onPositionChange={onPositionChange} />
+        <ProfileMenu onProfileChange={onProfileChange} />
       </Toolbar>
     </AppBar>
   );
@@ -106,25 +118,25 @@ const AppNavBar: React.FC<AppNavBarProps> = ({ onPositionChange }) => {
  * Main App Component
  */
 function App() {
-  // State to trigger re-renders when position changes
-  const [positionKey, setPositionKey] = useState(0);
+  // State to trigger re-renders when profile changes
+  const [profileKey, setProfileKey] = useState(0);
 
   /**
-   * Handle position change from PositionSelector
+   * Handle profile change from ProfileMenu
    * Triggers re-render of pages to fetch new data
    */
-  const handlePositionChange = (positions: string[]) => {
-    console.log('[App] Position changed to:', positions);
+  const handleProfileChange = (positions: string[], role: PermissionRole) => {
+    console.log('[App] Profile changed - Positions:', positions, 'Role:', role);
     // Increment key to force re-render of routes
-    setPositionKey((prev) => prev + 1);
+    setProfileKey((prev) => prev + 1);
   };
 
   return (
     <BrowserRouter>
       <Box sx={{ minHeight: '100vh', backgroundColor: '#F5F5F5' }}>
-        <AppNavBar onPositionChange={handlePositionChange} />
+        <AppNavBar onProfileChange={handleProfileChange} />
 
-        <Routes key={positionKey}>
+        <Routes key={profileKey}>
           {/* Default route - redirect to My Checklists */}
           <Route path="/" element={<Navigate to="/checklists" replace />} />
 

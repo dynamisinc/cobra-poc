@@ -294,15 +294,28 @@ export enum BulkAction {
 // ============================================================================
 
 /**
+ * Permission roles for access control
+ */
+export enum PermissionRole {
+  NONE = 'None',
+  READONLY = 'Readonly',
+  CONTRIBUTOR = 'Contributor',
+  MANAGE = 'Manage',
+}
+
+/**
  * Mock user for POC (replaces actual authentication)
  */
 export interface MockUser {
   id: string;
   email: string;
   displayName: string;
-  position: string;
+  position: string; // Primary position
+  positions: string[]; // All positions (for multi-position users)
+  permissionRole: PermissionRole; // Access level
   eventId: string;
   eventName: string;
+  eventCategory?: string; // Primary event category (e.g., "Fire", "Flood")
 }
 
 /**
