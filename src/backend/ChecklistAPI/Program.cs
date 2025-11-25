@@ -41,12 +41,16 @@ builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 // Add HTTP context accessor for service to access current user
 builder.Services.AddHttpContextAccessor();
 
-// CORS for frontend (allow both HTTP and HTTPS for local development)
+// CORS for frontend (allow localhost and Azure deployment)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "https://localhost:5173")
+        policy.WithOrigins(
+                  "http://localhost:5173",
+                  "https://localhost:5173",
+                  "https://checklist-poc-app.azurewebsites.net"
+              )
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
