@@ -80,6 +80,28 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// Global exception handler - returns JSON errors instead of empty 500
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+
+        var exceptionFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+        var error = exceptionFeature?.Error;
+
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(error, "Unhandled exception for request {Path}", context.Request.Path);
+
+        await context.Response.WriteAsJsonAsync(new
+        {
+            message = "An error occurred processing your request.",
+            detail = app.Environment.IsDevelopment() ? error?.Message : null
+        });
+    });
+});
+
 // Always enable Swagger and SwaggerUI
 app.UseSwagger();
 app.UseSwaggerUI();
