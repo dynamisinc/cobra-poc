@@ -26,7 +26,7 @@ import {
   faExclamationTriangle,
 } from '@fortawesome/free-solid-svg-icons';
 import type { ChecklistInstanceDto } from '../services/checklistService';
-import { c5Colors } from '../theme/c5Theme';
+import { cobraTheme } from '../theme/cobraTheme';
 
 /**
  * Template type for visual indicators
@@ -45,10 +45,10 @@ interface ChecklistCardProps {
  * Get progress bar color based on completion percentage
  */
 const getProgressColor = (percentage: number): string => {
-  if (percentage === 100) return c5Colors.successGreen;
-  if (percentage >= 67) return c5Colors.cobaltBlue;
-  if (percentage >= 34) return c5Colors.canaryYellow;
-  return c5Colors.lavaRed;
+  if (percentage === 100) return cobraTheme.palette.success.main;
+  if (percentage >= 67) return cobraTheme.palette.buttonPrimary.main;
+  if (percentage >= 34) return cobraTheme.palette.warning.main;
+  return cobraTheme.palette.error.main;
 };
 
 /**
@@ -59,20 +59,20 @@ const getTemplateIndicator = (type: TemplateType) => {
     case 'recurring':
       return {
         icon: faArrowsRotate,
-        color: c5Colors.cobaltBlue,
+        color: cobraTheme.palette.buttonPrimary.main,
         tooltip: 'Recurring checklist',
       };
     case 'urgent':
       return {
         icon: faExclamationTriangle,
-        color: c5Colors.lavaRed,
+        color: cobraTheme.palette.buttonDelete.main,
         tooltip: 'Urgent/Critical',
       };
     case 'one-time':
     default:
       return {
         icon: faClipboardList,
-        color: '#757575',
+        color: cobraTheme.palette.text.secondary,
         tooltip: 'One-time checklist',
       };
   }
@@ -181,7 +181,7 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              minHeight: '3rem', // Reserve space even if 1 line
+              height: '3rem', // Fixed height for all cards
               fontSize: '1rem',
               fontWeight: 600,
               lineHeight: 1.5,
@@ -200,26 +200,26 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             mb: 0.5,
+            height: '1.5rem', // Fixed height for consistency
           }}
         >
           {checklist.eventName}
         </Typography>
 
-        {/* Operational period - 1 line with ellipsis */}
-        {checklist.operationalPeriodName && (
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            noWrap
-            sx={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              mb: 1,
-            }}
-          >
-            {checklist.operationalPeriodName}
-          </Typography>
-        )}
+        {/* Operational period - 1 line with ellipsis (always reserve space) */}
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          noWrap
+          sx={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            mb: 1,
+            height: '1.25rem', // Fixed height for all cards
+          }}
+        >
+          {checklist.operationalPeriodName || '\u00A0'}
+        </Typography>
 
         {/* Spacer to push progress to bottom */}
         <Box sx={{ flexGrow: 1 }} />
@@ -263,42 +263,45 @@ export const ChecklistCard: React.FC<ChecklistCardProps> = ({
           </Typography>
         </Box>
 
-        {/* Assigned positions - max 2 rows with overflow */}
-        {positions.length > 0 && (
-          <Box
-            sx={{
-              mt: 1.5,
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 0.5,
-              maxHeight: '3rem', // Limit to ~2 rows
-              overflow: 'hidden',
-            }}
-          >
-            {visiblePositions.map((position, idx) => (
-              <Chip
-                key={idx}
-                label={position}
-                size="small"
-                sx={{
-                  fontSize: '0.7rem',
-                  height: 20,
-                }}
-              />
-            ))}
-            {overflowCount > 0 && (
-              <Chip
-                label={`+${overflowCount}`}
-                size="small"
-                sx={{
-                  fontSize: '0.7rem',
-                  height: 20,
-                  backgroundColor: c5Colors.whiteBlue,
-                }}
-              />
-            )}
-          </Box>
-        )}
+        {/* Assigned positions - always show, use fixed height */}
+        <Box
+          sx={{
+            mt: 1.5,
+            height: '2.5rem', // Fixed height - exactly 2 rows worth
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 0.5,
+            overflow: 'hidden',
+            alignContent: 'flex-start', // Align items to top
+          }}
+        >
+          {positions.length > 0 && (
+            <>
+              {visiblePositions.map((position, idx) => (
+                <Chip
+                  key={idx}
+                  label={position}
+                  size="small"
+                  sx={{
+                    fontSize: '0.7rem',
+                    height: 20,
+                  }}
+                />
+              ))}
+              {overflowCount > 0 && (
+                <Chip
+                  label={`+${overflowCount}`}
+                  size="small"
+                  sx={{
+                    fontSize: '0.7rem',
+                    height: 20,
+                    backgroundColor: cobraTheme.palette.action.selected,
+                  }}
+                />
+              )}
+            </>
+          )}
+        </Box>
 
         {/* Created by - always at bottom */}
         <Typography

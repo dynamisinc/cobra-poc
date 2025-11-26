@@ -217,12 +217,22 @@ Temporary Items
 secrets.json
 appsettings.local.json
 appsettings.Development.json
+appsettings.Production.json
 connectionstrings.json
 
-# Azure publish profiles
+# Azure publish profiles and deployment
 PublishProfiles/
 *.pubxml
 *.PublishSettings
+*.publishsettings
+publish-profile.xml
+publish/
+deploy.zip
+
+# Azure configuration (local only)
+azure-config.local.json
+azure-config-*.json
+!azure-config.json
 
 # ============================================================================
 # Documentation (keep structure, ignore generated)

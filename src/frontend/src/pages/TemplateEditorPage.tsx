@@ -20,8 +20,6 @@ import {
   Container,
   Typography,
   Box,
-  TextField,
-  Button,
   CircularProgress,
   Alert,
   FormControl,
@@ -33,6 +31,7 @@ import {
   Chip,
   OutlinedInput,
   FormHelperText,
+  Stack,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft, faPlus, faSave, faBoxArchive } from '@fortawesome/free-solid-svg-icons';
@@ -58,6 +57,13 @@ import { SaveToLibraryDialog } from '../components/SaveToLibraryDialog';
 import { ItemType, TemplateCategory, TemplateType, ICS_INCIDENT_TYPES, type ItemLibraryEntry } from '../types';
 import { templateService } from '../services/templateService';
 import { itemLibraryService } from '../services/itemLibraryService';
+import {
+  CobraTextField,
+  CobraSecondaryButton,
+  CobraSaveButton,
+  CobraLinkButton,
+} from '../theme/styledComponents';
+import CobraStyles from '../theme/CobraStyles';
 
 /**
  * Generate a temporary ID for new items
@@ -475,84 +481,85 @@ export const TemplateEditorPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
+      <Container maxWidth="md">
+        <Stack spacing={3} padding={CobraStyles.Padding.MainWindow} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <CircularProgress />
+        </Stack>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="md" sx={{ mt: 2, mb: 4 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-        <Button
-          variant="text"
-          startIcon={<FontAwesomeIcon icon={faArrowLeft} />}
-          onClick={handleCancel}
-        >
-          Back
-        </Button>
-        <Typography variant="h4">
-          {isEditMode ? 'Edit Template' : isDuplicateMode ? 'Duplicate Template' : 'Create New Template'}
-        </Typography>
-      </Box>
-
-      {/* Template Metadata */}
-      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          Template Information
-        </Typography>
-
-        <TextField
-          fullWidth
-          label="Template Name"
-          placeholder="e.g., Daily Safety Briefing"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          error={!!errors.name}
-          helperText={errors.name}
-          sx={{ mb: 2 }}
-        />
-
-        <TextField
-          fullWidth
-          label="Description (Optional)"
-          placeholder="Describe when and how to use this template"
-          multiline
-          rows={3}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          sx={{ mb: 2 }}
-        />
-
-        <FormControl fullWidth required error={!!errors.category}>
-          <InputLabel>Category</InputLabel>
-          <Select
-            value={category}
-            onChange={(e) => setCategory(e.target.value as TemplateCategory)}
-            label="Category"
+    <Container maxWidth="md">
+      <Stack spacing={3} padding={CobraStyles.Padding.MainWindow}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <CobraLinkButton
+            startIcon={<FontAwesomeIcon icon={faArrowLeft} />}
+            onClick={handleCancel}
           >
-            {Object.values(TemplateCategory).map((cat) => (
-              <MenuItem key={cat} value={cat}>
-                {cat}
-              </MenuItem>
-            ))}
-          </Select>
-          {errors.category && (
-            <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-              {errors.category}
+            Back
+          </CobraLinkButton>
+          <Typography variant="h4">
+            {isEditMode ? 'Edit Template' : isDuplicateMode ? 'Duplicate Template' : 'Create New Template'}
+          </Typography>
+        </Box>
+
+        {/* Template Metadata */}
+        <Paper elevation={2} sx={{ p: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Template Information
+          </Typography>
+
+          <Stack spacing={CobraStyles.Spacing.FormFields}>
+            <CobraTextField
+              fullWidth
+              label="Template Name"
+              placeholder="e.g., Daily Safety Briefing"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              error={!!errors.name}
+              helperText={errors.name}
+            />
+
+            <CobraTextField
+              fullWidth
+              label="Description (Optional)"
+              placeholder="Describe when and how to use this template"
+              multiline
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+
+            <FormControl fullWidth required error={!!errors.category}>
+              <InputLabel>Category</InputLabel>
+              <Select
+                value={category}
+                onChange={(e) => setCategory(e.target.value as TemplateCategory)}
+                label="Category"
+              >
+                {Object.values(TemplateCategory).map((cat) => (
+                  <MenuItem key={cat} value={cat}>
+                    {cat}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors.category && (
+                <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
+                  {errors.category}
+                </Typography>
+              )}
+            </FormControl>
+
+            <Divider />
+
+            <Typography variant="h6">
+              Template Type
             </Typography>
-          )}
-        </FormControl>
 
-        <Divider sx={{ my: 3 }} />
-
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          Template Type
-        </Typography>
-
-        <FormControl fullWidth sx={{ mb: 2 }}>
+            <FormControl fullWidth>
           <InputLabel>How should checklists be created from this template?</InputLabel>
           <Select
             value={templateType}
@@ -597,9 +604,9 @@ export const TemplateEditorPage: React.FC = () => {
           </FormHelperText>
         </FormControl>
 
-        {/* Auto-Create Categories - Only shown when AUTO_CREATE is selected */}
-        {templateType === TemplateType.AUTO_CREATE && (
-          <FormControl fullWidth sx={{ mb: 2 }}>
+            {/* Auto-Create Categories - Only shown when AUTO_CREATE is selected */}
+            {templateType === TemplateType.AUTO_CREATE && (
+              <FormControl fullWidth>
             <InputLabel>Incident Types for Auto-Creation</InputLabel>
             <Select
               multiple
@@ -624,62 +631,61 @@ export const TemplateEditorPage: React.FC = () => {
               Select one or more incident types. When an event is assigned one of these types, a checklist will be automatically created from this template.
             </FormHelperText>
           </FormControl>
-        )}
-      </Paper>
+            )}
+          </Stack>
+        </Paper>
 
-      {/* Items Section */}
-      <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6">
-            Checklist Items
-          </Typography>
-          {items.length > 0 && (
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={handleExpandAll}
-              >
-                Expand All
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={handleCollapseAll}
-              >
-                Collapse All
-              </Button>
-            </Box>
-          )}
-        </Box>
+        {/* Items Section */}
+        <Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">
+              Checklist Items
+            </Typography>
+            {items.length > 0 && (
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <CobraSecondaryButton
+                  size="small"
+                  onClick={handleExpandAll}
+                >
+                  Expand All
+                </CobraSecondaryButton>
+                <CobraSecondaryButton
+                  size="small"
+                  onClick={handleCollapseAll}
+                >
+                  Collapse All
+                </CobraSecondaryButton>
+              </Box>
+            )}
+          </Box>
 
-        {errors.items && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {errors.items}
-          </Alert>
-        )}
-
-        {Object.keys(errors)
-          .filter((key) => key.startsWith('item-'))
-          .map((key) => (
-            <Alert key={key} severity="error" sx={{ mb: 1 }}>
-              {errors[key]}
+          {errors.items && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {errors.items}
             </Alert>
-          ))}
+          )}
 
-        {/* Template Quality Warnings (non-blocking) */}
-        {warnings.length > 0 && (
-          <Box sx={{ mb: 2 }}>
-            {warnings.map((warning, index) => (
-              <Alert key={index} severity="warning" sx={{ mb: 1 }}>
-                {warning}
+          {Object.keys(errors)
+            .filter((key) => key.startsWith('item-'))
+            .map((key) => (
+              <Alert key={key} severity="error" sx={{ mb: 1 }}>
+                {errors[key]}
               </Alert>
             ))}
-          </Box>
-        )}
 
-        {/* Items List with Drag and Drop */}
-        {items.length > 0 && (
+          {/* Template Quality Warnings (non-blocking) */}
+          {warnings.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              {warnings.map((warning, index) => (
+                <Alert key={index} severity="warning" sx={{ mb: 1 }}>
+                  {warning}
+                </Alert>
+              ))}
+            </Box>
+          )}
+
+          {/* Items List with Drag and Drop */}
+          {items.length > 0 && (
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -703,85 +709,83 @@ export const TemplateEditorPage: React.FC = () => {
               ))}
             </SortableContext>
           </DndContext>
-        )}
+          )}
 
-        {/* Add Item Buttons */}
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant="outlined"
-            size="large"
-            fullWidth
-            startIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={handleAddItem}
-            sx={{
-              py: 2,
-              borderStyle: 'dashed',
-              borderWidth: 2,
-              '&:hover': {
+          {/* Add Item Buttons */}
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <CobraSecondaryButton
+              size="large"
+              fullWidth
+              startIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={handleAddItem}
+              sx={{
+                py: 2,
                 borderStyle: 'dashed',
                 borderWidth: 2,
-              },
-            }}
-          >
-            Add Item
-          </Button>
-          <Button
-            variant="outlined"
-            size="large"
-            fullWidth
-            startIcon={<FontAwesomeIcon icon={faBoxArchive} />}
-            onClick={() => setAddFromLibraryOpen(true)}
-            sx={{
-              py: 2,
-              borderStyle: 'dashed',
-              borderWidth: 2,
-              '&:hover': {
+                '&:hover': {
+                  borderStyle: 'dashed',
+                  borderWidth: 2,
+                },
+              }}
+            >
+              Add Item
+            </CobraSecondaryButton>
+            <CobraSecondaryButton
+              size="large"
+              fullWidth
+              startIcon={<FontAwesomeIcon icon={faBoxArchive} />}
+              onClick={() => setAddFromLibraryOpen(true)}
+              sx={{
+                py: 2,
                 borderStyle: 'dashed',
                 borderWidth: 2,
-              },
-            }}
-          >
-            Add from Library
-          </Button>
+                '&:hover': {
+                  borderStyle: 'dashed',
+                  borderWidth: 2,
+                },
+              }}
+            >
+              Add from Library
+            </CobraSecondaryButton>
+          </Box>
         </Box>
-      </Box>
 
-      <Divider sx={{ my: 3 }} />
+        <Divider />
 
-      {/* Action Buttons */}
-      <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-        <Button variant="text" onClick={handleCancel} disabled={saving}>
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          startIcon={<FontAwesomeIcon icon={faSave} />}
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? 'Saving...' : isEditMode ? 'Save Changes' : 'Create Template'}
-        </Button>
-      </Box>
+        {/* Action Buttons */}
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+          <CobraLinkButton onClick={handleCancel} disabled={saving}>
+            Cancel
+          </CobraLinkButton>
+          <CobraSaveButton
+            startIcon={<FontAwesomeIcon icon={faSave} />}
+            onClick={handleSave}
+            isSaving={saving}
+          >
+            {isEditMode ? 'Save Changes' : 'Create Template'}
+          </CobraSaveButton>
+        </Box>
 
-      {/* Add from Library Dialog */}
-      <AddFromLibraryDialog
-        open={addFromLibraryOpen}
-        onClose={() => setAddFromLibraryOpen(false)}
-        onAdd={handleAddFromLibrary}
-      />
-
-      {/* Save to Library Dialog */}
-      {itemToSaveToLibrary && (
-        <SaveToLibraryDialog
-          open={saveToLibraryOpen}
-          onClose={() => {
-            setSaveToLibraryOpen(false);
-            setItemToSaveToLibrary(null);
-          }}
-          onSaved={handleSavedToLibrary}
-          itemData={itemToSaveToLibrary}
+        {/* Add from Library Dialog */}
+        <AddFromLibraryDialog
+          open={addFromLibraryOpen}
+          onClose={() => setAddFromLibraryOpen(false)}
+          onAdd={handleAddFromLibrary}
         />
-      )}
+
+        {/* Save to Library Dialog */}
+        {itemToSaveToLibrary && (
+          <SaveToLibraryDialog
+            open={saveToLibraryOpen}
+            onClose={() => {
+              setSaveToLibraryOpen(false);
+              setItemToSaveToLibrary(null);
+            }}
+            onSaved={handleSavedToLibrary}
+            itemData={itemToSaveToLibrary}
+          />
+        )}
+      </Stack>
     </Container>
   );
 };

@@ -1,8 +1,8 @@
 # CLAUDE.md - AI Assistant Guide
 
-> **Last Updated:** 2025-11-19
+> **Last Updated:** 2025-11-24
 > **Project Version:** 1.0.0-POC
-> **Status:** Early Development - Backend Foundation Complete, Frontend Scaffold Ready
+> **Status:** Early Development - Backend Foundation Complete, COBRA Styling Integrated
 
 ## Table of Contents
 1. [Project Overview](#project-overview)
@@ -95,7 +95,10 @@ checklist-poc/
 │       │   ├── services/          # API service layer (planned)
 │       │   ├── types/             # TypeScript interfaces
 │       │   ├── theme/
-│       │   │   └── c5Theme.ts     # C5 Design System theme
+│       │   │   ├── cobraTheme.ts         # COBRA standardized theme
+│       │   │   ├── CobraStyles.ts        # Spacing/padding constants
+│       │   │   ├── c5Theme.ts           # Legacy theme (deprecated)
+│       │   │   └── styledComponents/    # COBRA styled components
 │       │   ├── utils/             # Helper functions (planned)
 │       │   ├── App.tsx
 │       │   └── main.tsx
@@ -106,6 +109,7 @@ checklist-poc/
 ├── database/
 │   └── schema.sql                 # SQL Server schema with seed data
 ├── docs/
+│   ├── COBRA_STYLING_INTEGRATION.md  # COBRA styling guide
 │   ├── UI_PATTERNS.md             # UX patterns and guidelines
 │   └── USER-STORIES.md            # User stories and requirements
 ├── .gitignore
@@ -492,6 +496,125 @@ export const useChecklists = () => {
   return { checklists, loading, error, fetchChecklists };
 };
 ```
+
+#### COBRA Styling System
+
+**CRITICAL:** This project uses the standardized COBRA styling package. You MUST follow these guidelines when writing frontend code.
+
+##### Import from Styled Components (NOT @mui/material)
+
+```typescript
+// ❌ NEVER DO THIS
+import { Button, TextField, Dialog } from '@mui/material';
+
+// ✅ ALWAYS DO THIS
+import {
+  CobraPrimaryButton,
+  CobraTextField,
+  CobraDialog
+} from 'theme/styledComponents';
+```
+
+##### Available COBRA Components
+
+| Component | Use Case |
+|-----------|----------|
+| `CobraPrimaryButton` | Main actions (Save, Create) |
+| `CobraSecondaryButton` | Alternative actions |
+| `CobraDeleteButton` | Delete/remove actions (red, with trash icon) |
+| `CobraNewButton` | Create new entity (blue, with plus icon) |
+| `CobraSaveButton` | Save with loading state (includes `isSaving` prop) |
+| `CobraLinkButton` | Cancel, back, dismiss |
+| `CobraTextField` | All text inputs |
+| `CobraCheckbox` | Boolean inputs (includes label) |
+| `CobraSwitch` | Toggle switches (includes label) |
+| `CobraDialog` | Modal dialogs |
+| `CobraDivider` | Section separators |
+
+##### Using Spacing and Padding Constants
+
+```typescript
+import CobraStyles from 'theme/CobraStyles';
+
+// ✅ GOOD: Use constants
+<Stack
+  spacing={CobraStyles.Spacing.FormFields}  // 12px
+  padding={CobraStyles.Padding.MainWindow}  // 18px
+>
+
+// ❌ BAD: Hardcoded values
+<Stack spacing={2} padding="20px">
+```
+
+**Available Constants:**
+- `CobraStyles.Padding.MainWindow` (18px) - page content padding
+- `CobraStyles.Padding.DialogContent` (15px) - dialog interior padding
+- `CobraStyles.Spacing.FormFields` (12px) - spacing between form fields
+- `CobraStyles.Spacing.AfterSeparator` (18px) - spacing after dividers
+
+##### Accessing Theme Colors
+
+```typescript
+import { useTheme } from '@mui/material/styles';
+
+const theme = useTheme();
+
+// ✅ GOOD: Use theme palette
+<Box sx={{ backgroundColor: theme.palette.buttonPrimary.main }}>
+
+// ❌ BAD: Hardcoded hex colors
+<Box sx={{ backgroundColor: '#0020c2' }}>
+```
+
+##### Common Pattern: Form Layout
+
+```typescript
+import { Stack, DialogActions } from '@mui/material';
+import {
+  CobraTextField,
+  CobraSaveButton,
+  CobraLinkButton
+} from 'theme/styledComponents';
+import CobraStyles from 'theme/CobraStyles';
+
+<Stack spacing={CobraStyles.Spacing.FormFields}>
+  <CobraTextField label="Name" fullWidth required />
+  <CobraTextField label="Description" fullWidth multiline rows={4} />
+
+  <DialogActions>
+    <CobraLinkButton onClick={handleCancel}>Cancel</CobraLinkButton>
+    <CobraSaveButton onClick={handleSave} isSaving={loading}>
+      Save Changes
+    </CobraSaveButton>
+  </DialogActions>
+</Stack>
+```
+
+##### Common Pattern: Dialog
+
+```typescript
+<CobraDialog
+  open={isOpen}
+  onClose={handleClose}
+  title="Create New Checklist"
+  contentWidth="600px"
+>
+  <Stack spacing={CobraStyles.Spacing.FormFields}>
+    {/* Form content */}
+  </Stack>
+</CobraDialog>
+```
+
+##### Validation Checklist
+
+Before committing frontend code, ensure:
+- [ ] No plain MUI components (Button, TextField, etc.) - use COBRA components
+- [ ] No hardcoded spacing - use `CobraStyles` constants
+- [ ] No hardcoded colors - use `theme.palette.*`
+- [ ] Correct button type for action (delete = CobraDeleteButton, save = CobraSaveButton, etc.)
+- [ ] All imports from `'theme/styledComponents'` or `'theme/CobraStyles'`
+
+**📚 Full Documentation:** See `docs/COBRA_STYLING_INTEGRATION.md` for complete reference.
 
 ---
 
@@ -1183,7 +1306,10 @@ export default defineConfig({
 |------|---------|
 | `main.tsx` | App entry point |
 | `App.tsx` | Root component with routing |
-| `theme/c5Theme.ts` | Material-UI C5 theme configuration |
+| `theme/cobraTheme.ts` | COBRA standardized Material-UI theme |
+| `theme/CobraStyles.ts` | Spacing and padding constants |
+| `theme/styledComponents/*.tsx` | COBRA styled components |
+| `theme/c5Theme.ts` | Legacy theme (deprecated) |
 | `types/index.ts` | TypeScript type definitions |
 | `services/*.ts` | API client services |
 | `hooks/*.ts` | Custom React hooks |
@@ -1194,6 +1320,7 @@ export default defineConfig({
 |------|---------|
 | `README.md` | Project overview, quick start, architecture |
 | `CLAUDE.md` | **This file** - AI assistant guide |
+| `docs/COBRA_STYLING_INTEGRATION.md` | **COBRA styling system reference** |
 | `docs/UI_PATTERNS.md` | UX patterns and design guidelines |
 | `docs/USER-STORIES.md` | User stories and requirements |
 | `database/schema.sql` | SQL Server schema definition |

@@ -1,0 +1,85 @@
+name: Manual Deploy to Azure
+
+# This workflow only runs when manually triggered
+# Use this for deployments to dev/staging/prod environments
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      skip_migrations:
+        description: 'Skip database migrations'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '20.x'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: src/frontend/package-lock.json
+
+    - name: Build Frontend
+      working-directory: src/frontend
+      run: |
+        npm ci
+        npm run build
+
+    - name: Copy Frontend to Backend wwwroot
+      run: |
+        mkdir -p src/backend/ChecklistAPI/wwwroot
+        cp -r src/frontend/dist/* src/backend/ChecklistAPI/wwwroot/
+
+    - name: Publish Backend
+      working-directory: src/backend/ChecklistAPI
+      run: |
+        dotnet restore
+        dotnet publish -c Release -o publish
+
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ secrets.AZURE_APP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: src/backend/ChecklistAPI/publish
+
+    - name: Apply Database Migrations
+      if: ${{ github.event.inputs.skip_migrations != 'true' }}
+      working-directory: src/backend/ChecklistAPI
+      env:
+        CONNECTION_STRING: ${{ secrets.AZURE_SQL_CONNECTION_STRING }}
+      run: |
+        dotnet tool install --global dotnet-ef
+        dotnet ef database update --connection "$CONNECTION_STRING"
+
+    - name: Deployment Summary
+      run: |
+        echo "✅ Deployment to ${{ github.event.inputs.environment }} complete!"
+        echo "🌐 URL: https://${{ secrets.AZURE_APP_NAME }}.azurewebsites.net"

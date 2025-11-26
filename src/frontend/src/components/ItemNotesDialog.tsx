@@ -13,17 +13,18 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
-  Button,
-  TextField,
   Typography,
   Box,
+  Stack,
 } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faNoteSticky } from '@fortawesome/free-solid-svg-icons';
+import {
+  CobraDialog,
+  CobraTextField,
+  CobraSaveButton,
+  CobraLinkButton,
+} from '../theme/styledComponents';
+import CobraStyles from '../theme/CobraStyles';
 
 /**
  * Props for ItemNotesDialog
@@ -99,35 +100,20 @@ export const ItemNotesDialog: React.FC<ItemNotesDialogProps> = ({
       : 'text.secondary';
 
   return (
-    <Dialog
+    <CobraDialog
       open={open}
       onClose={handleCancel}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{
-        sx: {
-          minHeight: 400,
-        },
-      }}
+      title={currentNotes ? 'Edit Note' : 'Add Note'}
+      contentWidth="600px"
     >
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FontAwesomeIcon icon={faNoteSticky} style={{ fontSize: '1.25rem' }} />
-          <Typography variant="h6">
-            {currentNotes ? 'Edit Note' : 'Add Note'}
-          </Typography>
-        </Box>
-      </DialogTitle>
-
-      <DialogContent>
+      <Stack spacing={CobraStyles.Spacing.FormFields}>
         {/* Item text context */}
         <Typography
           variant="body2"
           color="text.secondary"
           sx={{
-            mb: 2,
             p: 1.5,
-            backgroundColor: '#F5F5F5',
+            backgroundColor: (theme) => theme.palette.background.default,
             borderRadius: 1,
             fontStyle: 'italic',
           }}
@@ -136,7 +122,7 @@ export const ItemNotesDialog: React.FC<ItemNotesDialogProps> = ({
         </Typography>
 
         {/* Notes input */}
-        <TextField
+        <CobraTextField
           label="Notes"
           multiline
           rows={6}
@@ -150,15 +136,10 @@ export const ItemNotesDialog: React.FC<ItemNotesDialogProps> = ({
           placeholder="Add notes, observations, or additional details..."
           autoFocus
           disabled={saving}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              fontFamily: 'Roboto',
-            },
-          }}
         />
 
         {/* Character counter */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Typography
             variant="caption"
             sx={{
@@ -169,32 +150,16 @@ export const ItemNotesDialog: React.FC<ItemNotesDialogProps> = ({
             {charCount.toLocaleString()} / {MAX_NOTES_LENGTH.toLocaleString()} characters
           </Typography>
         </Box>
-      </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button
-          variant="text"
-          onClick={handleCancel}
-          disabled={saving}
-          sx={{
-            minWidth: 100,
-            minHeight: 48, // C5 minimum touch target
-          }}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={saving || isOverLimit}
-          sx={{
-            minWidth: 100,
-            minHeight: 48, // C5 minimum touch target
-          }}
-        >
-          {saving ? 'Saving...' : 'Save'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        <DialogActions>
+          <CobraLinkButton onClick={handleCancel} disabled={saving}>
+            Cancel
+          </CobraLinkButton>
+          <CobraSaveButton onClick={handleSave} disabled={isOverLimit} isSaving={saving}>
+            Save
+          </CobraSaveButton>
+        </DialogActions>
+      </Stack>
+    </CobraDialog>
   );
 };

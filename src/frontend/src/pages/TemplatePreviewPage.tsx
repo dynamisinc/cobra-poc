@@ -7,17 +7,23 @@ import {
   Chip,
   CircularProgress,
   Alert,
-  Button,
   Divider,
   List,
   ListItem,
+  Stack,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft, faEdit, faCopy, faCheckSquare, faListCheck } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 import { templateService } from '../services/templateService';
 import type { Template, TemplateItem, ItemType, StatusOption } from '../types';
-import { c5Colors } from '../theme/c5Theme';
+import { cobraTheme } from '../theme/cobraTheme';
+import {
+  CobraLinkButton,
+  CobraSecondaryButton,
+  CobraPrimaryButton,
+} from '../theme/styledComponents';
+import CobraStyles from '../theme/CobraStyles';
 
 /**
  * TemplatePreviewPage Component
@@ -86,25 +92,28 @@ export const TemplatePreviewPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress />
+      <Box sx={{ maxWidth: 1000, mx: 'auto' }}>
+        <Stack spacing={3} padding={CobraStyles.Padding.MainWindow} sx={{ display: 'flex', justifyContent: 'center', minHeight: '60vh' }}>
+          <CircularProgress />
+        </Stack>
       </Box>
     );
   }
 
   if (error || !template) {
     return (
-      <Box sx={{ maxWidth: 800, mx: 'auto', p: 3 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error || 'Template not found'}
-        </Alert>
-        <Button
-          variant="outlined"
-          startIcon={<FontAwesomeIcon icon={faArrowLeft} />}
-          onClick={() => navigate('/templates')}
-        >
-          Back to Templates
-        </Button>
+      <Box sx={{ maxWidth: 1000, mx: 'auto' }}>
+        <Stack spacing={3} padding={CobraStyles.Padding.MainWindow}>
+          <Alert severity="error">
+            {error || 'Template not found'}
+          </Alert>
+          <CobraSecondaryButton
+            startIcon={<FontAwesomeIcon icon={faArrowLeft} />}
+            onClick={() => navigate('/templates')}
+          >
+            Back to Templates
+          </CobraSecondaryButton>
+        </Stack>
       </Box>
     );
   }
@@ -118,37 +127,35 @@ export const TemplatePreviewPage: React.FC = () => {
   });
 
   return (
-    <Box sx={{ maxWidth: 1000, mx: 'auto', p: 3 }}>
-      {/* Header */}
-      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Button
-          variant="text"
-          startIcon={<FontAwesomeIcon icon={faArrowLeft} />}
-          onClick={() => navigate('/templates')}
-        >
-          Back
-        </Button>
-        <Typography variant="h4" sx={{ flexGrow: 1 }}>
-          Template Preview
-        </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<FontAwesomeIcon icon={faCopy} />}
-          onClick={() => navigate(`/templates/${templateId}/duplicate`)}
-        >
-          Duplicate
-        </Button>
-        <Button
-          variant="contained"
-          startIcon={<FontAwesomeIcon icon={faEdit} />}
-          onClick={() => navigate(`/templates/${templateId}/edit`)}
-        >
-          Edit Template
-        </Button>
-      </Box>
+    <Box sx={{ maxWidth: 1000, mx: 'auto' }}>
+      <Stack spacing={3} padding={CobraStyles.Padding.MainWindow}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <CobraLinkButton
+            startIcon={<FontAwesomeIcon icon={faArrowLeft} />}
+            onClick={() => navigate('/templates')}
+          >
+            Back
+          </CobraLinkButton>
+          <Typography variant="h4" sx={{ flexGrow: 1 }}>
+            Template Preview
+          </Typography>
+          <CobraSecondaryButton
+            startIcon={<FontAwesomeIcon icon={faCopy} />}
+            onClick={() => navigate(`/templates/${templateId}/duplicate`)}
+          >
+            Duplicate
+          </CobraSecondaryButton>
+          <CobraPrimaryButton
+            startIcon={<FontAwesomeIcon icon={faEdit} />}
+            onClick={() => navigate(`/templates/${templateId}/edit`)}
+          >
+            Edit Template
+          </CobraPrimaryButton>
+        </Box>
 
-      {/* Template Metadata */}
-      <Paper sx={{ p: 3, mb: 3 }}>
+        {/* Template Metadata */}
+        <Paper sx={{ p: 3 }}>
         <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
           {template.name}
         </Typography>
@@ -188,7 +195,7 @@ export const TemplatePreviewPage: React.FC = () => {
             <Typography variant="caption" color="text.secondary">
               Required Items
             </Typography>
-            <Typography variant="h6" color={requiredItemCount > 0 ? c5Colors.cobaltBlue : 'text.secondary'}>
+            <Typography variant="h6" color={requiredItemCount > 0 ? cobraTheme.palette.buttonPrimary.main : 'text.secondary'}>
               {requiredItemCount}
             </Typography>
           </Box>
@@ -205,10 +212,10 @@ export const TemplatePreviewPage: React.FC = () => {
             </Box>
           )}
         </Box>
-      </Paper>
+        </Paper>
 
-      {/* Items List */}
-      <Paper sx={{ p: 3 }}>
+        {/* Items List */}
+        <Paper sx={{ p: 3 }}>
         <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
           <FontAwesomeIcon icon={faListCheck} />
           Checklist Items ({totalItemCount})
@@ -315,7 +322,8 @@ export const TemplatePreviewPage: React.FC = () => {
             })}
           </List>
         )}
-      </Paper>
+        </Paper>
+      </Stack>
     </Box>
   );
 };

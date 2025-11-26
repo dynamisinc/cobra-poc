@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
-  Button,
-  TextField,
   FormControl,
   InputLabel,
   Select,
@@ -16,14 +14,10 @@ import {
   Chip,
   Grid,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Stack,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faPlus,
   faSearch,
   faEdit,
   faTrash,
@@ -35,7 +29,16 @@ import { toast } from 'react-toastify';
 import { itemLibraryService } from '../services/itemLibraryService';
 import { ItemLibraryItemDialog } from '../components/ItemLibraryItemDialog';
 import type { ItemLibraryEntry, ItemType } from '../types';
-import { c5Colors } from '../theme/c5Theme';
+import { cobraTheme } from '../theme/cobraTheme';
+import {
+  CobraTextField,
+  CobraNewButton,
+  CobraSecondaryButton,
+  CobraDialog,
+  CobraDeleteButton,
+  CobraLinkButton,
+} from '../theme/styledComponents';
+import CobraStyles from '../theme/CobraStyles';
 
 /**
  * Item Library Page
@@ -59,6 +62,7 @@ export const ItemLibraryPage: React.FC = () => {
   const [itemToDelete, setItemToDelete] = useState<ItemLibraryEntry | null>(null);
   const [createEditDialogOpen, setCreateEditDialogOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<ItemLibraryEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchItems();
@@ -88,6 +92,7 @@ export const ItemLibraryPage: React.FC = () => {
     if (!itemToDelete) return;
 
     try {
+      setDeleting(true);
       await itemLibraryService.archiveLibraryItem(itemToDelete.id);
       toast.success('Item archived successfully');
       setDeleteDialogOpen(false);
@@ -96,6 +101,8 @@ export const ItemLibraryPage: React.FC = () => {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to archive item';
       toast.error(message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -130,35 +137,31 @@ export const ItemLibraryPage: React.FC = () => {
   const categories = Array.from(new Set(items.map(item => item.category)));
 
   return (
-    <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">Item Library</Typography>
-        <Button
-          variant="contained"
-          startIcon={<FontAwesomeIcon icon={faPlus} />}
-          onClick={handleCreate}
-          sx={{ minHeight: 48 }}
-        >
-          Create Library Item
-        </Button>
-      </Box>
+    <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
+      <Stack spacing={3} padding={CobraStyles.Padding.MainWindow}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h4">Item Library</Typography>
+          <CobraNewButton onClick={handleCreate}>
+            Create Library Item
+          </CobraNewButton>
+        </Box>
 
-      {/* Filters */}
-      <Card sx={{ p: 3, mb: 3 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={3}>
-            <TextField
-              fullWidth
-              label="Search"
-              placeholder="Search items and tags..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              InputProps={{
-                startAdornment: <FontAwesomeIcon icon={faSearch} style={{ marginRight: 8 }} />,
-              }}
-            />
-          </Grid>
+        {/* Filters */}
+        <Card sx={{ p: 3 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={3}>
+              <CobraTextField
+                fullWidth
+                label="Search"
+                placeholder="Search items and tags..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                InputProps={{
+                  startAdornment: <FontAwesomeIcon icon={faSearch} style={{ marginRight: 8 }} />,
+                }}
+              />
+            </Grid>
           <Grid item xs={12} md={3}>
             <FormControl fullWidth>
               <InputLabel>Category</InputLabel>
@@ -207,29 +210,29 @@ export const ItemLibraryPage: React.FC = () => {
         </Grid>
       </Card>
 
-      {/* Loading State */}
-      {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-          <CircularProgress />
-        </Box>
-      )}
+        {/* Loading State */}
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
+        )}
 
-      {/* Error State */}
-      {error && !loading && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+        {/* Error State */}
+        {error && !loading && (
+          <Alert severity="error">
+            {error}
+          </Alert>
+        )}
 
-      {/* Empty State */}
-      {!loading && !error && items.length === 0 && (
-        <Alert severity="info">
-          No library items found. Try adjusting your filters or create a new item.
-        </Alert>
-      )}
+        {/* Empty State */}
+        {!loading && !error && items.length === 0 && (
+          <Alert severity="info">
+            No library items found. Try adjusting your filters or create a new item.
+          </Alert>
+        )}
 
-      {/* Items Grid */}
-      {!loading && items.length > 0 && (
+        {/* Items Grid */}
+        {!loading && items.length > 0 && (
         <Grid container spacing={2}>
           {items.map((item) => {
             const tags = parseTags(item.tags);
@@ -262,7 +265,7 @@ export const ItemLibraryPage: React.FC = () => {
                           label={`Used ${item.usageCount}x`}
                           size="small"
                           sx={{
-                            backgroundColor: c5Colors.successGreen,
+                            backgroundColor: cobraTheme.palette.success.main,
                             color: 'white',
                           }}
                         />
@@ -307,15 +310,14 @@ export const ItemLibraryPage: React.FC = () => {
                   </CardContent>
 
                   <CardActions sx={{ p: 2, pt: 0, display: 'flex', gap: 1 }}>
-                    <Button
-                      variant="outlined"
+                    <CobraSecondaryButton
                       size="small"
                       startIcon={<FontAwesomeIcon icon={faEdit} />}
                       onClick={() => handleEdit(item)}
                       sx={{ flex: 1 }}
                     >
                       Edit
-                    </Button>
+                    </CobraSecondaryButton>
                     <IconButton
                       color="error"
                       onClick={() => {
@@ -331,35 +333,42 @@ export const ItemLibraryPage: React.FC = () => {
             );
           })}
         </Grid>
-      )}
+        )}
 
-      {/* Create/Edit Item Dialog */}
-      <ItemLibraryItemDialog
-        open={createEditDialogOpen}
-        onClose={() => {
-          setCreateEditDialogOpen(false);
-          setItemToEdit(null);
-        }}
-        onSaved={handleSaved}
-        existingItem={itemToEdit || undefined}
-      />
+        {/* Create/Edit Item Dialog */}
+        <ItemLibraryItemDialog
+          open={createEditDialogOpen}
+          onClose={() => {
+            setCreateEditDialogOpen(false);
+            setItemToEdit(null);
+          }}
+          onSaved={handleSaved}
+          existingItem={itemToEdit || undefined}
+        />
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Archive Library Item?</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to archive "{itemToDelete?.itemText}"? You can restore it later if
-            needed.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" color="error" onClick={handleDelete}>
-            Archive
-          </Button>
-        </DialogActions>
-      </Dialog>
+        {/* Delete Confirmation Dialog */}
+        <CobraDialog
+          open={deleteDialogOpen}
+          onClose={() => !deleting && setDeleteDialogOpen(false)}
+          title="Archive Library Item?"
+          contentWidth="500px"
+        >
+          <Stack spacing={CobraStyles.Spacing.FormFields}>
+            <Typography>
+              Are you sure you want to archive "{itemToDelete?.itemText}"? You can restore it later if
+              needed.
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
+              <CobraLinkButton onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
+                Cancel
+              </CobraLinkButton>
+              <CobraDeleteButton onClick={handleDelete} disabled={deleting}>
+                {deleting ? 'Archiving...' : 'Archive'}
+              </CobraDeleteButton>
+            </Box>
+          </Stack>
+        </CobraDialog>
+      </Stack>
     </Box>
   );
 };

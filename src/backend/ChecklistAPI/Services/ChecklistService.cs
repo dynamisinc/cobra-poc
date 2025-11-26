@@ -1,8 +1,10 @@
 using ChecklistAPI.Data;
+using ChecklistAPI.Hubs;
 using ChecklistAPI.Mappers;
 using ChecklistAPI.Models;
 using ChecklistAPI.Models.DTOs;
 using ChecklistAPI.Services.Helpers;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChecklistAPI.Services;
@@ -41,13 +43,16 @@ public class ChecklistService : IChecklistService
 {
     private readonly ChecklistDbContext _context;
     private readonly ILogger<ChecklistService> _logger;
+    private readonly IHubContext<ChecklistHub> _hubContext;
 
     public ChecklistService(
         ChecklistDbContext context,
-        ILogger<ChecklistService> logger)
+        ILogger<ChecklistService> logger,
+        IHubContext<ChecklistHub> hubContext)
     {
         _context = context;
         _logger = logger;
+        _hubContext = hubContext;
     }
 
     public async Task<List<ChecklistInstanceDto>> GetMyChecklistsAsync(
@@ -222,7 +227,37 @@ public class ChecklistService : IChecklistService
 
         await _context.SaveChangesAsync();
 
-        return ChecklistMapper.MapToDto(checklist);
+        var dto = ChecklistMapper.MapToDto(checklist);
+
+        // Broadcast checklist creation to all connected clients via SignalR
+        try
+        {
+            await _hubContext.Clients.All.SendAsync("ChecklistCreated", new
+            {
+                checklistId = dto.Id,
+                checklistName = dto.Name,
+                eventId = dto.EventId,
+                eventName = dto.EventName,
+                positions = dto.AssignedPositions,
+                createdBy = userContext.Email,
+                createdAt = dto.CreatedAt
+            });
+
+            _logger.LogInformation(
+                "Broadcasted checklist creation via SignalR: {ChecklistId} ({ChecklistName})",
+                dto.Id,
+                dto.Name);
+        }
+        catch (Exception ex)
+        {
+            // Don't fail the request if SignalR broadcast fails
+            _logger.LogWarning(
+                ex,
+                "Failed to broadcast checklist creation via SignalR for {ChecklistId}",
+                dto.Id);
+        }
+
+        return dto;
     }
 
     public async Task<ChecklistInstanceDto?> UpdateChecklistAsync(

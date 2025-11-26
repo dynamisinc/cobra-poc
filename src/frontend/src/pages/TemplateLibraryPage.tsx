@@ -18,9 +18,9 @@ import {
   Card,
   CardContent,
   CardActions,
-  Button,
   CircularProgress,
   Chip,
+  Stack,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faClipboardList, faEdit, faEye, faCopy, faChartLine, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
@@ -29,8 +29,14 @@ import { templateService } from '../services/templateService';
 import { checklistService, type CreateFromTemplateRequest } from '../services/checklistService';
 import { CreateChecklistDialog, type ChecklistCreationData } from '../components/CreateChecklistDialog';
 import { AnalyticsDashboard } from '../components/AnalyticsDashboard';
-import { c5Colors } from '../theme/c5Theme';
+import { cobraTheme } from '../theme/cobraTheme';
 import type { Template } from '../types';
+import {
+  CobraPrimaryButton,
+  CobraSecondaryButton,
+  CobraNewButton,
+} from '../theme/styledComponents';
+import CobraStyles from '../theme/CobraStyles';
 
 /**
  * Template Library Page Component
@@ -120,9 +126,11 @@ export const TemplateLibraryPage: React.FC = () => {
   // Loading state
   if (loading && templates.length === 0) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4, textAlign: 'center' }}>
-        <CircularProgress />
-        <Typography sx={{ mt: 2 }}>Loading templates...</Typography>
+      <Container maxWidth="lg">
+        <Stack spacing={3} padding={CobraStyles.Padding.MainWindow} sx={{ textAlign: 'center' }}>
+          <CircularProgress />
+          <Typography>Loading templates...</Typography>
+        </Stack>
       </Container>
     );
   }
@@ -130,58 +138,54 @@ export const TemplateLibraryPage: React.FC = () => {
   // Error state
   if (error && templates.length === 0) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Typography color="error" variant="h6">
-          Error loading templates
-        </Typography>
-        <Typography color="error">{error}</Typography>
-        <Button variant="outlined" sx={{ mt: 2 }} onClick={fetchTemplates}>
-          Retry
-        </Button>
+      <Container maxWidth="lg">
+        <Stack spacing={3} padding={CobraStyles.Padding.MainWindow}>
+          <Typography color="error" variant="h6">
+            Error loading templates
+          </Typography>
+          <Typography color="error">{error}</Typography>
+          <CobraSecondaryButton onClick={fetchTemplates}>
+            Retry
+          </CobraSecondaryButton>
+        </Stack>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
-        <Box>
-          <Typography variant="h4" sx={{ mb: 1 }}>
-            <FontAwesomeIcon icon={faClipboardList} style={{ marginRight: 12 }} />
-            Template Library
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Select a template to create a new checklist for your event or operational period.
-          </Typography>
+    <Container maxWidth="lg">
+      <Stack spacing={3} padding={CobraStyles.Padding.MainWindow}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <Box>
+            <Typography variant="h4" sx={{ mb: 1 }}>
+              <FontAwesomeIcon icon={faClipboardList} style={{ marginRight: 12 }} />
+              Template Library
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Select a template to create a new checklist for your event or operational period.
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <CobraSecondaryButton
+              startIcon={<FontAwesomeIcon icon={faChartLine} />}
+              onClick={() => setShowAnalytics(!showAnalytics)}
+            >
+              {showAnalytics ? 'Hide Analytics' : 'Show Analytics'}
+              <FontAwesomeIcon icon={showAnalytics ? faChevronUp : faChevronDown} style={{ marginLeft: 8 }} />
+            </CobraSecondaryButton>
+            <CobraNewButton onClick={() => navigate('/templates/new')}>
+              Create New Template
+            </CobraNewButton>
+          </Box>
         </Box>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant="outlined"
-            startIcon={<FontAwesomeIcon icon={faChartLine} />}
-            onClick={() => setShowAnalytics(!showAnalytics)}
-            sx={{ minHeight: 48 }}
-          >
-            {showAnalytics ? 'Hide Analytics' : 'Show Analytics'}
-            <FontAwesomeIcon icon={showAnalytics ? faChevronUp : faChevronDown} style={{ marginLeft: 8 }} />
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={() => navigate('/templates/new')}
-            sx={{ minHeight: 48 }}
-          >
-            Create New Template
-          </Button>
-        </Box>
-      </Box>
 
-      {/* Analytics Dashboard (Collapsible) */}
-      {showAnalytics && (
-        <Box sx={{ mb: 4, p: 3, backgroundColor: '#f5f5f5', borderRadius: 2 }}>
-          <AnalyticsDashboard />
-        </Box>
-      )}
+        {/* Analytics Dashboard (Collapsible) */}
+        {showAnalytics && (
+          <Box sx={{ p: 3, backgroundColor: (theme) => theme.palette.background.default, borderRadius: 2 }}>
+            <AnalyticsDashboard />
+          </Box>
+        )}
 
       {/* Templates Grid */}
       {templates.length === 0 ? (
@@ -220,8 +224,8 @@ export const TemplateLibraryPage: React.FC = () => {
                       size="small"
                       sx={{
                         mb: 2,
-                        backgroundColor: c5Colors.whiteBlue,
-                        color: c5Colors.cobaltBlue,
+                        backgroundColor: cobraTheme.palette.action.selected,
+                        color: cobraTheme.palette.buttonPrimary.main,
                       }}
                     />
                   )}
@@ -242,73 +246,58 @@ export const TemplateLibraryPage: React.FC = () => {
                 <CardActions sx={{ p: 2, pt: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
                   {/* Row 1: Preview, Duplicate, Edit buttons */}
                   <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
-                    <Button
-                      variant="outlined"
+                    <CobraSecondaryButton
                       startIcon={<FontAwesomeIcon icon={faEye} />}
                       onClick={() => navigate(`/templates/${template.id}/preview`)}
-                      sx={{
-                        minHeight: 48, // C5 minimum touch target
-                        flex: 1,
-                      }}
+                      sx={{ flex: 1 }}
                     >
                       Preview
-                    </Button>
-                    <Button
-                      variant="outlined"
+                    </CobraSecondaryButton>
+                    <CobraSecondaryButton
                       startIcon={<FontAwesomeIcon icon={faCopy} />}
                       onClick={() => navigate(`/templates/${template.id}/duplicate`)}
-                      sx={{
-                        minHeight: 48, // C5 minimum touch target
-                        flex: 1,
-                      }}
+                      sx={{ flex: 1 }}
                     >
                       Duplicate
-                    </Button>
-                    <Button
-                      variant="outlined"
+                    </CobraSecondaryButton>
+                    <CobraSecondaryButton
                       startIcon={<FontAwesomeIcon icon={faEdit} />}
                       onClick={() => navigate(`/templates/${template.id}/edit`)}
-                      sx={{
-                        minHeight: 48, // C5 minimum touch target
-                        flex: 1,
-                      }}
+                      sx={{ flex: 1 }}
                     >
                       Edit
-                    </Button>
+                    </CobraSecondaryButton>
                   </Box>
                   {/* Row 2: Create Checklist button */}
-                  <Button
-                    variant="contained"
+                  <CobraPrimaryButton
                     fullWidth
                     startIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={() => handleCreateFromTemplate(template)}
-                    sx={{
-                      minHeight: 48, // C5 minimum touch target
-                    }}
                   >
                     Create Checklist
-                  </Button>
+                  </CobraPrimaryButton>
                 </CardActions>
               </Card>
             </Grid>
           ))}
         </Grid>
-      )}
+        )}
 
-      {/* Create Checklist Dialog */}
-      {selectedTemplate && (
-        <CreateChecklistDialog
-          open={dialogOpen}
-          mode="from-template"
-          templateId={selectedTemplate.id}
-          templateName={selectedTemplate.name}
-          eventId="Hurricane-Milton-2024" // TODO: Get from C5 context
-          eventName="Hurricane Milton Response" // TODO: Get from C5 context
-          onSave={handleDialogSave}
-          onCancel={handleDialogCancel}
-          saving={creating}
-        />
-      )}
+        {/* Create Checklist Dialog */}
+        {selectedTemplate && (
+          <CreateChecklistDialog
+            open={dialogOpen}
+            mode="from-template"
+            templateId={selectedTemplate.id}
+            templateName={selectedTemplate.name}
+            eventId="Hurricane-Milton-2024" // TODO: Get from C5 context
+            eventName="Hurricane Milton Response" // TODO: Get from C5 context
+            onSave={handleDialogSave}
+            onCancel={handleDialogCancel}
+            saving={creating}
+          />
+        )}
+      </Stack>
     </Container>
   );
 };

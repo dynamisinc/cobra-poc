@@ -10,21 +10,24 @@
  * User Story 2.3: View My Checklists
  */
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   Container,
   Typography,
   Box,
   CircularProgress,
   Grid,
-  Button,
   Collapse,
+  Stack,
+  Badge,
+  Fade,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChevronDown, faChevronUp, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faChevronDown, faChevronUp, faBell } from '@fortawesome/free-solid-svg-icons';
 import { useChecklists } from '../hooks/useChecklists';
 import { useOperationalPeriodGrouping } from '../hooks/useOperationalPeriodGrouping';
 import { usePermissions } from '../hooks/usePermissions';
+import { useChecklistHub, type ChecklistCreatedEvent } from '../hooks/useChecklistHub';
 import { ChecklistCard } from '../components/ChecklistCard';
 import { SectionHeader } from '../components/SectionHeader';
 import {
@@ -33,7 +36,9 @@ import {
   type CompletionStatusFilter,
 } from '../components/ChecklistFilters';
 import { TemplatePickerDialog } from '../components/TemplatePickerDialog';
-import { c5Colors } from '../theme/c5Theme';
+import { CobraNewButton, CobraSecondaryButton } from '../theme/styledComponents';
+import CobraStyles from '../theme/CobraStyles';
+import { cobraTheme } from '../theme/cobraTheme';
 import { toast } from 'react-toastify';
 
 /**
@@ -52,6 +57,56 @@ export const MyChecklistsPage: React.FC = () => {
   const [selectedCompletionStatus, setSelectedCompletionStatus] = useState<CompletionStatusFilter>('all');
   const [showArchived, setShowArchived] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Real-time updates state
+  const [newChecklistsCount, setNewChecklistsCount] = useState(0);
+  const [showNewChecklistsBadge, setShowNewChecklistsBadge] = useState(false);
+
+  // Get current user position for filtering SignalR events
+  const currentUserPosition = useMemo(() => {
+    const storedProfile = localStorage.getItem('mockUserProfile');
+    const profile = storedProfile ? JSON.parse(storedProfile) : null;
+    return profile?.positions?.[0] || 'Unknown';
+  }, []);
+
+  // Handle real-time checklist creation events
+  const handleChecklistCreated = useCallback((data: ChecklistCreatedEvent) => {
+    console.log('[MyChecklistsPage] Received ChecklistCreated event:', data);
+
+    // Check if this checklist is visible to current user's position
+    const isVisibleToMe = !data.positions ||
+      data.positions.split(',').map(p => p.trim()).includes(currentUserPosition);
+
+    if (isVisibleToMe) {
+      // Increment new checklists counter
+      setNewChecklistsCount(prev => prev + 1);
+      setShowNewChecklistsBadge(true);
+
+      // Show toast notification
+      toast.info(
+        `New checklist created: "${data.checklistName}" by ${data.createdBy}`,
+        {
+          autoClose: 5000,
+          onClick: () => {
+            // Clicking toast refreshes the list
+            handleRefreshChecklists();
+          }
+        }
+      );
+    }
+  }, [currentUserPosition]);
+
+  // Initialize SignalR connection with handlers
+  useChecklistHub({
+    onChecklistCreated: handleChecklistCreated,
+  });
+
+  // Refresh checklists and clear badge
+  const handleRefreshChecklists = useCallback(() => {
+    fetchMyChecklists(showArchived);
+    setNewChecklistsCount(0);
+    setShowNewChecklistsBadge(false);
+  }, [fetchMyChecklists, showArchived]);
 
   // Apply filters to checklists
   const filteredChecklists = useMemo(() => {
@@ -159,9 +214,17 @@ export const MyChecklistsPage: React.FC = () => {
   // Loading state
   if (loading && checklists.length === 0) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4, textAlign: 'center' }}>
-        <CircularProgress />
-        <Typography sx={{ mt: 2 }}>Loading your checklists...</Typography>
+      <Container maxWidth="lg">
+        <Stack
+          spacing={2}
+          padding={CobraStyles.Padding.MainWindow}
+          alignItems="center"
+          justifyContent="center"
+          sx={{ minHeight: '50vh' }}
+        >
+          <CircularProgress />
+          <Typography>Loading your checklists...</Typography>
+        </Stack>
       </Container>
     );
   }
@@ -169,11 +232,13 @@ export const MyChecklistsPage: React.FC = () => {
   // Error state
   if (error) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Typography color="error" variant="h6">
-          Error loading checklists
-        </Typography>
-        <Typography color="error">{error}</Typography>
+      <Container maxWidth="lg">
+        <Stack spacing={2} padding={CobraStyles.Padding.MainWindow}>
+          <Typography color="error" variant="h6">
+            Error loading checklists
+          </Typography>
+          <Typography color="error">{error}</Typography>
+        </Stack>
       </Container>
     );
   }
@@ -181,40 +246,61 @@ export const MyChecklistsPage: React.FC = () => {
   // Empty state
   if (checklists.length === 0) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
-        {/* Page Header with Create Button */}
-        <Box sx={{ mb: 3, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <Box>
-            <Typography variant="h4" sx={{ mb: 1 }}>
-              My Checklists
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              No checklists assigned to your position
-            </Typography>
-          </Box>
+      <Container maxWidth="lg">
+        <Stack spacing={3} padding={CobraStyles.Padding.MainWindow}>
+          {/* Page Header with Create Button */}
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <Box>
+              <Typography variant="h4" sx={{ mb: 1 }}>
+                My Checklists
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                No checklists assigned to your position
+              </Typography>
+            </Box>
 
-          {/* Create Checklist Button - Contributors and Manage roles */}
-          {permissions.canCreateInstance && (
-            <Button
-              variant="contained"
-              startIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => setTemplatePickerOpen(true)}
-              sx={{
-                backgroundColor: c5Colors.cobaltBlue,
-                minHeight: 48,
-                minWidth: 48,
-                px: 3,
-                fontWeight: 'bold',
-                '&:hover': {
-                  backgroundColor: c5Colors.cobaltBlue,
-                  opacity: 0.9,
-                },
-              }}
-            >
-              Create Checklist
-            </Button>
-          )}
-        </Box>
+            {/* Action Buttons */}
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              {/* New Checklists Notification Badge */}
+              <Fade in={showNewChecklistsBadge}>
+                <CobraSecondaryButton
+                  onClick={handleRefreshChecklists}
+                  startIcon={
+                    <Badge
+                      badgeContent={newChecklistsCount}
+                      color="error"
+                      sx={{
+                        '& .MuiBadge-badge': {
+                          fontSize: '0.7rem',
+                          height: 18,
+                          minWidth: 18,
+                        }
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faBell} />
+                    </Badge>
+                  }
+                  sx={{
+                    backgroundColor: cobraTheme.palette.action.selected,
+                    animation: 'pulse 2s ease-in-out infinite',
+                    '@keyframes pulse': {
+                      '0%, 100%': { opacity: 1 },
+                      '50%': { opacity: 0.7 },
+                    }
+                  }}
+                >
+                  {newChecklistsCount === 1 ? 'New Checklist' : `${newChecklistsCount} New Checklists`}
+                </CobraSecondaryButton>
+              </Fade>
+
+              {/* Create Checklist Button - Contributors and Manage roles */}
+              {permissions.canCreateInstance && (
+                <CobraNewButton onClick={() => setTemplatePickerOpen(true)}>
+                  Create Checklist
+                </CobraNewButton>
+              )}
+            </Box>
+          </Box>
 
         {/* Empty State Message */}
         <Box sx={{ textAlign: 'center', py: 8 }}>
@@ -231,55 +317,77 @@ export const MyChecklistsPage: React.FC = () => {
           )}
         </Box>
 
-        {/* Template Picker Dialog */}
-        <TemplatePickerDialog
-          open={templatePickerOpen}
-          onClose={() => setTemplatePickerOpen(false)}
-          onCreateChecklist={handleCreateChecklist}
-        />
+          {/* Template Picker Dialog */}
+          <TemplatePickerDialog
+            open={templatePickerOpen}
+            onClose={() => setTemplatePickerOpen(false)}
+            onCreateChecklist={handleCreateChecklist}
+          />
+        </Stack>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {/* Page Header */}
-      <Box sx={{ mb: 3, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <Box>
-          <Typography variant="h4" sx={{ mb: 1 }}>
-            My Checklists
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {totalChecklists} checklist{totalChecklists !== 1 ? 's' : ''} assigned
-            to your position
-            {checklists.length !== totalChecklists && (
-              <> ({checklists.length} total, {totalChecklists} matching filters)</>
-            )}
-          </Typography>
-        </Box>
+    <Container maxWidth="lg">
+      <Stack spacing={3} padding={CobraStyles.Padding.MainWindow}>
+        {/* Page Header */}
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <Box>
+            <Typography variant="h4" sx={{ mb: 1 }}>
+              My Checklists
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {totalChecklists} checklist{totalChecklists !== 1 ? 's' : ''} assigned
+              to your position
+              {checklists.length !== totalChecklists && (
+                <> ({checklists.length} total, {totalChecklists} matching filters)</>
+              )}
+            </Typography>
+          </Box>
 
-        {/* Create Checklist Button - Contributors and Manage roles */}
-        {permissions.canCreateInstance && (
-          <Button
-            variant="contained"
-            startIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={() => setTemplatePickerOpen(true)}
-            sx={{
-              backgroundColor: c5Colors.cobaltBlue,
-              minHeight: 48,
-              minWidth: 48,
-              px: 3,
-              fontWeight: 'bold',
-              '&:hover': {
-                backgroundColor: c5Colors.cobaltBlue,
-                opacity: 0.9,
-              },
-            }}
-          >
-            Create Checklist
-          </Button>
-        )}
-      </Box>
+          {/* Action Buttons */}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            {/* New Checklists Notification Badge */}
+            <Fade in={showNewChecklistsBadge}>
+              <CobraSecondaryButton
+                onClick={handleRefreshChecklists}
+                startIcon={
+                  <Badge
+                    badgeContent={newChecklistsCount}
+                    color="error"
+                    sx={{
+                      '& .MuiBadge-badge': {
+                        fontSize: '0.7rem',
+                        height: 18,
+                        minWidth: 18,
+                      }
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faBell} />
+                  </Badge>
+                }
+                sx={{
+                  backgroundColor: cobraTheme.palette.action.selected,
+                  animation: 'pulse 2s ease-in-out infinite',
+                  '@keyframes pulse': {
+                    '0%, 100%': { opacity: 1 },
+                    '50%': { opacity: 0.7 },
+                  }
+                }}
+              >
+                {newChecklistsCount === 1 ? 'New Checklist' : `${newChecklistsCount} New Checklists`}
+              </CobraSecondaryButton>
+            </Fade>
+
+            {/* Create Checklist Button - Contributors and Manage roles */}
+            {permissions.canCreateInstance && (
+              <CobraNewButton onClick={() => setTemplatePickerOpen(true)}>
+                Create Checklist
+              </CobraNewButton>
+            )}
+          </Box>
+        </Box>
 
       {/* Filters */}
       {checklists.length > 0 && (
@@ -378,25 +486,18 @@ export const MyChecklistsPage: React.FC = () => {
       {/* Previous Operational Periods Section */}
       {previousSections.length > 0 && (
         <Box sx={{ mb: 4 }}>
-          <Button
-            variant="text"
+          <CobraSecondaryButton
+            size="small"
             onClick={() => setShowPreviousPeriods(!showPreviousPeriods)}
             endIcon={
               <FontAwesomeIcon
                 icon={showPreviousPeriods ? faChevronUp : faChevronDown}
               />
             }
-            sx={{
-              mb: 2,
-              textTransform: 'none',
-              fontSize: '1rem',
-              minHeight: 48,
-              minWidth: 48,
-            }}
           >
             {showPreviousPeriods ? 'Hide' : 'Show'} {previousSections.length}{' '}
             Previous Operational Period{previousSections.length !== 1 ? 's' : ''}
-          </Button>
+          </CobraSecondaryButton>
 
           <Collapse in={showPreviousPeriods}>
             {previousSections.map((section) => (
@@ -435,12 +536,13 @@ export const MyChecklistsPage: React.FC = () => {
         </>
       )}
 
-      {/* Template Picker Dialog */}
-      <TemplatePickerDialog
-        open={templatePickerOpen}
-        onClose={() => setTemplatePickerOpen(false)}
-        onCreateChecklist={handleCreateChecklist}
-      />
+        {/* Template Picker Dialog */}
+        <TemplatePickerDialog
+          open={templatePickerOpen}
+          onClose={() => setTemplatePickerOpen(false)}
+          onCreateChecklist={handleCreateChecklist}
+        />
+      </Stack>
     </Container>
   );
 };

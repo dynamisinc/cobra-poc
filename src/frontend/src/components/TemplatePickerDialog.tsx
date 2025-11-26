@@ -17,12 +17,7 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
-  Button,
-  TextField,
   List,
   ListItemButton,
   ListItemText,
@@ -34,12 +29,21 @@ import {
   Collapse,
   useTheme,
   useMediaQuery,
+  Stack,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faChevronDown, faChevronUp, faStar, faClock } from '@fortawesome/free-solid-svg-icons';
-import { c5Colors } from '../theme/c5Theme';
+import { cobraTheme } from '../theme/cobraTheme';
 import { TemplateType, type Template } from '../types';
 import { BottomSheet } from './BottomSheet';
+import {
+  CobraDialog,
+  CobraTextField,
+  CobraPrimaryButton,
+  CobraLinkButton,
+  CobraSecondaryButton,
+} from '../theme/styledComponents';
+import CobraStyles from '../theme/CobraStyles';
 
 interface TemplatePickerDialogProps {
   open: boolean;
@@ -219,12 +223,12 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
         onClick={() => setSelectedTemplate(template)}
         sx={{
           border: '1px solid',
-          borderColor: selectedTemplate?.id === template.id ? c5Colors.cobaltBlue : 'divider',
+          borderColor: selectedTemplate?.id === template.id ? cobraTheme.palette.buttonPrimary.main : 'divider',
           borderRadius: 1,
           mb: 1,
-          backgroundColor: selectedTemplate?.id === template.id ? c5Colors.whiteBlue : 'transparent',
+          backgroundColor: selectedTemplate?.id === template.id ? cobraTheme.palette.action.selected : 'transparent',
           '&:hover': {
-            backgroundColor: selectedTemplate?.id === template.id ? c5Colors.whiteBlue : 'action.hover',
+            backgroundColor: selectedTemplate?.id === template.id ? cobraTheme.palette.action.selected : 'action.hover',
           },
         }}
       >
@@ -235,7 +239,7 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
                 {template.name}
               </Typography>
               {selectedTemplate?.id === template.id && (
-                <FontAwesomeIcon icon={faCheck} color={c5Colors.cobaltBlue} />
+                <FontAwesomeIcon icon={faCheck} color={cobraTheme.palette.buttonPrimary.main} />
               )}
             </Box>
           }
@@ -253,7 +257,7 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
                     sx={{
                       height: 20,
                       fontSize: '0.7rem',
-                      backgroundColor: c5Colors.successGreen,
+                      backgroundColor: cobraTheme.palette.success.main,
                       color: 'white',
                       fontWeight: 'bold',
                     }}
@@ -346,9 +350,9 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
           <Typography color="error" variant="body2">
             {error}
           </Typography>
-          <Button onClick={fetchTemplates} sx={{ mt: 1 }}>
+          <CobraSecondaryButton onClick={fetchTemplates} sx={{ mt: 1 }}>
             Retry
-          </Button>
+          </CobraSecondaryButton>
         </Box>
       )}
 
@@ -358,7 +362,7 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
           {/* Recommended for You Section */}
           {recommendedTemplates.length > 0 && (
             <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold', color: c5Colors.cobaltBlue }}>
+              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold', color: cobraTheme.palette.buttonPrimary.main }}>
                 ⭐ Recommended for You ({recommendedTemplates.length})
               </Typography>
               <List sx={{ maxHeight: isMobile ? 200 : 250, overflowY: 'auto' }}>
@@ -394,13 +398,13 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
           {/* All Templates Section (Collapsible) */}
           {allTemplates.length > 0 && (
             <Box sx={{ mb: 2 }}>
-              <Button
+              <CobraSecondaryButton
                 onClick={() => setShowAllTemplates(!showAllTemplates)}
                 endIcon={<FontAwesomeIcon icon={showAllTemplates ? faChevronUp : faChevronDown} />}
-                sx={{ mb: 1, minHeight: isMobile ? 48 : 36 }}
+                sx={{ mb: 1 }}
               >
                 {showAllTemplates ? 'Hide' : 'Show'} All Templates ({allTemplates.length})
-              </Button>
+              </CobraSecondaryButton>
               <Collapse in={showAllTemplates}>
                 <List sx={{ maxHeight: isMobile ? 200 : 300, overflowY: 'auto' }}>
                   {allTemplates.map(renderTemplateItem)}
@@ -440,7 +444,7 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
           <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
             Checklist Name
           </Typography>
-          <TextField
+          <CobraTextField
             fullWidth
             value={checklistName}
             onChange={(e) => setChecklistName(e.target.value)}
@@ -458,33 +462,18 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
 
       {/* Action Buttons */}
       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-        <Button
+        <CobraLinkButton
           onClick={handleCancel}
           disabled={creating}
-          sx={{
-            minHeight: 48,
-            minWidth: 100,
-          }}
         >
           Cancel
-        </Button>
-        <Button
-          variant="contained"
+        </CobraLinkButton>
+        <CobraPrimaryButton
           onClick={handleCreate}
           disabled={!selectedTemplate || !checklistName.trim() || creating}
-          sx={{
-            backgroundColor: c5Colors.cobaltBlue,
-            minHeight: 48,
-            minWidth: 120,
-            fontWeight: 'bold',
-            '&:hover': {
-              backgroundColor: c5Colors.cobaltBlue,
-              opacity: 0.9,
-            },
-          }}
         >
           {creating ? <CircularProgress size={24} color="inherit" /> : 'Create Checklist'}
-        </Button>
+        </CobraPrimaryButton>
       </Box>
     </Box>
   );
@@ -503,7 +492,7 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
           <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
             Checklist Name
           </Typography>
-          <TextField
+          <CobraTextField
             fullWidth
             value={checklistName}
             onChange={(e) => setChecklistName(e.target.value)}
@@ -527,33 +516,18 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
    */
   const renderDesktopActions = () => (
     <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-      <Button
+      <CobraLinkButton
         onClick={handleCancel}
         disabled={creating}
-        sx={{
-          minHeight: 48,
-          minWidth: 100,
-        }}
       >
         Cancel
-      </Button>
-      <Button
-        variant="contained"
+      </CobraLinkButton>
+      <CobraPrimaryButton
         onClick={handleCreate}
         disabled={!selectedTemplate || !checklistName.trim() || creating}
-        sx={{
-          backgroundColor: c5Colors.cobaltBlue,
-          minHeight: 48,
-          minWidth: 120,
-          fontWeight: 'bold',
-          '&:hover': {
-            backgroundColor: c5Colors.cobaltBlue,
-            opacity: 0.9,
-          },
-        }}
       >
         {creating ? <CircularProgress size={24} color="inherit" /> : 'Create Checklist'}
-      </Button>
+      </CobraPrimaryButton>
     </Box>
   );
 
@@ -596,33 +570,23 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
 
   // Desktop/Tablet: Render as Dialog
   return (
-    <Dialog
+    <CobraDialog
       open={open}
       onClose={handleCancel}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{
-        sx: {
-          minHeight: 500,
-        },
-      }}
+      title="Create Checklist from Template"
+      contentWidth="600px"
     >
-      <DialogTitle>
-        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-          Create Checklist from Template
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+      <Stack spacing={CobraStyles.Spacing.FormFields}>
+        <Typography variant="body2" color="text.secondary">
           Select a template and give your checklist a name
         </Typography>
-      </DialogTitle>
 
-      <DialogContent dividers>
         {renderDesktopContent()}
-      </DialogContent>
 
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        {renderDesktopActions()}
-      </DialogActions>
-    </Dialog>
+        <DialogActions>
+          {renderDesktopActions()}
+        </DialogActions>
+      </Stack>
+    </CobraDialog>
   );
 };

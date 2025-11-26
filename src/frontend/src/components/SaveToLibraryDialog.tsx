@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
-  Button,
-  TextField,
   FormControl,
   InputLabel,
   Select,
@@ -15,13 +10,19 @@ import {
   Box,
   Typography,
   Chip,
+  Stack,
 } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSave } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 import { itemLibraryService } from '../services/itemLibraryService';
 import type { TemplateItemFormData } from './TemplateItemEditor';
 import { ItemType } from '../types';
+import {
+  CobraDialog,
+  CobraTextField,
+  CobraSaveButton,
+  CobraLinkButton,
+} from '../theme/styledComponents';
+import CobraStyles from '../theme/CobraStyles';
 
 interface SaveToLibraryDialogProps {
   open: boolean;
@@ -130,126 +131,120 @@ export const SaveToLibraryDialog: React.FC<SaveToLibraryDialogProps> = ({
   ];
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FontAwesomeIcon icon={faSave} />
-          <Typography variant="h6" component="span">
-            Save Item to Library
+    <CobraDialog
+      open={open}
+      onClose={handleClose}
+      title="Save Item to Library"
+      contentWidth="600px"
+    >
+      <Stack spacing={CobraStyles.Spacing.FormFields}>
+        {/* Item Text */}
+        <CobraTextField
+          fullWidth
+          label="Item Text"
+          value={itemText}
+          onChange={(e) => setItemText(e.target.value)}
+          required
+          multiline
+          rows={2}
+        />
+
+        {/* Item Type (Read-only) */}
+        <Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+            Item Type
           </Typography>
-        </Box>
-      </DialogTitle>
-
-      <DialogContent dividers>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-          {/* Item Text */}
-          <TextField
-            fullWidth
-            label="Item Text"
-            value={itemText}
-            onChange={(e) => setItemText(e.target.value)}
-            required
-            multiline
-            rows={2}
+          <Chip
+            label={itemData.itemType === ItemType.CHECKBOX ? 'Checkbox' : 'Status Dropdown'}
+            size="small"
+            color="primary"
           />
+        </Box>
 
-          {/* Item Type (Read-only) */}
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-              Item Type
-            </Typography>
-            <Chip
-              label={itemData.itemType === ItemType.CHECKBOX ? 'Checkbox' : 'Status Dropdown'}
-              size="small"
-              color="primary"
+        {/* Category */}
+        <FormControl fullWidth required>
+          <InputLabel>Category</InputLabel>
+          <Select
+            value={category}
+            label="Category"
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            {commonCategories.map((cat) => (
+              <MenuItem key={cat} value={cat}>
+                {cat}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {/* Tags */}
+        <CobraTextField
+          fullWidth
+          label="Tags (comma separated)"
+          placeholder="safety, daily, equipment"
+          value={tags}
+          onChange={(e) => setTags(e.target.value)}
+          helperText="Tags help with searching and filtering"
+        />
+
+        {/* Is Required by Default */}
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={isRequiredByDefault}
+              onChange={(e) => setIsRequiredByDefault(e.target.checked)}
             />
-          </Box>
+          }
+          label="Mark as 'Required' by default when added to templates"
+        />
 
-          {/* Category */}
-          <FormControl fullWidth required>
-            <InputLabel>Category</InputLabel>
-            <Select
-              value={category}
-              label="Category"
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              {commonCategories.map((cat) => (
-                <MenuItem key={cat} value={cat}>
-                  {cat}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* Tags */}
-          <TextField
-            fullWidth
-            label="Tags (comma separated)"
-            placeholder="safety, daily, equipment"
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            helperText="Tags help with searching and filtering"
-          />
-
-          {/* Is Required by Default */}
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={isRequiredByDefault}
-                onChange={(e) => setIsRequiredByDefault(e.target.checked)}
-              />
-            }
-            label="Mark as 'Required' by default when added to templates"
-          />
-
-          {/* Info about what's included */}
-          <Box sx={{ backgroundColor: '#f5f5f5', p: 2, borderRadius: 1 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-              The following will also be saved from this item:
-            </Typography>
-            <ul style={{ margin: 0, paddingLeft: 20 }}>
-              {itemData.itemType === ItemType.STATUS && (
+        {/* Info about what's included */}
+        <Box sx={{ backgroundColor: (theme) => theme.palette.background.default, p: 2, borderRadius: 1 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+            The following will also be saved from this item:
+          </Typography>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            {itemData.itemType === ItemType.STATUS && (
+              <li>
+                <Typography variant="caption">
+                  Status configuration ({itemData.statusConfiguration.length} options)
+                </Typography>
+              </li>
+            )}
+            {itemData.allowedPositions.length > 0 && (
+              <li>
+                <Typography variant="caption">
+                  Allowed positions ({itemData.allowedPositions.length} positions)
+                </Typography>
+              </li>
+            )}
+            {itemData.defaultNotes && (
+              <li>
+                <Typography variant="caption">Default notes</Typography>
+              </li>
+            )}
+            {itemData.itemType === ItemType.CHECKBOX &&
+              itemData.statusConfiguration.length === 0 &&
+              itemData.allowedPositions.length === 0 &&
+              !itemData.defaultNotes && (
                 <li>
-                  <Typography variant="caption">
-                    Status configuration ({itemData.statusConfiguration.length} options)
+                  <Typography variant="caption" fontStyle="italic">
+                    No additional configuration
                   </Typography>
                 </li>
               )}
-              {itemData.allowedPositions.length > 0 && (
-                <li>
-                  <Typography variant="caption">
-                    Allowed positions ({itemData.allowedPositions.length} positions)
-                  </Typography>
-                </li>
-              )}
-              {itemData.defaultNotes && (
-                <li>
-                  <Typography variant="caption">Default notes</Typography>
-                </li>
-              )}
-              {itemData.itemType === ItemType.CHECKBOX &&
-                itemData.statusConfiguration.length === 0 &&
-                itemData.allowedPositions.length === 0 &&
-                !itemData.defaultNotes && (
-                  <li>
-                    <Typography variant="caption" fontStyle="italic">
-                      No additional configuration
-                    </Typography>
-                  </li>
-                )}
-            </ul>
-          </Box>
+          </ul>
         </Box>
-      </DialogContent>
 
-      <DialogActions sx={{ p: 2 }}>
-        <Button onClick={handleClose} variant="text" disabled={saving}>
-          Cancel
-        </Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
-          {saving ? 'Saving...' : 'Save to Library'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        <DialogActions>
+          <CobraLinkButton onClick={handleClose} disabled={saving}>
+            Cancel
+          </CobraLinkButton>
+          <CobraSaveButton onClick={handleSave} isSaving={saving}>
+            Save to Library
+          </CobraSaveButton>
+        </DialogActions>
+      </Stack>
+    </CobraDialog>
   );
 };

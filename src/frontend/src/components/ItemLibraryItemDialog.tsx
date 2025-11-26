@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
-  Button,
-  TextField,
   FormControl,
   InputLabel,
   Select,
@@ -17,14 +12,20 @@ import {
   Radio,
   Box,
   Typography,
+  Stack,
 } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faEdit } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 import { itemLibraryService } from '../services/itemLibraryService';
 import { StatusConfigurationBuilder } from './StatusConfigurationBuilder';
 import type { ItemLibraryEntry, CreateItemLibraryEntryRequest, StatusOption } from '../types';
 import { ItemType, DEFAULT_STATUS_OPTIONS } from '../types';
+import {
+  CobraDialog,
+  CobraTextField,
+  CobraSaveButton,
+  CobraLinkButton,
+} from '../theme/styledComponents';
+import CobraStyles from '../theme/CobraStyles';
 
 interface ItemLibraryItemDialogProps {
   open: boolean;
@@ -166,112 +167,106 @@ export const ItemLibraryItemDialog: React.FC<ItemLibraryItemDialogProps> = ({
   ];
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FontAwesomeIcon icon={isEditMode ? faEdit : faPlus} />
-          <Typography variant="h6" component="span">
-            {isEditMode ? 'Edit Library Item' : 'Create Library Item'}
-          </Typography>
-        </Box>
-      </DialogTitle>
+    <CobraDialog
+      open={open}
+      onClose={handleClose}
+      title={isEditMode ? 'Edit Library Item' : 'Create Library Item'}
+      contentWidth="800px"
+    >
+      <Stack spacing={CobraStyles.Spacing.FormFields}>
+        {/* Item Text */}
+        <CobraTextField
+          fullWidth
+          label="Item Text"
+          placeholder="e.g., Verify all personnel have safety equipment"
+          value={itemText}
+          onChange={(e) => setItemText(e.target.value)}
+          required
+          multiline
+          rows={2}
+          helperText="Clear, actionable description of the task"
+        />
 
-      <DialogContent dividers>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-          {/* Item Text */}
-          <TextField
-            fullWidth
-            label="Item Text"
-            placeholder="e.g., Verify all personnel have safety equipment"
-            value={itemText}
-            onChange={(e) => setItemText(e.target.value)}
-            required
-            multiline
-            rows={2}
-            helperText="Clear, actionable description of the task"
-          />
+        {/* Item Type */}
+        <FormControl component="fieldset" required>
+          <FormLabel component="legend">Item Type</FormLabel>
+          <RadioGroup
+            row
+            value={itemType}
+            onChange={(e) => setItemType(e.target.value as ItemType)}
+          >
+            <FormControlLabel value="checkbox" control={<Radio />} label="Checkbox" />
+            <FormControlLabel value="status" control={<Radio />} label="Status Dropdown" />
+          </RadioGroup>
+        </FormControl>
 
-          {/* Item Type */}
-          <FormControl component="fieldset" required>
-            <FormLabel component="legend">Item Type</FormLabel>
-            <RadioGroup
-              row
-              value={itemType}
-              onChange={(e) => setItemType(e.target.value as ItemType)}
-            >
-              <FormControlLabel value="checkbox" control={<Radio />} label="Checkbox" />
-              <FormControlLabel value="status" control={<Radio />} label="Status Dropdown" />
-            </RadioGroup>
-          </FormControl>
+        {/* Status Configuration (only for status items) */}
+        {itemType === 'status' && (
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Status Options *
+            </Typography>
+            <StatusConfigurationBuilder
+              value={statusConfiguration}
+              onChange={setStatusConfiguration}
+            />
+          </Box>
+        )}
 
-          {/* Status Configuration (only for status items) */}
-          {itemType === 'status' && (
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Status Options *
-              </Typography>
-              <StatusConfigurationBuilder
-                value={statusConfiguration}
-                onChange={setStatusConfiguration}
-              />
-            </Box>
-          )}
+        {/* Category */}
+        <FormControl fullWidth required>
+          <InputLabel>Category</InputLabel>
+          <Select value={category} label="Category" onChange={(e) => setCategory(e.target.value)}>
+            {commonCategories.map((cat) => (
+              <MenuItem key={cat} value={cat}>
+                {cat}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-          {/* Category */}
-          <FormControl fullWidth required>
-            <InputLabel>Category</InputLabel>
-            <Select value={category} label="Category" onChange={(e) => setCategory(e.target.value)}>
-              {commonCategories.map((cat) => (
-                <MenuItem key={cat} value={cat}>
-                  {cat}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+        {/* Tags */}
+        <CobraTextField
+          fullWidth
+          label="Tags (comma separated)"
+          placeholder="safety, daily, equipment"
+          value={tags}
+          onChange={(e) => setTags(e.target.value)}
+          helperText="Tags help users find this item when searching"
+        />
 
-          {/* Tags */}
-          <TextField
-            fullWidth
-            label="Tags (comma separated)"
-            placeholder="safety, daily, equipment"
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            helperText="Tags help users find this item when searching"
-          />
+        {/* Default Notes */}
+        <CobraTextField
+          fullWidth
+          label="Default Notes (optional)"
+          placeholder="e.g., Check with safety officer before marking complete"
+          value={defaultNotes}
+          onChange={(e) => setDefaultNotes(e.target.value)}
+          multiline
+          rows={2}
+          helperText="These notes will appear when this item is added to templates"
+        />
 
-          {/* Default Notes */}
-          <TextField
-            fullWidth
-            label="Default Notes (optional)"
-            placeholder="e.g., Check with safety officer before marking complete"
-            value={defaultNotes}
-            onChange={(e) => setDefaultNotes(e.target.value)}
-            multiline
-            rows={2}
-            helperText="These notes will appear when this item is added to templates"
-          />
+        {/* Is Required by Default */}
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={isRequiredByDefault}
+              onChange={(e) => setIsRequiredByDefault(e.target.checked)}
+            />
+          }
+          label="Mark as 'Required' by default when added to templates"
+        />
 
-          {/* Is Required by Default */}
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={isRequiredByDefault}
-                onChange={(e) => setIsRequiredByDefault(e.target.checked)}
-              />
-            }
-            label="Mark as 'Required' by default when added to templates"
-          />
-        </Box>
-      </DialogContent>
-
-      <DialogActions sx={{ p: 2 }}>
-        <Button onClick={handleClose} variant="text" disabled={saving}>
-          Cancel
-        </Button>
-        <Button onClick={handleSave} variant="contained" disabled={saving}>
-          {saving ? 'Saving...' : isEditMode ? 'Save Changes' : 'Create Item'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        <DialogActions>
+          <CobraLinkButton onClick={handleClose} disabled={saving}>
+            Cancel
+          </CobraLinkButton>
+          <CobraSaveButton onClick={handleSave} isSaving={saving}>
+            {isEditMode ? 'Save Changes' : 'Create Item'}
+          </CobraSaveButton>
+        </DialogActions>
+      </Stack>
+    </CobraDialog>
   );
 };

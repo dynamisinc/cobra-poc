@@ -21,15 +21,18 @@ import {
   FormControlLabel,
   Switch,
   SelectChangeEvent,
-  TextField,
   InputAdornment,
-  Button,
   Collapse,
   Paper,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFilter, faSearch, faXmark, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
 import type { ChecklistInstanceDto } from '../services/checklistService';
+import {
+  CobraTextField,
+  CobraSecondaryButton,
+  CobraLinkButton,
+} from '../theme/styledComponents';
 
 /**
  * Completion status filter options
@@ -131,7 +134,7 @@ export const ChecklistFilters: React.FC<ChecklistFiltersProps> = ({
     <Box sx={{ mb: 3 }}>
       {/* Search bar + Filters button (always visible) */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-        <TextField
+        <CobraTextField
           fullWidth
           size="small"
           placeholder="Search checklists by name..."
@@ -168,17 +171,13 @@ export const ChecklistFilters: React.FC<ChecklistFiltersProps> = ({
         />
 
         {/* Filters button with badge */}
-        <Button
-          variant="outlined"
+        <CobraSecondaryButton
           onClick={() => setFiltersExpanded(!filtersExpanded)}
           startIcon={<FontAwesomeIcon icon={faFilter} />}
           endIcon={<FontAwesomeIcon icon={filtersExpanded ? faChevronUp : faChevronDown} />}
           sx={{
             minWidth: 140,
-            minHeight: 40,
             whiteSpace: 'nowrap',
-            borderColor: activeFilterCount > 0 ? 'primary.main' : 'grey.400',
-            color: activeFilterCount > 0 ? 'primary.main' : 'text.primary',
             fontWeight: activeFilterCount > 0 ? 'bold' : 'normal',
           }}
         >
@@ -191,7 +190,7 @@ export const ChecklistFilters: React.FC<ChecklistFiltersProps> = ({
               sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
             />
           )}
-        </Button>
+        </CobraSecondaryButton>
       </Box>
 
       {/* Collapsible filter panel */}
@@ -269,21 +268,17 @@ export const ChecklistFilters: React.FC<ChecklistFiltersProps> = ({
 
             {/* Action buttons */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-              <Button
-                variant="text"
+              <CobraLinkButton
                 onClick={handleClearAllFilters}
                 disabled={!hasActiveFilters}
-                sx={{ minHeight: 40 }}
               >
                 Clear All Filters
-              </Button>
-              <Button
-                variant="text"
+              </CobraLinkButton>
+              <CobraLinkButton
                 onClick={() => setFiltersExpanded(false)}
-                sx={{ minHeight: 40 }}
               >
                 Close
-              </Button>
+              </CobraLinkButton>
             </Box>
           </Box>
         </Paper>

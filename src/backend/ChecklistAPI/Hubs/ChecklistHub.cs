@@ -156,6 +156,43 @@ public class ChecklistHub : Hub
     }
 
     /// <summary>
+    /// Broadcast new checklist creation to all connected users
+    /// Used to notify users when a new checklist is created that they can access
+    /// </summary>
+    /// <param name="checklistId">ID of the newly created checklist</param>
+    /// <param name="checklistName">Name of the checklist</param>
+    /// <param name="eventId">Event ID</param>
+    /// <param name="eventName">Event name</param>
+    /// <param name="positions">Comma-separated list of positions (null/empty = all positions)</param>
+    /// <param name="createdBy">User who created the checklist</param>
+    public async Task ChecklistCreated(
+        string checklistId,
+        string checklistName,
+        string eventId,
+        string eventName,
+        string? positions,
+        string createdBy)
+    {
+        // Broadcast to all connected clients (they'll filter based on position)
+        await Clients.All.SendAsync("ChecklistCreated", new
+        {
+            checklistId,
+            checklistName,
+            eventId,
+            eventName,
+            positions,
+            createdBy,
+            createdAt = DateTime.UtcNow
+        });
+
+        _logger.LogInformation(
+            "Broadcasted checklist creation: {ChecklistId} ({ChecklistName}) by {CreatedBy}",
+            checklistId,
+            checklistName,
+            createdBy);
+    }
+
+    /// <summary>
     /// Handle client disconnection
     /// </summary>
     public override async Task OnDisconnectedAsync(Exception? exception)

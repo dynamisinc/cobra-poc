@@ -12,8 +12,6 @@
 import React, { useState } from 'react';
 import {
   Box,
-  TextField,
-  Button,
   IconButton,
   Typography,
   Checkbox,
@@ -39,7 +37,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { c5Colors } from '../theme/c5Theme';
+import { cobraTheme } from '../theme/cobraTheme';
+import { CobraTextField, CobraSecondaryButton } from '../theme/styledComponents';
 import type { StatusOption } from '../types';
 
 interface StatusConfigurationBuilderProps {
@@ -89,7 +88,7 @@ const StatusOptionRow: React.FC<StatusOptionRowProps> = ({
         mb: 1,
         p: 1.5,
         backgroundColor: 'white',
-        border: `1px solid ${c5Colors.silverWhite}`,
+        border: '1px solid #e0e0e0',
         borderRadius: 1,
         alignItems: 'center',
       }}
@@ -100,7 +99,7 @@ const StatusOptionRow: React.FC<StatusOptionRowProps> = ({
         {...listeners}
         sx={{
           cursor: 'grab',
-          color: c5Colors.dimGray,
+          color: cobraTheme.palette.text.secondary,
           display: 'flex',
           alignItems: 'center',
           '&:active': {
@@ -112,7 +111,7 @@ const StatusOptionRow: React.FC<StatusOptionRowProps> = ({
       </Box>
 
       {/* Status Label */}
-      <TextField
+      <CobraTextField
         size="small"
         value={option.label}
         onChange={(e) => onUpdate(index, 'label', e.target.value)}
@@ -127,9 +126,9 @@ const StatusOptionRow: React.FC<StatusOptionRowProps> = ({
             checked={option.isCompletion}
             onChange={(e) => onUpdate(index, 'isCompletion', e.target.checked)}
             sx={{
-              color: c5Colors.cobaltBlue,
+              color: cobraTheme.palette.buttonPrimary.main,
               '&.Mui-checked': {
-                color: c5Colors.successGreen,
+                color: cobraTheme.palette.success.main,
               },
             }}
           />
@@ -146,7 +145,7 @@ const StatusOptionRow: React.FC<StatusOptionRowProps> = ({
       <IconButton
         size="small"
         onClick={() => onRemove(index)}
-        sx={{ color: c5Colors.lavaRed }}
+        sx={{ color: cobraTheme.palette.buttonDelete.main }}
       >
         <FontAwesomeIcon icon={faTrash} />
       </IconButton>
@@ -254,15 +253,14 @@ export const StatusConfigurationBuilder: React.FC<StatusConfigurationBuilderProp
       )}
 
       {/* Add Button */}
-      <Button
-        variant="outlined"
+      <CobraSecondaryButton
         size="small"
         startIcon={<FontAwesomeIcon icon={faPlus} />}
         onClick={handleAdd}
         sx={{ mt: 1 }}
       >
         Add Status Option
-      </Button>
+      </CobraSecondaryButton>
 
       {/* Validation Messages */}
       {error && (

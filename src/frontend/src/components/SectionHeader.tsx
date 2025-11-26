@@ -17,7 +17,7 @@ import {
   faFolderOpen,
 } from '@fortawesome/free-solid-svg-icons';
 import type { SectionType } from '../hooks/useOperationalPeriodGrouping';
-import { c5Colors } from '../theme/c5Theme';
+import { cobraTheme } from '../theme/cobraTheme';
 
 /**
  * Props for SectionHeader
@@ -37,7 +37,7 @@ const getSectionStyle = (type: SectionType) => {
   switch (type) {
     case 'current':
       return {
-        backgroundColor: c5Colors.cobaltBlue,
+        backgroundColor: cobraTheme.palette.buttonPrimary.main,
         color: 'white',
         fontWeight: 'bold',
         icon: faClock,
@@ -45,19 +45,19 @@ const getSectionStyle = (type: SectionType) => {
       };
     case 'incident':
       return {
-        backgroundColor: c5Colors.whiteBlue,
+        backgroundColor: cobraTheme.palette.action.selected,
         color: 'text.primary',
         fontWeight: 'normal',
         icon: faClipboardList,
-        iconColor: c5Colors.cobaltBlue,
+        iconColor: cobraTheme.palette.buttonPrimary.main,
       };
     case 'previous':
       return {
-        backgroundColor: '#F5F5F5',
+        backgroundColor: cobraTheme.palette.background.default,
         color: 'text.secondary',
         fontWeight: 'normal',
         icon: faFolderOpen,
-        iconColor: '#757575',
+        iconColor: cobraTheme.palette.text.secondary,
       };
   }
 };

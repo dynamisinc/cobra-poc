@@ -27,7 +27,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import { ICS_POSITIONS, PermissionRole } from '../types';
-import { c5Colors } from '../theme/c5Theme';
+import { cobraTheme } from '../theme/cobraTheme';
 
 interface ProfileMenuProps {
   onProfileChange: (positions: string[], role: PermissionRole) => void;
@@ -262,7 +262,7 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ onProfileChange }) => 
         <Divider />
 
         {/* Current Selection Summary */}
-        <Box sx={{ px: 2, py: 1.5, backgroundColor: c5Colors.whiteBlue }}>
+        <Box sx={{ px: 2, py: 1.5, backgroundColor: cobraTheme.palette.action.selected }}>
           <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
             Current Profile:
           </Typography>

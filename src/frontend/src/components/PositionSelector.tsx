@@ -25,7 +25,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserShield } from '@fortawesome/free-solid-svg-icons';
 import { setMockUser, getCurrentUser } from '../services/api';
-import { c5Colors } from '../theme/c5Theme';
+import { cobraTheme } from '../theme/cobraTheme';
 
 /**
  * Standard ICS positions for emergency management
@@ -167,7 +167,7 @@ export const PositionSelector: React.FC<PositionSelectorProps> = ({
               maxHeight: 400,
               '& .MuiMenuItem-root': {
                 '&:hover': {
-                  backgroundColor: c5Colors.whiteBlue,
+                  backgroundColor: cobraTheme.palette.action.hover,
                 },
               },
             },
@@ -179,9 +179,9 @@ export const PositionSelector: React.FC<PositionSelectorProps> = ({
             <Checkbox
               checked={selectedPositions.indexOf(position) > -1}
               sx={{
-                color: c5Colors.cobaltBlue,
+                color: cobraTheme.palette.buttonPrimary.main,
                 '&.Mui-checked': {
-                  color: c5Colors.cobaltBlue,
+                  color: cobraTheme.palette.buttonPrimary.main,
                 },
               }}
             />
@@ -210,12 +210,12 @@ export const PositionSelector: React.FC<PositionSelectorProps> = ({
               onDelete={() => handleDelete(position)}
               sx={{
                 backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                color: c5Colors.cobaltBlue,
+                color: cobraTheme.palette.buttonPrimary.main,
                 fontWeight: 500,
                 '& .MuiChip-deleteIcon': {
-                  color: c5Colors.cobaltBlue,
+                  color: cobraTheme.palette.buttonPrimary.main,
                   '&:hover': {
-                    color: c5Colors.lavaRed,
+                    color: cobraTheme.palette.buttonDelete.main,
                   },
                 },
               }}

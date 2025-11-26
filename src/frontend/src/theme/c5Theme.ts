@@ -92,6 +92,10 @@ const themeOptions: ThemeOptions = {
       default: c5Colors.defaultBackground,
       paper: c5Colors.white,
     },
+    grid: {
+      light: c5Colors.lightBlue,
+      main: c5Colors.whiteBlue,
+    },
     text: {
       primary: c5Colors.darkGray,
       secondary: c5Colors.dimGray,

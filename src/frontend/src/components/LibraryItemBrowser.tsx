@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box,
-  TextField,
   FormControl,
   InputLabel,
   Select,
@@ -20,7 +19,8 @@ import { faSearch, faCheckSquare, faListCheck, faStar } from '@fortawesome/free-
 import { toast } from 'react-toastify';
 import { itemLibraryService } from '../services/itemLibraryService';
 import type { ItemLibraryEntry, ItemType } from '../types';
-import { c5Colors } from '../theme/c5Theme';
+import { cobraTheme } from '../theme/cobraTheme';
+import { CobraTextField } from '../theme/styledComponents';
 
 interface LibraryItemBrowserProps {
   /** Callback when selection changes */
@@ -59,9 +59,10 @@ export const LibraryItemBrowser: React.FC<LibraryItemBrowserProps> = ({
     fetchItems();
   }, [category, itemType, searchText, sortBy]);
 
+  // Initialize local selection from prop only once on mount
   useEffect(() => {
     setLocalSelectedIds(selectedIds);
-  }, [selectedIds]);
+  }, []); // Empty dependency array - only run on mount
 
   const fetchItems = async () => {
     try {
@@ -134,7 +135,7 @@ export const LibraryItemBrowser: React.FC<LibraryItemBrowserProps> = ({
       {/* Filters */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={12} md={6}>
-          <TextField
+          <CobraTextField
             fullWidth
             label="Search"
             placeholder="Search items and tags..."
@@ -250,8 +251,8 @@ export const LibraryItemBrowser: React.FC<LibraryItemBrowserProps> = ({
                 sx={{
                   mb: 1,
                   cursor: 'pointer',
-                  border: isSelected ? `2px solid ${c5Colors.cobaltBlue}` : '1px solid #e0e0e0',
-                  backgroundColor: isSelected ? c5Colors.whiteBlue : 'white',
+                  border: isSelected ? `2px solid ${cobraTheme.palette.buttonPrimary.main}` : '1px solid #e0e0e0',
+                  backgroundColor: isSelected ? cobraTheme.palette.action.selected : 'white',
                   '&:hover': {
                     boxShadow: 2,
                   },
@@ -286,7 +287,7 @@ export const LibraryItemBrowser: React.FC<LibraryItemBrowserProps> = ({
                             label={`${item.usageCount}x`}
                             size="small"
                             sx={{
-                              backgroundColor: c5Colors.successGreen,
+                              backgroundColor: cobraTheme.palette.success.main,
                               color: 'white',
                             }}
                           />

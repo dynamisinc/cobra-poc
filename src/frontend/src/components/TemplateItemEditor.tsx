@@ -13,7 +13,6 @@
 import React, { useState } from 'react';
 import {
   Box,
-  TextField,
   FormControl,
   FormLabel,
   RadioGroup,
@@ -24,7 +23,6 @@ import {
   Paper,
   Typography,
   Collapse,
-  Button,
   Autocomplete,
   Chip,
 } from '@mui/material';
@@ -40,7 +38,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { c5Colors } from '../theme/c5Theme';
+import { cobraTheme } from '../theme/cobraTheme';
+import { CobraTextField, CobraSecondaryButton } from '../theme/styledComponents';
 import { StatusConfigurationBuilder } from './StatusConfigurationBuilder';
 import { ItemType, DEFAULT_STATUS_OPTIONS, ICS_POSITIONS, type StatusOption } from '../types';
 
@@ -126,9 +125,9 @@ export const TemplateItemEditor: React.FC<TemplateItemEditorProps> = ({
       sx={{
         p: 2,
         mb: 2,
-        border: `2px solid ${c5Colors.silverWhite}`,
+        border: '2px solid #e0e0e0',
         '&:hover': {
-          borderColor: c5Colors.cobaltBlue,
+          borderColor: cobraTheme.palette.buttonPrimary.main,
         },
       }}
     >
@@ -157,7 +156,7 @@ export const TemplateItemEditor: React.FC<TemplateItemEditorProps> = ({
           onClick={(e) => e.stopPropagation()}
           sx={{
             cursor: 'grab',
-            color: c5Colors.dimGray,
+            color: cobraTheme.palette.text.secondary,
             display: 'flex',
             alignItems: 'center',
             '&:active': {
@@ -230,7 +229,7 @@ export const TemplateItemEditor: React.FC<TemplateItemEditorProps> = ({
             <IconButton
               size="small"
               onClick={() => onSaveToLibrary(item)}
-              sx={{ color: c5Colors.cobaltBlue }}
+              sx={{ color: cobraTheme.palette.buttonPrimary.main }}
               title="Save to library"
             >
               <FontAwesomeIcon icon={faSave} />
@@ -243,7 +242,7 @@ export const TemplateItemEditor: React.FC<TemplateItemEditorProps> = ({
           <IconButton
             size="small"
             onClick={() => onRemove(item.id)}
-            sx={{ color: c5Colors.lavaRed }}
+            sx={{ color: cobraTheme.palette.buttonDelete.main }}
             title="Remove item"
           >
             <FontAwesomeIcon icon={faTrash} />
@@ -254,7 +253,7 @@ export const TemplateItemEditor: React.FC<TemplateItemEditorProps> = ({
       {/* Collapsible Content */}
       <Collapse in={isExpanded}>
         {/* Item Text */}
-        <TextField
+        <CobraTextField
           fullWidth
           label="Item Text"
           placeholder="e.g., Verify all personnel have safety equipment"
@@ -313,7 +312,7 @@ export const TemplateItemEditor: React.FC<TemplateItemEditorProps> = ({
       )}
 
       {/* Advanced Options Toggle */}
-      <Button
+      <CobraSecondaryButton
         size="small"
         onClick={() => setShowAdvanced(!showAdvanced)}
         startIcon={
@@ -322,7 +321,7 @@ export const TemplateItemEditor: React.FC<TemplateItemEditorProps> = ({
         sx={{ mb: 1 }}
       >
         Advanced Options
-      </Button>
+      </CobraSecondaryButton>
 
       {/* Advanced Options Section */}
       <Collapse in={showAdvanced}>
@@ -334,7 +333,7 @@ export const TemplateItemEditor: React.FC<TemplateItemEditorProps> = ({
             value={item.allowedPositions}
             onChange={(_, newValue) => onUpdate(item.id, { allowedPositions: newValue })}
             renderInput={(params) => (
-              <TextField
+              <CobraTextField
                 {...params}
                 label="Allowed Positions (Optional)"
                 placeholder="Select positions..."
@@ -346,7 +345,7 @@ export const TemplateItemEditor: React.FC<TemplateItemEditorProps> = ({
                 <Chip
                   label={option}
                   {...getTagProps({ index })}
-                  sx={{ backgroundColor: c5Colors.whiteBlue }}
+                  sx={{ backgroundColor: cobraTheme.palette.action.selected }}
                 />
               ))
             }
@@ -354,7 +353,7 @@ export const TemplateItemEditor: React.FC<TemplateItemEditorProps> = ({
           />
 
           {/* Default Notes */}
-          <TextField
+          <CobraTextField
             fullWidth
             label="Default Notes (Optional)"
             placeholder="e.g., Check with logistics coordinator before marking complete"

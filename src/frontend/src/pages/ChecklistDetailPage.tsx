@@ -88,9 +88,9 @@ export const ChecklistDetailPage: React.FC = () => {
       // Update local state
       updateItemLocally(data.itemId, {
         isCompleted: data.isCompleted,
-        completedBy: data.completedBy,
-        completedByPosition: data.completedByPosition,
-        completedAt: data.completedAt,
+        completedBy: data.completedBy ?? undefined,
+        completedByPosition: data.completedByPosition ?? undefined,
+        completedAt: data.completedAt ?? undefined,
       });
       // Show toast notification
       const action = data.isCompleted ? 'completed' : 'unmarked';

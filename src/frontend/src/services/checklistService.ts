@@ -125,6 +125,11 @@ export const checklistService = {
           params: { includeArchived },
         }
       );
+      // Ensure we always return an array (guard against HTML fallback response)
+      if (!Array.isArray(response.data)) {
+        console.error('API returned non-array response:', response.data);
+        return [];
+      }
       return response.data;
     } catch (error) {
       console.error('Failed to fetch my checklists:', error);

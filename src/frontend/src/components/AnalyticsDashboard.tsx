@@ -28,7 +28,7 @@ import {
 import { toast } from 'react-toastify';
 import { analyticsService } from '../services/analyticsService';
 import type { AnalyticsDashboard as AnalyticsDashboardData } from '../types';
-import { c5Colors } from '../theme/c5Theme';
+import { cobraTheme } from '../theme/cobraTheme';
 
 /**
  * Analytics Dashboard Component
@@ -91,10 +91,10 @@ export const AnalyticsDashboard: React.FC = () => {
       </Typography>
       <Grid container spacing={2} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={2.4}>
-          <Card sx={{ backgroundColor: c5Colors.whiteBlue }}>
+          <Card sx={{ backgroundColor: cobraTheme.palette.action.selected }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <FontAwesomeIcon icon={faFileLines} style={{ color: c5Colors.cobaltBlue }} />
+                <FontAwesomeIcon icon={faFileLines} style={{ color: cobraTheme.palette.buttonPrimary.main }} />
                 <Typography variant="body2" color="text.secondary">
                   Templates
                 </Typography>
@@ -104,10 +104,10 @@ export const AnalyticsDashboard: React.FC = () => {
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={2.4}>
-          <Card sx={{ backgroundColor: c5Colors.whiteBlue }}>
+          <Card sx={{ backgroundColor: cobraTheme.palette.action.selected }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <FontAwesomeIcon icon={faListCheck} style={{ color: c5Colors.successGreen }} />
+                <FontAwesomeIcon icon={faListCheck} style={{ color: cobraTheme.palette.success.main }} />
                 <Typography variant="body2" color="text.secondary">
                   Active Templates
                 </Typography>
@@ -117,10 +117,10 @@ export const AnalyticsDashboard: React.FC = () => {
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={2.4}>
-          <Card sx={{ backgroundColor: c5Colors.whiteBlue }}>
+          <Card sx={{ backgroundColor: cobraTheme.palette.action.selected }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <FontAwesomeIcon icon={faTriangleExclamation} style={{ color: c5Colors.canaryYellow }} />
+                <FontAwesomeIcon icon={faTriangleExclamation} style={{ color: cobraTheme.palette.warning.main }} />
                 <Typography variant="body2" color="text.secondary">
                   Unused Templates
                 </Typography>
@@ -130,10 +130,10 @@ export const AnalyticsDashboard: React.FC = () => {
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={2.4}>
-          <Card sx={{ backgroundColor: c5Colors.whiteBlue }}>
+          <Card sx={{ backgroundColor: cobraTheme.palette.action.selected }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <FontAwesomeIcon icon={faChartLine} style={{ color: c5Colors.cobaltBlue }} />
+                <FontAwesomeIcon icon={faChartLine} style={{ color: cobraTheme.palette.buttonPrimary.main }} />
                 <Typography variant="body2" color="text.secondary">
                   Checklists Created
                 </Typography>
@@ -143,10 +143,10 @@ export const AnalyticsDashboard: React.FC = () => {
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={2.4}>
-          <Card sx={{ backgroundColor: c5Colors.whiteBlue }}>
+          <Card sx={{ backgroundColor: cobraTheme.palette.action.selected }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <FontAwesomeIcon icon={faBoxArchive} style={{ color: c5Colors.cobaltBlue }} />
+                <FontAwesomeIcon icon={faBoxArchive} style={{ color: cobraTheme.palette.buttonPrimary.main }} />
                 <Typography variant="body2" color="text.secondary">
                   Library Items
                 </Typography>
@@ -161,7 +161,7 @@ export const AnalyticsDashboard: React.FC = () => {
       {mostUsedTemplates.length > 0 && (
         <Box sx={{ mb: 4 }}>
           <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <FontAwesomeIcon icon={faStar} style={{ color: c5Colors.successGreen }} />
+            <FontAwesomeIcon icon={faStar} style={{ color: cobraTheme.palette.success.main }} />
             Most Used Templates
           </Typography>
           <TableContainer component={Paper}>
@@ -182,7 +182,7 @@ export const AnalyticsDashboard: React.FC = () => {
                       <Chip label={template.category} size="small" />
                     </TableCell>
                     <TableCell align="right">
-                      <Typography variant="body1" sx={{ fontWeight: 'bold', color: c5Colors.successGreen }}>
+                      <Typography variant="body1" sx={{ fontWeight: 'bold', color: cobraTheme.palette.success.main }}>
                         {template.usageCount}
                       </Typography>
                     </TableCell>
@@ -199,7 +199,7 @@ export const AnalyticsDashboard: React.FC = () => {
       {mostPopularLibraryItems.length > 0 && (
         <Box sx={{ mb: 4 }}>
           <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <FontAwesomeIcon icon={faStar} style={{ color: c5Colors.cobaltBlue }} />
+            <FontAwesomeIcon icon={faStar} style={{ color: cobraTheme.palette.buttonPrimary.main }} />
             Most Popular Library Items
           </Typography>
           <TableContainer component={Paper}>
@@ -227,7 +227,7 @@ export const AnalyticsDashboard: React.FC = () => {
                       />
                     </TableCell>
                     <TableCell align="right">
-                      <Typography variant="body1" sx={{ fontWeight: 'bold', color: c5Colors.cobaltBlue }}>
+                      <Typography variant="body1" sx={{ fontWeight: 'bold', color: cobraTheme.palette.buttonPrimary.main }}>
                         {item.usageCount}
                       </Typography>
                     </TableCell>
@@ -243,7 +243,7 @@ export const AnalyticsDashboard: React.FC = () => {
       {neverUsedTemplates.length > 0 && (
         <Box sx={{ mb: 4 }}>
           <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <FontAwesomeIcon icon={faTriangleExclamation} style={{ color: c5Colors.canaryYellow }} />
+            <FontAwesomeIcon icon={faTriangleExclamation} style={{ color: cobraTheme.palette.warning.main }} />
             Templates Never Used
           </Typography>
           <Alert severity="warning" sx={{ mb: 2 }}>

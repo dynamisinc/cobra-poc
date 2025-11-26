@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
-  Button,
-  Box,
-  Typography,
+  Stack,
 } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBoxArchive } from '@fortawesome/free-solid-svg-icons';
 import { LibraryItemBrowser } from './LibraryItemBrowser';
 import type { ItemLibraryEntry } from '../types';
+import {
+  CobraDialog,
+  CobraPrimaryButton,
+  CobraLinkButton,
+} from '../theme/styledComponents';
+import CobraStyles from '../theme/CobraStyles';
 
 interface AddFromLibraryDialogProps {
   open: boolean;
@@ -46,43 +45,30 @@ export const AddFromLibraryDialog: React.FC<AddFromLibraryDialogProps> = ({
   };
 
   return (
-    <Dialog
+    <CobraDialog
       open={open}
       onClose={handleClose}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{
-        sx: { minHeight: '600px' },
-      }}
+      title="Add Items from Library"
+      contentWidth="800px"
     >
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FontAwesomeIcon icon={faBoxArchive} />
-          <Typography variant="h6" component="span">
-            Add Items from Library
-          </Typography>
-        </Box>
-      </DialogTitle>
-
-      <DialogContent dividers>
+      <Stack spacing={CobraStyles.Spacing.FormFields}>
         <LibraryItemBrowser
           onSelectionChange={setSelectedItems}
           showSelectAll={true}
         />
-      </DialogContent>
 
-      <DialogActions sx={{ p: 2 }}>
-        <Button onClick={handleClose} variant="text">
-          Cancel
-        </Button>
-        <Button
-          onClick={handleAdd}
-          variant="contained"
-          disabled={selectedItems.length === 0}
-        >
-          Add Selected ({selectedItems.length})
-        </Button>
-      </DialogActions>
-    </Dialog>
+        <DialogActions>
+          <CobraLinkButton onClick={handleClose}>
+            Cancel
+          </CobraLinkButton>
+          <CobraPrimaryButton
+            onClick={handleAdd}
+            disabled={selectedItems.length === 0}
+          >
+            Add Selected ({selectedItems.length})
+          </CobraPrimaryButton>
+        </DialogActions>
+      </Stack>
+    </CobraDialog>
   );
 };

@@ -13,23 +13,23 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
-  Button,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   Typography,
-  Box,
   Alert,
+  Stack,
 } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faListCheck } from '@fortawesome/free-solid-svg-icons';
 import type { StatusOption } from '../types';
-import { c5Colors } from '../theme/c5Theme';
+import { cobraTheme } from '../theme/cobraTheme';
+import {
+  CobraDialog,
+  CobraSaveButton,
+  CobraLinkButton,
+} from '../theme/styledComponents';
+import CobraStyles from '../theme/CobraStyles';
 
 /**
  * Props for ItemStatusDialog
@@ -122,36 +122,20 @@ export const ItemStatusDialog: React.FC<ItemStatusDialogProps> = ({
   const hasChanged = selectedStatus !== (currentStatus || '');
 
   return (
-    <Dialog
+    <CobraDialog
       open={open}
       onClose={handleCancel}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{
-        sx: {
-          minHeight: 350,
-        },
-      }}
+      title="Update Status"
+      contentWidth="600px"
     >
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FontAwesomeIcon
-            icon={faListCheck}
-            style={{ fontSize: '1.25rem' }}
-          />
-          <Typography variant="h6">Update Status</Typography>
-        </Box>
-      </DialogTitle>
-
-      <DialogContent>
+      <Stack spacing={CobraStyles.Spacing.FormFields}>
         {/* Item text context */}
         <Typography
           variant="body2"
           color="text.secondary"
           sx={{
-            mb: 3,
             p: 1.5,
-            backgroundColor: '#F5F5F5',
+            backgroundColor: (theme) => theme.palette.background.default,
             borderRadius: 1,
             fontStyle: 'italic',
           }}
@@ -161,7 +145,7 @@ export const ItemStatusDialog: React.FC<ItemStatusDialogProps> = ({
 
         {/* No options warning */}
         {!hasOptions && (
-          <Alert severity="warning" sx={{ mb: 3 }}>
+          <Alert severity="warning">
             No status options defined for this item. You can enter a custom
             status, but this may indicate a configuration issue.
           </Alert>
@@ -199,7 +183,7 @@ export const ItemStatusDialog: React.FC<ItemStatusDialogProps> = ({
                     sx={{
                       ml: 1,
                       fontSize: '0.75rem',
-                      color: c5Colors.successGreen,
+                      color: cobraTheme.palette.success.main,
                       fontWeight: 'bold',
                     }}
                   >
@@ -232,7 +216,6 @@ export const ItemStatusDialog: React.FC<ItemStatusDialogProps> = ({
           <Typography
             variant="body2"
             color="text.secondary"
-            sx={{ mt: 2 }}
           >
             Current status: <strong>{currentStatus}</strong>
           </Typography>
@@ -243,38 +226,21 @@ export const ItemStatusDialog: React.FC<ItemStatusDialogProps> = ({
           <Typography
             variant="caption"
             color="text.secondary"
-            sx={{ mt: 2, display: 'block' }}
           >
             {availableOptions.length} option{availableOptions.length !== 1 ? 's' : ''}{' '}
             available
           </Typography>
         )}
-      </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button
-          variant="text"
-          onClick={handleCancel}
-          disabled={saving}
-          sx={{
-            minWidth: 100,
-            minHeight: 48, // C5 minimum touch target
-          }}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={saving || !hasChanged}
-          sx={{
-            minWidth: 100,
-            minHeight: 48, // C5 minimum touch target
-          }}
-        >
-          {saving ? 'Saving...' : 'Update Status'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        <DialogActions>
+          <CobraLinkButton onClick={handleCancel} disabled={saving}>
+            Cancel
+          </CobraLinkButton>
+          <CobraSaveButton onClick={handleSave} disabled={!hasChanged} isSaving={saving}>
+            Update Status
+          </CobraSaveButton>
+        </DialogActions>
+      </Stack>
+    </CobraDialog>
   );
 };

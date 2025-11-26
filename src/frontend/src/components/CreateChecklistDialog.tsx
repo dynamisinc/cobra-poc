@@ -18,19 +18,23 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
-  Button,
-  TextField,
   Typography,
   Box,
   Alert,
   Collapse,
+  Stack,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChevronDown, faChevronUp, faClipboardList } from '@fortawesome/free-solid-svg-icons';
+import { faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
+import {
+  CobraDialog,
+  CobraTextField,
+  CobraSaveButton,
+  CobraLinkButton,
+  CobraSecondaryButton,
+} from '../theme/styledComponents';
+import CobraStyles from '../theme/CobraStyles';
 
 /**
  * Mode of checklist creation
@@ -210,33 +214,20 @@ export const CreateChecklistDialog: React.FC<CreateChecklistDialogProps> = ({
   };
 
   return (
-    <Dialog
+    <CobraDialog
       open={open}
       onClose={handleCancel}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{
-        sx: {
-          minHeight: 400,
-        },
-      }}
+      title={getDialogTitle()}
+      contentWidth="600px"
     >
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FontAwesomeIcon icon={faClipboardList} style={{ fontSize: '1.25rem' }} />
-          <Typography variant="h6">{getDialogTitle()}</Typography>
-        </Box>
-      </DialogTitle>
-
-      <DialogContent>
+      <Stack spacing={CobraStyles.Spacing.FormFields}>
         {/* Description */}
         <Typography
           variant="body2"
           color="text.secondary"
           sx={{
-            mb: 3,
             p: 1.5,
-            backgroundColor: '#F5F5F5',
+            backgroundColor: (theme) => theme.palette.background.default,
             borderRadius: 1,
           }}
         >
@@ -245,13 +236,13 @@ export const CreateChecklistDialog: React.FC<CreateChecklistDialogProps> = ({
 
         {/* Error message */}
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          <Alert severity="error" onClose={() => setError(null)}>
             {error}
           </Alert>
         )}
 
         {/* Name field */}
-        <TextField
+        <CobraTextField
           fullWidth
           label="Checklist Name"
           value={name}
@@ -259,74 +250,53 @@ export const CreateChecklistDialog: React.FC<CreateChecklistDialogProps> = ({
           disabled={saving}
           required
           autoFocus
-          sx={{ mb: 2 }}
           helperText="Give this checklist a unique name"
         />
 
         {/* Operational Period (Optional) */}
-        <TextField
+        <CobraTextField
           fullWidth
           label="Operational Period Name (Optional)"
           value={operationalPeriodName}
           onChange={(e) => setOperationalPeriodName(e.target.value)}
           disabled={saving}
-          sx={{ mb: 2 }}
           helperText="Leave blank for incident-level checklist"
         />
 
         {/* Advanced Options */}
-        <Box sx={{ mt: 2 }}>
-          <Button
-            variant="text"
+        <Box>
+          <CobraSecondaryButton
             size="small"
             onClick={() => setShowAdvanced(!showAdvanced)}
             endIcon={<FontAwesomeIcon icon={showAdvanced ? faChevronUp : faChevronDown} />}
-            sx={{ mb: 1 }}
           >
             Advanced Options
-          </Button>
+          </CobraSecondaryButton>
 
           <Collapse in={showAdvanced}>
-            <Box sx={{ pl: 2, pr: 2 }}>
-              <TextField
+            <Box sx={{ mt: 2 }}>
+              <CobraTextField
                 fullWidth
                 label="Assigned Positions (Optional)"
                 value={assignedPositions}
                 onChange={(e) => setAssignedPositions(e.target.value)}
                 disabled={saving}
-                sx={{ mb: 2 }}
                 helperText="Comma-separated list: Incident Commander, Safety Officer"
                 placeholder="Leave blank to make visible to all positions"
               />
             </Box>
           </Collapse>
         </Box>
-      </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button
-          variant="text"
-          onClick={handleCancel}
-          disabled={saving}
-          sx={{
-            minWidth: 100,
-            minHeight: 48, // C5 minimum touch target
-          }}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={saving}
-          sx={{
-            minWidth: 100,
-            minHeight: 48, // C5 minimum touch target
-          }}
-        >
-          {saving ? 'Creating...' : 'Create Checklist'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        <DialogActions>
+          <CobraLinkButton onClick={handleCancel} disabled={saving}>
+            Cancel
+          </CobraLinkButton>
+          <CobraSaveButton onClick={handleSave} isSaving={saving}>
+            {saving ? 'Creating...' : 'Create Checklist'}
+          </CobraSaveButton>
+        </DialogActions>
+      </Stack>
+    </CobraDialog>
   );
 };
