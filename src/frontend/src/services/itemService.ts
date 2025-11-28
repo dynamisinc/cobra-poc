@@ -50,7 +50,7 @@ export const itemService = {
   ): Promise<ChecklistItemDto> {
     try {
       const response = await apiClient.get<ChecklistItemDto>(
-        `/api/checklists/${checklistId}/items/${itemId}`
+        `/checklists/${checklistId}/items/${itemId}`
       );
       return response.data;
     } catch (error) {

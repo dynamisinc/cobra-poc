@@ -54,7 +54,7 @@ import { toast } from 'react-toastify';
 import { TemplateItemEditor, type TemplateItemFormData } from '../components/TemplateItemEditor';
 import { AddFromLibraryDialog } from '../components/AddFromLibraryDialog';
 import { SaveToLibraryDialog } from '../components/SaveToLibraryDialog';
-import { ItemType, TemplateCategory, TemplateType, ICS_INCIDENT_TYPES, type ItemLibraryEntry } from '../types';
+import { ItemType, TemplateCategory, TemplateType, ICS_INCIDENT_TYPES, type ItemLibraryEntry, type StatusOption } from '../types';
 import { templateService } from '../services/templateService';
 import { itemLibraryService } from '../services/itemLibraryService';
 import {
@@ -70,6 +70,37 @@ import CobraStyles from '../theme/CobraStyles';
  */
 const generateTempId = (): string => {
   return `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
+
+/**
+ * Parse statusConfiguration from API which can be either:
+ * - Array of strings: ["Not Started", "In Progress", "Completed"]
+ * - Array of StatusOption objects: [{label, isCompletion, order}]
+ */
+const parseStatusConfiguration = (statusConfiguration?: string | null): StatusOption[] => {
+  if (!statusConfiguration) return [];
+  try {
+    const parsed = JSON.parse(statusConfiguration);
+    if (Array.isArray(parsed)) {
+      if (parsed.length === 0) return [];
+      // Check if first element is a string (simple format) or object (full format)
+      if (typeof parsed[0] === 'string') {
+        // Convert simple string array to StatusOption array
+        return parsed.map((label: string, index: number) => ({
+          label,
+          isCompletion: label.toLowerCase().includes('complete') || label.toLowerCase().includes('done'),
+          order: index,
+        }));
+      } else {
+        // Already in StatusOption format
+        return (parsed as StatusOption[]).sort((a, b) => a.order - b.order);
+      }
+    }
+    return [];
+  } catch (error) {
+    console.error('Failed to parse status configuration:', error);
+    return [];
+  }
 };
 
 /**
@@ -153,9 +184,7 @@ export const TemplateEditorPage: React.FC = () => {
         itemType: item.itemType,
         displayOrder: item.displayOrder,
         isRequired: item.isRequired,
-        statusConfiguration: item.statusConfiguration
-          ? JSON.parse(item.statusConfiguration)
-          : [],
+        statusConfiguration: parseStatusConfiguration(item.statusConfiguration),
         allowedPositions: item.allowedPositions
           ? JSON.parse(item.allowedPositions)
           : [],
@@ -270,9 +299,7 @@ export const TemplateEditorPage: React.FC = () => {
       itemType: libItem.itemType as ItemType,
       displayOrder: (items.length + libraryItems.indexOf(libItem) + 1) * 10,
       isRequired: libItem.isRequiredByDefault,
-      statusConfiguration: libItem.statusConfiguration
-        ? JSON.parse(libItem.statusConfiguration)
-        : [],
+      statusConfiguration: parseStatusConfiguration(libItem.statusConfiguration),
       allowedPositions: libItem.allowedPositions ? JSON.parse(libItem.allowedPositions) : [],
       defaultNotes: libItem.defaultNotes || '',
     }));
