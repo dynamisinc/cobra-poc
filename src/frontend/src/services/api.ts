@@ -47,6 +47,7 @@ let currentUser: MockUserContext = {
  * Used for testing different positions/users in POC
  */
 export const setMockUser = (user: MockUserContext): void => {
+  console.log('[MockUser] Updating user context:', { old: currentUser.position, new: user.position });
   currentUser = user;
 };
 
@@ -81,7 +82,7 @@ apiClient.interceptors.request.use(
     config.headers['X-User-FullName'] = currentUser.fullName;
 
     console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, {
-      headers: config.headers,
+      user: currentUser.position,
       data: config.data,
     });
 
@@ -94,8 +95,46 @@ apiClient.interceptors.request.use(
 );
 
 /**
+ * API Error Response interface for POC debugging
+ */
+interface ApiErrorResponse {
+  message?: string;
+  exceptionType?: string;
+  stackTrace?: string;
+  innerException?: string;
+  innerExceptionType?: string;
+  innerStackTrace?: string;
+  path?: string;
+  method?: string;
+  timestamp?: string;
+}
+
+/**
+ * Format error details for display (POC debugging)
+ */
+const formatErrorDetails = (data: ApiErrorResponse): string => {
+  const parts: string[] = [];
+
+  if (data.message) {
+    parts.push(`Message: ${data.message}`);
+  }
+  if (data.exceptionType) {
+    parts.push(`Type: ${data.exceptionType}`);
+  }
+  if (data.innerException) {
+    parts.push(`Inner: ${data.innerException}`);
+  }
+  if (data.path) {
+    parts.push(`Path: ${data.method} ${data.path}`);
+  }
+
+  return parts.join('\n');
+};
+
+/**
  * Response interceptor
  * Handles global error responses and logging
+ * POC: Shows full error details for debugging
  */
 apiClient.interceptors.response.use(
   (response) => {
@@ -105,19 +144,35 @@ apiClient.interceptors.response.use(
     });
     return response;
   },
-  (error: AxiosError) => {
-    console.error('[API] Response error:', error);
+  (error: AxiosError<ApiErrorResponse>) => {
+    // Log full error details to console for debugging
+    console.error('[API] Response error:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+    });
 
     // Handle specific error cases
     if (error.response) {
       const status = error.response.status;
-      const message = (error.response.data as any)?.message || error.message;
+      const data = error.response.data;
+      const message = data?.message || error.message;
+
+      // Log full stack trace to console (POC debugging)
+      if (data?.stackTrace) {
+        console.error('[API] Server Stack Trace:', data.stackTrace);
+      }
+      if (data?.innerStackTrace) {
+        console.error('[API] Inner Exception Stack Trace:', data.innerStackTrace);
+      }
 
       switch (status) {
         case 400:
           // Bad request - validation errors
-          console.error('[API] Validation error:', error.response.data);
-          toast.error(`Validation error: ${message}`);
+          console.error('[API] Validation error:', data);
+          toast.error(`Validation error: ${message}`, { autoClose: 10000 });
           break;
 
         case 401:
@@ -128,34 +183,41 @@ apiClient.interceptors.response.use(
         case 403:
           // Forbidden - permission denied
           toast.error(
-            'Permission denied. Your position is not authorized for this action.'
+            `Permission denied: ${message}`,
+            { autoClose: 10000 }
           );
           break;
 
         case 404:
           // Not found
           console.warn('[API] Resource not found:', error.config?.url);
-          toast.error('Resource not found');
+          toast.error(`Not found: ${message}`);
           break;
 
         case 500:
-          // Server error
-          toast.error('Server error. Please try again later.');
+          // Server error - POC: show full details
+          const errorDetails = formatErrorDetails(data);
+          console.error('[API] Server error details:\n', errorDetails);
+          toast.error(
+            `Server Error: ${message}\n\nCheck browser console for full stack trace.`,
+            { autoClose: false }  // Don't auto-close so user can see the error
+          );
           break;
 
         default:
-          toast.error(`Error: ${message}`);
+          toast.error(`Error ${status}: ${message}`, { autoClose: 10000 });
       }
     } else if (error.request) {
       // Request made but no response
       console.error('[API] No response received:', error.request);
       toast.error(
-        'Unable to reach server. Please check your connection and ensure the backend is running.'
+        'Unable to reach server. Please check your connection and ensure the backend is running.',
+        { autoClose: false }
       );
     } else {
       // Error setting up request
       console.error('[API] Request setup error:', error.message);
-      toast.error(`Request error: ${error.message}`);
+      toast.error(`Request error: ${error.message}`, { autoClose: 10000 });
     }
 
     return Promise.reject(error);

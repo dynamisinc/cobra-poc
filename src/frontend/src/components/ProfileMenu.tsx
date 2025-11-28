@@ -34,6 +34,7 @@ import {
   getCurrentVariant,
   setVariant as setStoredVariant,
 } from '../experiments';
+import { setMockUser, getCurrentUser } from '../services/api';
 
 interface ProfileMenuProps {
   onProfileChange: (positions: string[], role: PermissionRole) => void;
@@ -94,6 +95,17 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ onProfileChange }) => 
     return () => window.removeEventListener('variantChanged', handleVariantChange);
   }, []);
 
+  // Sync mock user context with stored profile on mount
+  useEffect(() => {
+    const currentMockUser = getCurrentUser();
+    if (storedProfile.positions.length > 0 && currentMockUser.position !== storedProfile.positions[0]) {
+      setMockUser({
+        ...currentMockUser,
+        position: storedProfile.positions[0],
+      });
+    }
+  }, []); // Only run on mount
+
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -112,6 +124,13 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ onProfileChange }) => 
       if (newPositions.length === 0) {
         return prev;
       }
+
+      // Update mock user context for API requests (use first position as primary)
+      const currentMockUser = getCurrentUser();
+      setMockUser({
+        ...currentMockUser,
+        position: newPositions[0],
+      });
 
       // Save and notify
       saveProfile(newPositions, selectedRole);
