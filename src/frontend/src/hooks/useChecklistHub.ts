@@ -91,6 +91,7 @@ export const useChecklistHub = (handlers: ChecklistHubHandlers = {}) => {
   const connectionRef = useRef<signalR.HubConnection | null>(null);
   const handlersRef = useRef(handlers);
   const hasConnectedOnceRef = useRef(false); // Track if we've ever connected successfully
+  const isConnectingRef = useRef(false); // Prevent duplicate connection attempts
 
   // Update handlers ref when they change (avoid reconnection)
   useEffect(() => {
@@ -99,6 +100,12 @@ export const useChecklistHub = (handlers: ChecklistHubHandlers = {}) => {
 
   // Initialize SignalR connection
   useEffect(() => {
+    // Skip if already connecting or connected (React StrictMode protection)
+    if (isConnectingRef.current || connectionRef.current) {
+      return;
+    }
+    isConnectingRef.current = true;
+
     const hubUrl = import.meta.env.VITE_HUB_URL || '/hubs/checklist';
 
     const connection = new signalR.HubConnectionBuilder()

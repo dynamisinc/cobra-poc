@@ -3,9 +3,12 @@
  *
  * Provides checklist fetching, filtering, and management operations.
  * Handles loading states, errors, and optimistic updates.
+ *
+ * Note: Uses request deduplication to prevent duplicate API calls
+ * that can occur due to React StrictMode double-mounting effects.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { toast } from 'react-toastify';
 import {
   checklistService,
@@ -69,32 +72,49 @@ export const useChecklists = (): UseChecklistsReturn => {
     error: null,
   });
 
+  // Track in-flight requests to prevent duplicates (React StrictMode protection)
+  const fetchInFlightRef = useRef<Promise<void> | null>(null);
+
   /**
    * Fetch user's checklists (by position)
+   * Deduplicates concurrent requests to prevent double-fetching
    */
   const fetchMyChecklists = useCallback(
     async (includeArchived = false): Promise<void> => {
+      // If there's already a request in flight, return that promise
+      if (fetchInFlightRef.current) {
+        return fetchInFlightRef.current;
+      }
+
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
-      try {
-        const checklists = await checklistService.getMyChecklists(
-          includeArchived
-        );
-        setState({
-          checklists,
-          loading: false,
-          error: null,
-        });
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Failed to fetch checklists';
-        setState({
-          checklists: [],
-          loading: false,
-          error: errorMessage,
-        });
-        toast.error(errorMessage);
-      }
+      const fetchPromise = (async () => {
+        try {
+          const checklists = await checklistService.getMyChecklists(
+            includeArchived
+          );
+          setState({
+            checklists,
+            loading: false,
+            error: null,
+          });
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Failed to fetch checklists';
+          setState({
+            checklists: [],
+            loading: false,
+            error: errorMessage,
+          });
+          toast.error(errorMessage);
+        } finally {
+          // Clear the in-flight reference when done
+          fetchInFlightRef.current = null;
+        }
+      })();
+
+      fetchInFlightRef.current = fetchPromise;
+      return fetchPromise;
     },
     []
   );

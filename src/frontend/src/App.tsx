@@ -5,7 +5,7 @@
  * Uses BrowserRouter for clean URLs (not hash routing).
  */
 
-import { useState } from "react";
+import React from "react";
 import {
   BrowserRouter,
   Routes,
@@ -138,17 +138,14 @@ const AppNavBar: React.FC<AppNavBarProps> = ({ onProfileChange }) => {
  * Main App Component
  */
 function App() {
-  // State to trigger re-renders when profile changes
-  const [profileKey, setProfileKey] = useState(0);
-
   /**
    * Handle profile change from ProfileMenu
-   * Triggers re-render of pages to fetch new data
+   * Note: The profileChanged event is already dispatched by saveProfile in ProfileMenu,
+   * so we don't dispatch it here to avoid duplicate network requests.
    */
   const handleProfileChange = (positions: string[], role: PermissionRole) => {
     console.log("[App] Profile changed - Positions:", positions, "Role:", role);
-    // Increment key to force re-render of routes
-    setProfileKey((prev) => prev + 1);
+    // Event is already dispatched by saveProfile in ProfileMenu - no need to dispatch again
   };
 
   return (
@@ -156,7 +153,7 @@ function App() {
       <Box sx={{ minHeight: "100vh", backgroundColor: "#F5F5F5" }}>
         <AppNavBar onProfileChange={handleProfileChange} />
 
-        <Routes key={profileKey}>
+        <Routes>
           {/* Default route - redirect to My Checklists */}
           <Route path="/" element={<Navigate to="/checklists" replace />} />
 

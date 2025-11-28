@@ -98,10 +98,11 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ onProfileChange }) => 
   // Sync mock user context with stored profile on mount
   useEffect(() => {
     const currentMockUser = getCurrentUser();
-    if (storedProfile.positions.length > 0 && currentMockUser.position !== storedProfile.positions[0]) {
+    if (storedProfile.positions.length > 0) {
       setMockUser({
         ...currentMockUser,
         position: storedProfile.positions[0],
+        positions: storedProfile.positions,
       });
     }
   }, []); // Only run on mount
@@ -125,11 +126,12 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ onProfileChange }) => 
         return prev;
       }
 
-      // Update mock user context for API requests (use first position as primary)
+      // Update mock user context for API requests (include all positions)
       const currentMockUser = getCurrentUser();
       setMockUser({
         ...currentMockUser,
         position: newPositions[0],
+        positions: newPositions,
       });
 
       // Save and notify

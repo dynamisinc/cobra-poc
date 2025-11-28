@@ -64,15 +64,15 @@ const getCompletionDisplay = (item: ChecklistItemDto) => {
   if (item.itemType === 'checkbox' && item.isCompleted) {
     // Show who completed it (abbreviated)
     const name = item.completedBy?.split(' ')[0] || 'Done';
-    return { label: name, color: c5Colors.successGreen };
+    return { label: name, bgColor: c5Colors.green, textColor: c5Colors.white };
   }
   if (item.itemType === 'status' && item.currentStatus) {
     const options = parseStatusOptions(item.statusConfiguration);
     const current = options.find(o => o.label === item.currentStatus);
     if (current?.isCompletion) {
-      return { label: item.currentStatus, color: c5Colors.successGreen };
+      return { label: item.currentStatus, bgColor: c5Colors.green, textColor: c5Colors.white };
     }
-    return { label: item.currentStatus, color: c5Colors.cobaltBlue };
+    return { label: item.currentStatus, bgColor: c5Colors.cobaltBlue, textColor: c5Colors.white };
   }
   return null;
 };
@@ -161,7 +161,7 @@ export const ChecklistItemClassic: React.FC<ChecklistItemClassicProps> = ({
                 {opt.isCompletion && (
                   <FontAwesomeIcon
                     icon={faCheck}
-                    style={{ marginLeft: 8, color: c5Colors.successGreen, fontSize: 12 }}
+                    style={{ marginLeft: 8, color: c5Colors.green, fontSize: 12 }}
                   />
                 )}
               </MenuItem>
@@ -212,10 +212,10 @@ export const ChecklistItemClassic: React.FC<ChecklistItemClassicProps> = ({
           sx={{
             height: 24,
             fontSize: '0.75rem',
-            backgroundColor: completionDisplay.color,
-            color: 'white',
+            backgroundColor: completionDisplay.bgColor,
+            color: completionDisplay.textColor,
             '& .MuiChip-icon': {
-              color: 'white',
+              color: completionDisplay.textColor,
             },
           }}
         />
