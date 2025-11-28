@@ -120,7 +120,7 @@ export const checklistService = {
   ): Promise<ChecklistInstanceDto[]> {
     try {
       const response = await apiClient.get<ChecklistInstanceDto[]>(
-        '/api/checklists/my-checklists',
+        '/checklists/my-checklists',
         {
           params: { includeArchived },
         }
@@ -145,7 +145,7 @@ export const checklistService = {
   async getChecklistById(checklistId: string): Promise<ChecklistInstanceDto> {
     try {
       const response = await apiClient.get<ChecklistInstanceDto>(
-        `/api/checklists/${checklistId}`
+        `/checklists/${checklistId}`
       );
       return response.data;
     } catch (error) {
@@ -166,7 +166,7 @@ export const checklistService = {
   ): Promise<ChecklistInstanceDto[]> {
     try {
       const response = await apiClient.get<ChecklistInstanceDto[]>(
-        `/api/checklists/event/${encodeURIComponent(eventId)}`,
+        `/checklists/event/${encodeURIComponent(eventId)}`,
         {
           params: { includeArchived },
         }
@@ -192,7 +192,7 @@ export const checklistService = {
   ): Promise<ChecklistInstanceDto[]> {
     try {
       const response = await apiClient.get<ChecklistInstanceDto[]>(
-        `/api/checklists/event/${encodeURIComponent(
+        `/checklists/event/${encodeURIComponent(
           eventId
         )}/period/${encodeURIComponent(operationalPeriodId)}`,
         {
@@ -219,7 +219,7 @@ export const checklistService = {
   ): Promise<ChecklistInstanceDto> {
     try {
       const response = await apiClient.post<ChecklistInstanceDto>(
-        '/api/checklists',
+        '/checklists',
         request
       );
       return response.data;
@@ -241,7 +241,7 @@ export const checklistService = {
   ): Promise<ChecklistInstanceDto> {
     try {
       const response = await apiClient.put<ChecklistInstanceDto>(
-        `/api/checklists/${checklistId}`,
+        `/checklists/${checklistId}`,
         request
       );
       return response.data;
@@ -265,7 +265,7 @@ export const checklistService = {
   ): Promise<ChecklistInstanceDto> {
     try {
       const response = await apiClient.post<ChecklistInstanceDto>(
-        `/api/checklists/${checklistId}/clone`,
+        `/checklists/${checklistId}/clone`,
         { newName, preserveStatus }
       );
       return response.data;
@@ -281,7 +281,7 @@ export const checklistService = {
    */
   async archiveChecklist(checklistId: string): Promise<void> {
     try {
-      await apiClient.delete(`/api/checklists/${checklistId}`);
+      await apiClient.delete(`/checklists/${checklistId}`);
     } catch (error) {
       console.error(`Failed to archive checklist ${checklistId}:`, error);
       throw new Error(getErrorMessage(error));
@@ -294,7 +294,7 @@ export const checklistService = {
    */
   async restoreChecklist(checklistId: string): Promise<void> {
     try {
-      await apiClient.post(`/api/checklists/${checklistId}/restore`);
+      await apiClient.post(`/checklists/${checklistId}/restore`);
     } catch (error) {
       console.error(`Failed to restore checklist ${checklistId}:`, error);
       throw new Error(getErrorMessage(error));
@@ -308,7 +308,7 @@ export const checklistService = {
   async getArchivedChecklists(): Promise<ChecklistInstanceDto[]> {
     try {
       const response = await apiClient.get<ChecklistInstanceDto[]>(
-        '/api/checklists/archived'
+        '/checklists/archived'
       );
       return response.data;
     } catch (error) {

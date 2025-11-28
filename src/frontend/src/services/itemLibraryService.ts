@@ -20,7 +20,7 @@ export const itemLibraryService = {
     searchText?: string;
     sortBy?: 'recent' | 'popular' | 'alphabetical';
   }): Promise<ItemLibraryEntry[]> {
-    const response = await apiClient.get<ItemLibraryEntry[]>('/api/itemlibrary', {
+    const response = await apiClient.get<ItemLibraryEntry[]>('/itemlibrary', {
       params,
     });
     return response.data;
@@ -30,7 +30,7 @@ export const itemLibraryService = {
    * Get a specific library item by ID
    */
   async getLibraryItemById(id: string): Promise<ItemLibraryEntry> {
-    const response = await apiClient.get<ItemLibraryEntry>(`/api/itemlibrary/${id}`);
+    const response = await apiClient.get<ItemLibraryEntry>(`/itemlibrary/${id}`);
     return response.data;
   },
 
@@ -38,7 +38,7 @@ export const itemLibraryService = {
    * Create a new library item
    */
   async createLibraryItem(request: CreateItemLibraryEntryRequest): Promise<ItemLibraryEntry> {
-    const response = await apiClient.post<ItemLibraryEntry>('/api/itemlibrary', request);
+    const response = await apiClient.post<ItemLibraryEntry>('/itemlibrary', request);
     return response.data;
   },
 
@@ -49,7 +49,7 @@ export const itemLibraryService = {
     id: string,
     request: UpdateItemLibraryEntryRequest
   ): Promise<ItemLibraryEntry> {
-    const response = await apiClient.put<ItemLibraryEntry>(`/api/itemlibrary/${id}`, request);
+    const response = await apiClient.put<ItemLibraryEntry>(`/itemlibrary/${id}`, request);
     return response.data;
   },
 
@@ -57,27 +57,27 @@ export const itemLibraryService = {
    * Increment usage count for a library item (when added to template)
    */
   async incrementUsageCount(id: string): Promise<void> {
-    await apiClient.post(`/api/itemlibrary/${id}/increment-usage`);
+    await apiClient.post(`/itemlibrary/${id}/increment-usage`);
   },
 
   /**
    * Archive a library item (soft delete)
    */
   async archiveLibraryItem(id: string): Promise<void> {
-    await apiClient.delete(`/api/itemlibrary/${id}`);
+    await apiClient.delete(`/itemlibrary/${id}`);
   },
 
   /**
    * Restore an archived library item
    */
   async restoreLibraryItem(id: string): Promise<void> {
-    await apiClient.post(`/api/itemlibrary/${id}/restore`);
+    await apiClient.post(`/itemlibrary/${id}/restore`);
   },
 
   /**
    * Permanently delete a library item (admin only)
    */
   async deleteLibraryItem(id: string): Promise<void> {
-    await apiClient.delete(`/api/itemlibrary/${id}/permanent`);
+    await apiClient.delete(`/itemlibrary/${id}/permanent`);
   },
 };

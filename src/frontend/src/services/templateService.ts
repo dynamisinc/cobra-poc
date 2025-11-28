@@ -66,7 +66,7 @@ export const templateService = {
    */
   async getAllTemplates(includeInactive = false): Promise<Template[]> {
     try {
-      const response = await apiClient.get<Template[]>('/api/templates', {
+      const response = await apiClient.get<Template[]>('/templates', {
         params: { includeInactive },
       });
       return response.data;
@@ -88,7 +88,7 @@ export const templateService = {
   ): Promise<Template[]> {
     try {
       const response = await apiClient.get<Template[]>(
-        `/api/templates/category/${encodeURIComponent(category)}`,
+        `/templates/category/${encodeURIComponent(category)}`,
         {
           params: { includeInactive },
         }
@@ -108,7 +108,7 @@ export const templateService = {
   async getTemplateById(templateId: string): Promise<Template> {
     try {
       const response = await apiClient.get<Template>(
-        `/api/templates/${templateId}`
+        `/templates/${templateId}`
       );
       return response.data;
     } catch (error) {
@@ -124,7 +124,7 @@ export const templateService = {
    */
   async createTemplate(request: CreateTemplateRequest): Promise<Template> {
     try {
-      const response = await apiClient.post<Template>('/api/templates', request);
+      const response = await apiClient.post<Template>('/templates', request);
       return response.data;
     } catch (error) {
       console.error('Failed to create template:', error);
@@ -144,7 +144,7 @@ export const templateService = {
   ): Promise<Template> {
     try {
       const response = await apiClient.put<Template>(
-        `/api/templates/${templateId}`,
+        `/templates/${templateId}`,
         request
       );
       return response.data;
@@ -166,7 +166,7 @@ export const templateService = {
   ): Promise<Template> {
     try {
       const response = await apiClient.post<Template>(
-        `/api/templates/${templateId}/duplicate`,
+        `/templates/${templateId}/duplicate`,
         { newName }
       );
       return response.data;
@@ -182,7 +182,7 @@ export const templateService = {
    */
   async archiveTemplate(templateId: string): Promise<void> {
     try {
-      await apiClient.delete(`/api/templates/${templateId}`);
+      await apiClient.delete(`/templates/${templateId}`);
     } catch (error) {
       console.error(`Failed to archive template ${templateId}:`, error);
       throw new Error(getErrorMessage(error));
@@ -195,7 +195,7 @@ export const templateService = {
    */
   async restoreTemplate(templateId: string): Promise<void> {
     try {
-      await apiClient.post(`/api/templates/${templateId}/restore`);
+      await apiClient.post(`/templates/${templateId}/restore`);
     } catch (error) {
       console.error(`Failed to restore template ${templateId}:`, error);
       throw new Error(getErrorMessage(error));
@@ -208,7 +208,7 @@ export const templateService = {
    */
   async getArchivedTemplates(): Promise<Template[]> {
     try {
-      const response = await apiClient.get<Template[]>('/api/templates/archived');
+      const response = await apiClient.get<Template[]>('/templates/archived');
       return response.data;
     } catch (error) {
       console.error('Failed to fetch archived templates:', error);
