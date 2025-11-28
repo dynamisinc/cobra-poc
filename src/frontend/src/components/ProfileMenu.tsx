@@ -9,7 +9,7 @@
  * For POC/demo purposes only - in production, roles come from authentication.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -25,9 +25,15 @@ import {
   Chip,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUser, faChevronDown } from '@fortawesome/free-solid-svg-icons';
+import { faUser, faChevronDown, faPalette } from '@fortawesome/free-solid-svg-icons';
 import { ICS_POSITIONS, PermissionRole } from '../types';
 import { cobraTheme } from '../theme/cobraTheme';
+import {
+  checklistVariants,
+  type ChecklistVariant,
+  getCurrentVariant,
+  setVariant as setStoredVariant,
+} from '../experiments';
 
 interface ProfileMenuProps {
   onProfileChange: (positions: string[], role: PermissionRole) => void;
@@ -75,8 +81,18 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ onProfileChange }) => 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedPositions, setSelectedPositions] = useState<string[]>(storedProfile.positions);
   const [selectedRole, setSelectedRole] = useState<PermissionRole>(storedProfile.role);
+  const [selectedVariant, setSelectedVariant] = useState<ChecklistVariant>(getCurrentVariant());
 
   const open = Boolean(anchorEl);
+
+  // Sync variant state with storage
+  useEffect(() => {
+    const handleVariantChange = () => {
+      setSelectedVariant(getCurrentVariant());
+    };
+    window.addEventListener('variantChanged', handleVariantChange);
+    return () => window.removeEventListener('variantChanged', handleVariantChange);
+  }, []);
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -112,6 +128,12 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ onProfileChange }) => 
     // Save and notify
     saveProfile(selectedPositions, newRole);
     onProfileChange(selectedPositions, newRole);
+  };
+
+  const handleVariantChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newVariant = event.target.value as ChecklistVariant;
+    setSelectedVariant(newVariant);
+    setStoredVariant(newVariant);
   };
 
   // Display text
@@ -255,6 +277,40 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ onProfileChange }) => 
                   </Box>
                 }
               />
+            </RadioGroup>
+          </FormControl>
+        </Box>
+
+        <Divider />
+
+        {/* UX Variant Selection */}
+        <Box sx={{ px: 2, py: 1.5 }}>
+          <FormControl component="fieldset">
+            <FormLabel component="legend" sx={{ fontWeight: 'bold', fontSize: '0.875rem', mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <FontAwesomeIcon icon={faPalette} style={{ fontSize: 14 }} />
+              Checklist UX Variant
+            </FormLabel>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+              Switch between different checklist experiences for testing
+            </Typography>
+            <RadioGroup value={selectedVariant} onChange={handleVariantChange}>
+              {checklistVariants.map((variant) => (
+                <FormControlLabel
+                  key={variant.id}
+                  value={variant.id}
+                  control={<Radio size="small" />}
+                  label={
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                        {variant.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {variant.description}
+                      </Typography>
+                    </Box>
+                  }
+                />
+              ))}
             </RadioGroup>
           </FormControl>
         </Box>

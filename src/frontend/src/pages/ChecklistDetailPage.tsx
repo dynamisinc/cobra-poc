@@ -34,9 +34,15 @@ import { toast } from 'react-toastify';
 import { useChecklistDetail } from '../hooks/useChecklistDetail';
 import { useItemActions } from '../hooks/useItemActions';
 import { useChecklistHub } from '../hooks/useChecklistHub';
+import { useChecklistVariant } from '../experiments';
 import { c5Colors } from '../theme/c5Theme';
 import { ItemNotesDialog } from '../components/ItemNotesDialog';
 import { CreateChecklistDialog, type ChecklistCreationData } from '../components/CreateChecklistDialog';
+import {
+  ChecklistDetailClassic,
+  ChecklistDetailCompact,
+  ChecklistDetailProgressive,
+} from '../components/checklist-variants';
 import { checklistService } from '../services/checklistService';
 import type { ChecklistItemDto } from '../services/checklistService';
 import type { StatusOption } from '../types';
@@ -72,6 +78,7 @@ const parseStatusConfiguration = (statusConfiguration?: string | null): StatusOp
 export const ChecklistDetailPage: React.FC = () => {
   const { checklistId } = useParams<{ checklistId: string }>();
   const navigate = useNavigate();
+  const { variant } = useChecklistVariant();
   const {
     checklist,
     loading,
@@ -335,6 +342,115 @@ export const ChecklistDetailPage: React.FC = () => {
     );
   }
 
+  // Common handlers for variants
+  const variantHandleToggleComplete = async (itemId: string, currentStatus: boolean) => {
+    if (!checklistId) return;
+    await toggleComplete(checklistId, itemId, currentStatus, undefined, updateItemLocally);
+    fetchChecklist(checklistId);
+  };
+
+  const variantHandleStatusChange = async (itemId: string, newStatus: string) => {
+    if (!checklistId) return;
+    await updateStatus(checklistId, itemId, newStatus, undefined, updateItemLocally);
+    fetchChecklist(checklistId);
+  };
+
+  const variantHandleSaveNotes = async (itemId: string, notes: string) => {
+    if (!checklistId) return;
+    await updateNotes(checklistId, itemId, notes, updateItemLocally);
+    fetchChecklist(checklistId);
+  };
+
+  const variantHandleCopy = (mode: 'clone-clean' | 'clone-direct') => {
+    handleOpenCopyDialog(mode);
+  };
+
+  // Render variant-specific views (non-control variants)
+  if (variant === 'classic') {
+    return (
+      <>
+        <ChecklistDetailClassic
+          checklist={checklist}
+          onToggleComplete={variantHandleToggleComplete}
+          onStatusChange={variantHandleStatusChange}
+          onSaveNotes={variantHandleSaveNotes}
+          onCopy={variantHandleCopy}
+          isProcessing={isProcessing}
+        />
+        <CreateChecklistDialog
+          open={copyDialogOpen}
+          mode={copyMode}
+          sourceChecklistId={checklist.id}
+          sourceChecklistName={checklist.name}
+          eventId={checklist.eventId}
+          eventName={checklist.eventName}
+          defaultOperationalPeriodId={checklist.operationalPeriodId}
+          defaultOperationalPeriodName={checklist.operationalPeriodName}
+          onSave={handleSaveCopy}
+          onCancel={handleCloseCopyDialog}
+          saving={copying}
+        />
+      </>
+    );
+  }
+
+  if (variant === 'compact') {
+    return (
+      <>
+        <ChecklistDetailCompact
+          checklist={checklist}
+          onToggleComplete={variantHandleToggleComplete}
+          onStatusChange={variantHandleStatusChange}
+          onSaveNotes={variantHandleSaveNotes}
+          onCopy={variantHandleCopy}
+          isProcessing={isProcessing}
+        />
+        <CreateChecklistDialog
+          open={copyDialogOpen}
+          mode={copyMode}
+          sourceChecklistId={checklist.id}
+          sourceChecklistName={checklist.name}
+          eventId={checklist.eventId}
+          eventName={checklist.eventName}
+          defaultOperationalPeriodId={checklist.operationalPeriodId}
+          defaultOperationalPeriodName={checklist.operationalPeriodName}
+          onSave={handleSaveCopy}
+          onCancel={handleCloseCopyDialog}
+          saving={copying}
+        />
+      </>
+    );
+  }
+
+  if (variant === 'progressive') {
+    return (
+      <>
+        <ChecklistDetailProgressive
+          checklist={checklist}
+          onToggleComplete={variantHandleToggleComplete}
+          onStatusChange={variantHandleStatusChange}
+          onSaveNotes={variantHandleSaveNotes}
+          onCopy={variantHandleCopy}
+          isProcessing={isProcessing}
+        />
+        <CreateChecklistDialog
+          open={copyDialogOpen}
+          mode={copyMode}
+          sourceChecklistId={checklist.id}
+          sourceChecklistName={checklist.name}
+          eventId={checklist.eventId}
+          eventName={checklist.eventName}
+          defaultOperationalPeriodId={checklist.operationalPeriodId}
+          defaultOperationalPeriodName={checklist.operationalPeriodName}
+          onSave={handleSaveCopy}
+          onCancel={handleCloseCopyDialog}
+          saving={copying}
+        />
+      </>
+    );
+  }
+
+  // Default: Control variant (existing implementation)
   return (
     <Container maxWidth="lg" sx={{ mt: 2, mb: 2 }}>
       {/* Header */}
