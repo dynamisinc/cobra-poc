@@ -179,7 +179,7 @@ export const MyChecklistsPage: React.FC = () => {
       const position = profile?.positions?.[0] || 'Unknown';
 
       // Create checklist from template
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/checklists`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/checklists`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
