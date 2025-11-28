@@ -69,7 +69,10 @@
       "Bash(az sql db show:*)",
       "Bash(az group list:*)",
       "Bash(npm test:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(git update-ref:*)",
+      "Bash(Select-String -Pattern \"api/api\")",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

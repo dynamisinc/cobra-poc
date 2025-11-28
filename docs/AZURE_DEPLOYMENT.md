@@ -169,6 +169,24 @@ const parseStatusConfiguration = (statusConfiguration?: string | null): StatusOp
 
 ## Deployment Process
 
+### Quick Deploy (Recommended)
+
+Use the deployment script for a one-command deployment:
+
+```powershell
+cd deploy/scripts
+.\quick-deploy.ps1
+```
+
+Options:
+- `.\quick-deploy.ps1 -Message "fix: bug description"` - Custom commit message
+- `.\quick-deploy.ps1 -SkipBuild` - Skip frontend build (use existing dist)
+- `.\quick-deploy.ps1 -SkipTests` - Skip running tests
+
+### Manual Steps
+
+If you prefer to deploy manually, follow these steps:
+
 ### Step 1: Build Frontend
 
 ```bash
@@ -189,13 +207,17 @@ cp -r src/frontend/dist/* src/backend/ChecklistAPI/wwwroot/
 
 ### Step 3: Commit and Deploy
 
+**IMPORTANT:** Azure App Service deploys from the `master` branch, not `main`. Always push to `master`:
+
 ```bash
 git add -A
 git commit -m "feat: deploy application to Azure"
-git push azure HEAD:main
+git push azure HEAD:master
 ```
 
 The deployment typically takes 1-2 minutes. Watch for "Deployment successful" in the output.
+
+> **Note:** If you accidentally push to `main`, the files will be in the Azure repository but won't deploy. The deployment only triggers from `master`.
 
 ### Step 4: Restart if Needed
 
@@ -309,6 +331,36 @@ await apiClient.patch(`/checklists/${checklistId}/items/${itemId}/completion`);
 ```bash
 az webapp restart --name checklist-poc-app --resource-group c5-poc-eastus2-rg
 ```
+
+---
+
+### Issue 6: Deployment Shows Success but Changes Not Applied
+
+**Symptoms:**
+- `git push azure HEAD:main` shows "Deployment successful"
+- Browser still shows old JavaScript bundle
+- Changes are not visible in the deployed app
+
+**Cause:** Azure App Service deploys from `master` branch, not `main`. The Azure repository has two branches and only `master` triggers deployment.
+
+**Diagnosis:**
+```bash
+# Check what branch Azure is using
+curl -s -u '$checklist-poc-app:<password>' \
+  "https://checklist-poc-app.scm.azurewebsites.net/api/command" \
+  -H "Content-Type: application/json" \
+  -d '{"command":"git branch -v","dir":"site/repository"}'
+
+# Output will show which branch is checked out (marked with *)
+```
+
+**Solution:**
+```bash
+# Push to master instead of main
+git push azure HEAD:master
+```
+
+**Prevention:** Always use `git push azure HEAD:master` for deployments.
 
 ---
 

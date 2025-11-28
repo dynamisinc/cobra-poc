@@ -81,8 +81,10 @@ export const PositionSelector: React.FC<PositionSelectorProps> = ({
     setSelectedPositions(positions);
 
     // Update mock user context (use first position as primary)
+    // Get fresh current user to avoid stale reference from component mount
+    const freshUser = getCurrentUser();
     setMockUser({
-      ...currentUser,
+      ...freshUser,
       position: positions[0], // Backend expects single position
     });
 
@@ -107,9 +109,10 @@ export const PositionSelector: React.FC<PositionSelectorProps> = ({
 
     setSelectedPositions(newPositions);
 
-    // Update mock user
+    // Update mock user (get fresh reference to avoid stale data)
+    const freshUser = getCurrentUser();
     setMockUser({
-      ...currentUser,
+      ...freshUser,
       position: newPositions[0],
     });
 
