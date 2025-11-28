@@ -1,9 +1,11 @@
 using ChecklistAPI.Data;
+using ChecklistAPI.Hubs;
 using ChecklistAPI.Models;
 using ChecklistAPI.Models.DTOs;
 using ChecklistAPI.Models.Entities;
 using ChecklistAPI.Services;
 using ChecklistAPI.Tests.Helpers;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -18,6 +20,7 @@ public class ChecklistItemServiceTests : IDisposable
 {
     private readonly ChecklistDbContext _context;
     private readonly Mock<ILogger<ChecklistItemService>> _mockLogger;
+    private readonly Mock<IHubContext<ChecklistHub>> _mockHubContext;
     private readonly ChecklistItemService _service;
     private readonly UserContext _testUser;
     private readonly UserContext _alternateUser;
@@ -26,7 +29,16 @@ public class ChecklistItemServiceTests : IDisposable
     {
         _context = TestDbContextFactory.CreateInMemoryContext();
         _mockLogger = new Mock<ILogger<ChecklistItemService>>();
-        _service = new ChecklistItemService(_context, _mockLogger.Object);
+        _mockHubContext = new Mock<IHubContext<ChecklistHub>>();
+
+        // Setup mock hub context
+        var mockClients = new Mock<IHubClients>();
+        var mockClientProxy = new Mock<IClientProxy>();
+        mockClients.Setup(c => c.Group(It.IsAny<string>())).Returns(mockClientProxy.Object);
+        mockClients.Setup(c => c.All).Returns(mockClientProxy.Object);
+        _mockHubContext.Setup(h => h.Clients).Returns(mockClients.Object);
+
+        _service = new ChecklistItemService(_context, _mockLogger.Object, _mockHubContext.Object);
         _testUser = TestUserContextFactory.CreateTestUser(); // Position: "Safety Officer"
         _alternateUser = new UserContext
         {

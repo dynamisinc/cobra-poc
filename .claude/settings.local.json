@@ -67,7 +67,9 @@
       "Bash(npm run build:*)",
       "Bash(unzip:*)",
       "Bash(az sql db show:*)",
-      "Bash(az group list:*)"
+      "Bash(az group list:*)",
+      "Bash(npm test:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

@@ -8,12 +8,6 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add Application Insights telemetry
-builder.Services.AddApplicationInsightsTelemetry(options =>
-{
-    options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
-});
-
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -80,7 +74,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Global exception handler - returns JSON errors instead of empty 500
+// Global exception handler - returns full JSON errors for POC debugging
 app.UseExceptionHandler(errorApp =>
 {
     errorApp.Run(async context =>
@@ -92,12 +86,24 @@ app.UseExceptionHandler(errorApp =>
         var error = exceptionFeature?.Error;
 
         var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        logger.LogError(error, "Unhandled exception for request {Path}", context.Request.Path);
+        logger.LogError(error, "Unhandled exception for request {Method} {Path}. Query: {Query}",
+            context.Request.Method,
+            context.Request.Path,
+            context.Request.QueryString);
 
+        // POC: Always return full error details for debugging
+        // TODO: Remove detailed errors for production deployment
         await context.Response.WriteAsJsonAsync(new
         {
-            message = "An error occurred processing your request.",
-            detail = app.Environment.IsDevelopment() ? error?.Message : null
+            message = error?.Message ?? "An error occurred processing your request.",
+            exceptionType = error?.GetType().FullName,
+            stackTrace = error?.StackTrace,
+            innerException = error?.InnerException?.Message,
+            innerExceptionType = error?.InnerException?.GetType().FullName,
+            innerStackTrace = error?.InnerException?.StackTrace,
+            path = context.Request.Path.ToString(),
+            method = context.Request.Method,
+            timestamp = DateTime.UtcNow
         });
     });
 });
