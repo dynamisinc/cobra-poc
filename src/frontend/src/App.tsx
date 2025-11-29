@@ -14,7 +14,7 @@ import {
   Link,
   useLocation,
 } from "react-router-dom";
-import { Box, AppBar, Toolbar, Typography, Button } from "@mui/material";
+import { Box, AppBar, Toolbar, Typography, Button, Divider } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faClipboardList,
@@ -28,18 +28,21 @@ import { TemplateEditorPage } from "./pages/TemplateEditorPage";
 import { TemplatePreviewPage } from "./pages/TemplatePreviewPage";
 import { ItemLibraryPage } from "./pages/ItemLibraryPage";
 import { ProfileMenu } from "./components/ProfileMenu";
+import { EventSelector } from "./components/EventSelector";
+import { CreateEventDialog } from "./components/CreateEventDialog";
 import { usePermissions } from "./hooks/usePermissions";
 import { PermissionRole } from "./types";
 import { cobraTheme } from "./theme/cobraTheme";
 
 interface AppNavBarProps {
   onProfileChange: (positions: string[], role: PermissionRole) => void;
+  onCreateEventClick: () => void;
 }
 
 /**
  * App Navigation Bar
  */
-const AppNavBar: React.FC<AppNavBarProps> = ({ onProfileChange }) => {
+const AppNavBar: React.FC<AppNavBarProps> = ({ onProfileChange, onCreateEventClick }) => {
   const location = useLocation();
   const permissions = usePermissions();
 
@@ -57,12 +60,22 @@ const AppNavBar: React.FC<AppNavBarProps> = ({ onProfileChange }) => {
           size="lg"
           style={{ marginRight: 16 }}
         />
-        <Typography variant="h6" sx={{ fontWeight: "bold", color: "#FFFACD" }}>
+        <Typography variant="h6" sx={{ fontWeight: "bold", color: "#FFFACD", mr: 2 }}>
           COBRA Checklist
         </Typography>
 
+        {/* Event Selector */}
+        <EventSelector onCreateEventClick={onCreateEventClick} />
+
+        {/* Vertical divider */}
+        <Divider
+          orientation="vertical"
+          flexItem
+          sx={{ mx: 2, borderColor: "rgba(255, 250, 205, 0.3)" }}
+        />
+
         {/* Navigation Links */}
-        <Box sx={{ flexGrow: 1, ml: 4, display: "flex", gap: 2 }}>
+        <Box sx={{ flexGrow: 1, display: "flex", gap: 2 }}>
           {/* My Checklists - visible to all except None */}
           <Button
             component={Link}
@@ -138,8 +151,9 @@ const AppNavBar: React.FC<AppNavBarProps> = ({ onProfileChange }) => {
  * Main App Component
  */
 function App() {
-  // State to trigger re-renders when profile changes
-  const [profileKey, setProfileKey] = useState(0);
+  // State to trigger re-renders when profile or event changes
+  const [appKey, setAppKey] = useState(0);
+  const [createEventDialogOpen, setCreateEventDialogOpen] = useState(false);
 
   /**
    * Handle profile change from ProfileMenu
@@ -148,15 +162,40 @@ function App() {
   const handleProfileChange = (positions: string[], role: PermissionRole) => {
     console.log("[App] Profile changed - Positions:", positions, "Role:", role);
     // Increment key to force re-render of routes
-    setProfileKey((prev) => prev + 1);
+    setAppKey((prev) => prev + 1);
+  };
+
+  /**
+   * Handle event creation dialog
+   */
+  const handleCreateEventClick = () => {
+    setCreateEventDialogOpen(true);
+  };
+
+  /**
+   * Handle event created - refresh app
+   */
+  const handleEventCreated = () => {
+    console.log("[App] Event created - refreshing");
+    setAppKey((prev) => prev + 1);
   };
 
   return (
     <BrowserRouter>
       <Box sx={{ minHeight: "100vh", backgroundColor: "#F5F5F5" }}>
-        <AppNavBar onProfileChange={handleProfileChange} />
+        <AppNavBar
+          onProfileChange={handleProfileChange}
+          onCreateEventClick={handleCreateEventClick}
+        />
 
-        <Routes key={profileKey}>
+        {/* Create Event Dialog */}
+        <CreateEventDialog
+          open={createEventDialogOpen}
+          onClose={() => setCreateEventDialogOpen(false)}
+          onEventCreated={handleEventCreated}
+        />
+
+        <Routes key={appKey}>
           {/* Default route - redirect to My Checklists */}
           <Route path="/" element={<Navigate to="/checklists" replace />} />
 

@@ -18,7 +18,7 @@ public class OperationalPeriod
     /// <summary>
     /// The event this operational period belongs to
     /// </summary>
-    public string EventId { get; set; } = string.Empty;
+    public Guid EventId { get; set; }
 
     /// <summary>
     /// Display name (e.g., "OP 1 - 12/20 0600-1800")
@@ -58,6 +58,6 @@ public class OperationalPeriod
     public DateTime? LastModifiedAt { get; set; }
 
     // Navigation properties
-    // NOTE: Event navigation not added yet (Event entity doesn't exist in POC)
+    public Event Event { get; set; } = null!;
     public ICollection<ChecklistInstance> Checklists { get; set; } = new List<ChecklistInstance>();
 }
