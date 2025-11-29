@@ -21,7 +21,7 @@ import {
   faBook,
   faBoxArchive,
 } from "@fortawesome/free-solid-svg-icons";
-import { MyChecklistsPage } from "./pages/MyChecklistsPage";
+import { LandingPage } from "./pages/LandingPage";
 import { ChecklistDetailPage } from "./pages/ChecklistDetailPage";
 import { TemplateLibraryPage } from "./pages/TemplateLibraryPage";
 import { TemplateEditorPage } from "./pages/TemplateEditorPage";
@@ -157,8 +157,8 @@ function App() {
           {/* Default route - redirect to My Checklists */}
           <Route path="/" element={<Navigate to="/checklists" replace />} />
 
-          {/* My Checklists page */}
-          <Route path="/checklists" element={<MyChecklistsPage />} />
+          {/* My Checklists page - uses variant switcher */}
+          <Route path="/checklists" element={<LandingPage />} />
 
           {/* Checklist Detail page */}
           <Route

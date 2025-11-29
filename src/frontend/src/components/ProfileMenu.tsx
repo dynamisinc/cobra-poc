@@ -33,6 +33,10 @@ import {
   type ChecklistVariant,
   getCurrentVariant,
   setVariant as setStoredVariant,
+  landingPageVariants,
+  type LandingPageVariant,
+  getCurrentLandingVariant,
+  setLandingVariant as setStoredLandingVariant,
 } from '../experiments';
 import { setMockUser, getCurrentUser } from '../services/api';
 
@@ -83,6 +87,7 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ onProfileChange }) => 
   const [selectedPositions, setSelectedPositions] = useState<string[]>(storedProfile.positions);
   const [selectedRole, setSelectedRole] = useState<PermissionRole>(storedProfile.role);
   const [selectedVariant, setSelectedVariant] = useState<ChecklistVariant>(getCurrentVariant());
+  const [selectedLandingVariant, setSelectedLandingVariant] = useState<LandingPageVariant>(getCurrentLandingVariant());
 
   const open = Boolean(anchorEl);
 
@@ -93,6 +98,15 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ onProfileChange }) => 
     };
     window.addEventListener('variantChanged', handleVariantChange);
     return () => window.removeEventListener('variantChanged', handleVariantChange);
+  }, []);
+
+  // Sync landing variant state with storage
+  useEffect(() => {
+    const handleLandingVariantChange = () => {
+      setSelectedLandingVariant(getCurrentLandingVariant());
+    };
+    window.addEventListener('landingVariantChanged', handleLandingVariantChange);
+    return () => window.removeEventListener('landingVariantChanged', handleLandingVariantChange);
   }, []);
 
   // Sync mock user context with stored profile on mount
@@ -155,6 +169,12 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ onProfileChange }) => 
     const newVariant = event.target.value as ChecklistVariant;
     setSelectedVariant(newVariant);
     setStoredVariant(newVariant);
+  };
+
+  const handleLandingVariantChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newVariant = event.target.value as LandingPageVariant;
+    setSelectedLandingVariant(newVariant);
+    setStoredLandingVariant(newVariant);
   };
 
   // Display text
@@ -316,6 +336,40 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ onProfileChange }) => 
             </Typography>
             <RadioGroup value={selectedVariant} onChange={handleVariantChange}>
               {checklistVariants.map((variant) => (
+                <FormControlLabel
+                  key={variant.id}
+                  value={variant.id}
+                  control={<Radio size="small" />}
+                  label={
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                        {variant.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {variant.description}
+                      </Typography>
+                    </Box>
+                  }
+                />
+              ))}
+            </RadioGroup>
+          </FormControl>
+        </Box>
+
+        <Divider />
+
+        {/* Landing Page Variant Selection */}
+        <Box sx={{ px: 2, py: 1.5 }}>
+          <FormControl component="fieldset">
+            <FormLabel component="legend" sx={{ fontWeight: 'bold', fontSize: '0.875rem', mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <FontAwesomeIcon icon={faPalette} style={{ fontSize: 14 }} />
+              Landing Page Variant
+            </FormLabel>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+              Switch between different home page layouts for testing
+            </Typography>
+            <RadioGroup value={selectedLandingVariant} onChange={handleLandingVariantChange}>
+              {landingPageVariants.map((variant) => (
                 <FormControlLabel
                   key={variant.id}
                   value={variant.id}
