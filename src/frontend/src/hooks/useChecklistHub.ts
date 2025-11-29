@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import * as signalR from '@microsoft/signalr';
 import { toast } from 'react-toastify';
+import { getCurrentUser } from '../services/api';
 
 /**
  * Event handlers for real-time checklist updates
@@ -125,29 +126,58 @@ export const useChecklistHub = (handlers: ChecklistHubHandlers = {}) => {
       .configureLogging(signalR.LogLevel.Warning)
       .build();
 
-    // Register event handlers
+    // Helper to check if the event was triggered by the current user
+    const isFromCurrentUser = (changedBy: string | null | undefined): boolean => {
+      if (!changedBy) return false;
+      const currentUserEmail = getCurrentUser().email;
+      return changedBy.toLowerCase() === currentUserEmail.toLowerCase();
+    };
+
+    // Register event handlers (filter out self-originating events)
     connection.on('ItemCompletionChanged', (data: ItemCompletionChangedEvent) => {
       console.log('[SignalR] ItemCompletionChanged:', data);
+      // Skip if this change was made by the current user
+      if (isFromCurrentUser(data.completedBy)) {
+        console.log('[SignalR] Ignoring self-originating ItemCompletionChanged event');
+        return;
+      }
       handlersRef.current.onItemCompletionChanged?.(data);
     });
 
     connection.on('ItemStatusChanged', (data: ItemStatusChangedEvent) => {
       console.log('[SignalR] ItemStatusChanged:', data);
+      // Skip if this change was made by the current user
+      if (isFromCurrentUser(data.changedBy)) {
+        console.log('[SignalR] Ignoring self-originating ItemStatusChanged event');
+        return;
+      }
       handlersRef.current.onItemStatusChanged?.(data);
     });
 
     connection.on('ItemNotesChanged', (data: ItemNotesChangedEvent) => {
       console.log('[SignalR] ItemNotesChanged:', data);
+      // Skip if this change was made by the current user
+      if (isFromCurrentUser(data.changedBy)) {
+        console.log('[SignalR] Ignoring self-originating ItemNotesChanged event');
+        return;
+      }
       handlersRef.current.onItemNotesChanged?.(data);
     });
 
     connection.on('ChecklistUpdated', (data: ChecklistUpdatedEvent) => {
       console.log('[SignalR] ChecklistUpdated:', data);
+      // ChecklistUpdated doesn't have a user field, so we can't filter it
+      // This is fine since progress updates are just informational
       handlersRef.current.onChecklistUpdated?.(data);
     });
 
     connection.on('ChecklistCreated', (data: ChecklistCreatedEvent) => {
       console.log('[SignalR] ChecklistCreated:', data);
+      // Skip if this checklist was created by the current user
+      if (isFromCurrentUser(data.createdBy)) {
+        console.log('[SignalR] Ignoring self-originating ChecklistCreated event');
+        return;
+      }
       handlersRef.current.onChecklistCreated?.(data);
     });
 
