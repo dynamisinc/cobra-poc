@@ -43,7 +43,7 @@ public class EventService : IEventService
 
         if (!string.IsNullOrWhiteSpace(eventType))
         {
-            query = query.Where(e => e.EventType == eventType.ToUpper());
+            query = query.Where(e => e.EventType.ToLower() == eventType.ToLower());
         }
 
         if (activeOnly)
@@ -93,7 +93,7 @@ public class EventService : IEventService
             throw new ArgumentException($"Category with ID {request.PrimaryCategoryId} not found");
         }
 
-        if (category.EventType != request.EventType.ToUpper())
+        if (!string.Equals(category.EventType, request.EventType, StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException(
                 $"Category '{category.Name}' is for {category.EventType} events, " +
@@ -117,11 +117,19 @@ public class EventService : IEventService
             additionalCategoryIds = JsonSerializer.Serialize(request.AdditionalCategoryIds);
         }
 
+        // Normalize event type to Title case (Planned/Unplanned) to match seed data
+        var normalizedEventType = request.EventType.ToLower() switch
+        {
+            "planned" => "Planned",
+            "unplanned" => "Unplanned",
+            _ => request.EventType // Keep as-is if not recognized
+        };
+
         var eventEntity = new Event
         {
             Id = Guid.NewGuid(),
             Name = request.Name,
-            EventType = request.EventType.ToUpper(),
+            EventType = normalizedEventType,
             PrimaryCategoryId = request.PrimaryCategoryId,
             AdditionalCategoryIds = additionalCategoryIds,
             IsActive = true,

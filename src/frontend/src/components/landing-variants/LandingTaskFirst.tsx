@@ -37,6 +37,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useChecklists } from '../../hooks/useChecklists';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useEvents } from '../../hooks/useEvents';
 import { TemplatePickerDialog } from '../TemplatePickerDialog';
 import { CobraNewButton, CobraSecondaryButton } from '../../theme/styledComponents';
 import CobraStyles from '../../theme/CobraStyles';
@@ -54,14 +55,34 @@ interface IncompleteItem {
  */
 export const LandingTaskFirst: React.FC = () => {
   const navigate = useNavigate();
-  const { checklists, loading, error, fetchMyChecklists } = useChecklists();
+  const { checklists, loading, error, fetchMyChecklists, fetchChecklistsByEvent } = useChecklists();
   const permissions = usePermissions();
+  const { currentEvent } = useEvents();
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
 
-  // Fetch checklists on mount
+  // Fetch checklists filtered by current event
   useEffect(() => {
-    fetchMyChecklists(false);
-  }, [fetchMyChecklists]);
+    if (currentEvent?.id) {
+      fetchChecklistsByEvent(currentEvent.id, false);
+    } else {
+      fetchMyChecklists(false);
+    }
+  }, [currentEvent?.id, fetchChecklistsByEvent, fetchMyChecklists]);
+
+  // Listen for event changes
+  useEffect(() => {
+    const handleEventChanged = () => {
+      const storedEvent = localStorage.getItem('currentEvent');
+      if (storedEvent) {
+        const event = JSON.parse(storedEvent);
+        fetchChecklistsByEvent(event.id, false);
+      } else {
+        fetchMyChecklists(false);
+      }
+    };
+    window.addEventListener('eventChanged', handleEventChanged);
+    return () => window.removeEventListener('eventChanged', handleEventChanged);
+  }, [fetchChecklistsByEvent, fetchMyChecklists]);
 
   // Extract all incomplete items across all checklists
   const incompleteItems = useMemo((): IncompleteItem[] => {
@@ -141,6 +162,8 @@ export const LandingTaskFirst: React.FC = () => {
         body: JSON.stringify({
           templateId,
           name: checklistName,
+          eventId: currentEvent?.id,
+          eventName: currentEvent?.name,
         }),
       });
 
@@ -150,7 +173,12 @@ export const LandingTaskFirst: React.FC = () => {
 
       const newChecklist = await response.json();
       toast.success(`Checklist "${checklistName}" created`);
-      fetchMyChecklists(false);
+      // Refresh using event filter if available
+      if (currentEvent?.id) {
+        fetchChecklistsByEvent(currentEvent.id, false);
+      } else {
+        fetchMyChecklists(false);
+      }
       return newChecklist;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create checklist';

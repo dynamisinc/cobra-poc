@@ -38,13 +38,33 @@ export interface MockUserContext {
 }
 
 /**
+ * Get stored account from localStorage (matches ProfileMenu storage)
+ */
+const getStoredAccount = (): { email: string; fullName: string } => {
+  try {
+    const stored = localStorage.getItem('mockUserAccount');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Failed to load stored account:', error);
+  }
+  return {
+    email: 'admin@cobra.mil',
+    fullName: 'Admin User',
+  };
+};
+
+/**
  * Current mock user (POC only)
  * TODO: Replace with real authentication in production
  * Default: Incident Commander to match backend MockUserMiddleware
+ * Initializes from localStorage if available
  */
+const storedAccount = getStoredAccount();
 let currentUser: MockUserContext = {
-  email: 'admin@cobra.mil',
-  fullName: 'Admin User',
+  email: storedAccount.email,
+  fullName: storedAccount.fullName,
   position: 'Incident Commander',
   isAdmin: true,
   role: 'Contributor',

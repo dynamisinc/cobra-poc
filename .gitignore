@@ -18,6 +18,9 @@ dist-ssr/
 build/
 *.local
 
+# Frontend build artifacts copied to backend wwwroot
+src/backend/ChecklistAPI/wwwroot/assets/
+
 # Logs
 logs/
 *.log

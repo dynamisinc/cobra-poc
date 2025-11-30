@@ -28,6 +28,7 @@ interface UseEventsResult {
   fetchCategories: (eventType?: EventType) => Promise<void>;
   selectEvent: (event: Event) => void;
   createEvent: (request: CreateEventRequest) => Promise<Event>;
+  archiveEvent: (eventId: string) => Promise<void>;
   refreshCurrentEvent: () => Promise<void>;
 }
 
@@ -148,6 +149,8 @@ export const useEvents = (): UseEventsResult => {
       const newEvent = await eventService.createEvent(request);
       setEvents(prev => [newEvent, ...prev]);
       toast.success(`Created event: ${newEvent.name}`);
+      // Notify other hook instances to refresh their events list
+      window.dispatchEvent(new Event('eventsListChanged'));
       return newEvent;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create event';
@@ -157,6 +160,42 @@ export const useEvents = (): UseEventsResult => {
       setLoading(false);
     }
   }, []);
+
+  /**
+   * Archive an event (soft delete)
+   */
+  const archiveEvent = useCallback(async (eventId: string): Promise<void> => {
+    try {
+      setLoading(true);
+      await eventService.archiveEvent(eventId);
+
+      // Remove from local events list
+      setEvents(prev => prev.filter(e => e.id !== eventId));
+
+      // If this was the current event, switch to another event or clear
+      if (currentEvent?.id === eventId) {
+        const remainingEvents = events.filter(e => e.id !== eventId);
+        if (remainingEvents.length > 0) {
+          setCurrentEvent(remainingEvents[0]);
+          storeEvent(remainingEvents[0]);
+          toast.info(`Switched to: ${remainingEvents[0].name}`);
+        } else {
+          setCurrentEvent(null);
+          storeEvent(null);
+        }
+      }
+
+      toast.success('Event archived');
+      // Notify other hook instances to refresh their events list
+      window.dispatchEvent(new Event('eventsListChanged'));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to archive event';
+      toast.error(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [currentEvent, events]);
 
   /**
    * Refresh current event data from API
@@ -182,9 +221,8 @@ export const useEvents = (): UseEventsResult => {
   useEffect(() => {
     const handleEventChange = () => {
       const storedEvent = getStoredEvent();
-      if (storedEvent?.id !== currentEvent?.id) {
-        setCurrentEvent(storedEvent);
-      }
+      // Always update to ensure all hook instances stay in sync
+      setCurrentEvent(storedEvent);
     };
 
     window.addEventListener('eventChanged', handleEventChange);
@@ -194,7 +232,21 @@ export const useEvents = (): UseEventsResult => {
       window.removeEventListener('eventChanged', handleEventChange);
       window.removeEventListener('storage', handleEventChange);
     };
-  }, [currentEvent]);
+  }, []);
+
+  // Listen for events list changes (when new event is created from another component)
+  useEffect(() => {
+    const handleEventsListChange = () => {
+      // Refetch events from API to sync all hook instances
+      fetchEvents();
+    };
+
+    window.addEventListener('eventsListChanged', handleEventsListChange);
+
+    return () => {
+      window.removeEventListener('eventsListChanged', handleEventsListChange);
+    };
+  }, [fetchEvents]);
 
   return {
     events,
@@ -206,6 +258,7 @@ export const useEvents = (): UseEventsResult => {
     fetchCategories,
     selectEvent,
     createEvent,
+    archiveEvent,
     refreshCurrentEvent,
   };
 };

@@ -31,7 +31,7 @@ public class EventCategoryService : IEventCategoryService
 
         if (!string.IsNullOrWhiteSpace(eventType))
         {
-            query = query.Where(c => c.EventType == eventType.ToUpper());
+            query = query.Where(c => c.EventType.ToLower() == eventType.ToLower());
         }
 
         var categories = await query
@@ -82,7 +82,7 @@ public class EventCategoryService : IEventCategoryService
         _logger.LogInformation("Getting event categories grouped by SubGroup for EventType: {EventType}", eventType);
 
         var categories = await _context.EventCategories
-            .Where(c => c.IsActive && c.EventType == eventType.ToUpper())
+            .Where(c => c.IsActive && c.EventType.ToLower() == eventType.ToLower())
             .OrderBy(c => c.SubGroup)
             .ThenBy(c => c.DisplayOrder)
             .ToListAsync();

@@ -20,16 +20,23 @@ import {
   ListItemText,
   Chip,
   CircularProgress,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faChevronDown,
   faCircle,
   faPlus,
-  faCalendarCheck,
-  faTriangleExclamation,
+  faBoxArchive,
 } from '@fortawesome/free-solid-svg-icons';
 import { useEvents } from '../hooks/useEvents';
+import { usePermissions } from '../hooks/usePermissions';
+import { getIconFromName, getEventTypeColor } from '../utils/iconMapping';
 import type { Event } from '../types';
 
 interface EventSelectorProps {
@@ -37,25 +44,13 @@ interface EventSelectorProps {
 }
 
 /**
- * Get icon for event type
- */
-const getEventTypeIcon = (eventType: string) => {
-  return eventType === 'PLANNED' ? faCalendarCheck : faTriangleExclamation;
-};
-
-/**
- * Get color for event type
- */
-const getEventTypeColor = (eventType: string) => {
-  return eventType === 'PLANNED' ? '#4caf50' : '#ff9800';
-};
-
-/**
  * EventSelector Component
  */
 export const EventSelector: React.FC<EventSelectorProps> = ({ onCreateEventClick }) => {
-  const { events, currentEvent, loading, selectEvent } = useEvents();
+  const { events, currentEvent, loading, selectEvent, archiveEvent } = useEvents();
+  const permissions = usePermissions();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [archiveConfirmEvent, setArchiveConfirmEvent] = useState<Event | null>(null);
 
   const open = Boolean(anchorEl);
 
@@ -75,6 +70,23 @@ export const EventSelector: React.FC<EventSelectorProps> = ({ onCreateEventClick
   const handleCreateEvent = () => {
     handleClose();
     onCreateEventClick();
+  };
+
+  const handleArchiveClick = (event: Event, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent selecting the event
+    handleClose();
+    setArchiveConfirmEvent(event);
+  };
+
+  const handleConfirmArchive = async () => {
+    if (archiveConfirmEvent) {
+      await archiveEvent(archiveConfirmEvent.id);
+      setArchiveConfirmEvent(null);
+    }
+  };
+
+  const handleCancelArchive = () => {
+    setArchiveConfirmEvent(null);
   };
 
   // Display text when no event is selected
@@ -102,7 +114,7 @@ export const EventSelector: React.FC<EventSelectorProps> = ({ onCreateEventClick
       >
         {currentEvent && (
           <FontAwesomeIcon
-            icon={getEventTypeIcon(currentEvent.eventType)}
+            icon={getIconFromName(currentEvent.primaryCategory?.iconName, currentEvent.eventType)}
             style={{ color: getEventTypeColor(currentEvent.eventType) }}
           />
         )}
@@ -165,7 +177,7 @@ export const EventSelector: React.FC<EventSelectorProps> = ({ onCreateEventClick
           <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
             {events.map((event) => {
               const isSelected = currentEvent?.id === event.id;
-              const typeIcon = getEventTypeIcon(event.eventType);
+              const categoryIcon = getIconFromName(event.primaryCategory?.iconName, event.eventType);
               const typeColor = getEventTypeColor(event.eventType);
 
               return (
@@ -181,7 +193,7 @@ export const EventSelector: React.FC<EventSelectorProps> = ({ onCreateEventClick
                   }}
                 >
                   <ListItemIcon sx={{ minWidth: 36 }}>
-                    <FontAwesomeIcon icon={typeIcon} style={{ color: typeColor }} />
+                    <FontAwesomeIcon icon={categoryIcon} style={{ color: typeColor }} />
                   </ListItemIcon>
                   <ListItemText
                     primary={
@@ -215,6 +227,23 @@ export const EventSelector: React.FC<EventSelectorProps> = ({ onCreateEventClick
                       </Box>
                     }
                   />
+                  {permissions.canManageArchivedChecklists && (
+                    <IconButton
+                      size="small"
+                      onClick={(e) => handleArchiveClick(event, e)}
+                      sx={{
+                        ml: 1,
+                        opacity: 0.6,
+                        '&:hover': {
+                          opacity: 1,
+                          color: 'warning.main',
+                        },
+                      }}
+                      title="Archive event"
+                    >
+                      <FontAwesomeIcon icon={faBoxArchive} size="sm" />
+                    </IconButton>
+                  )}
                 </MenuItem>
               );
             })}
@@ -246,6 +275,29 @@ export const EventSelector: React.FC<EventSelectorProps> = ({ onCreateEventClick
           />
         </MenuItem>
       </Menu>
+
+      {/* Archive Confirmation Dialog */}
+      <Dialog
+        open={archiveConfirmEvent !== null}
+        onClose={handleCancelArchive}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Archive Event</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to archive "{archiveConfirmEvent?.name}"?
+            This will hide the event from the active events list.
+            Checklists associated with this event will remain accessible.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelArchive}>Cancel</Button>
+          <Button onClick={handleConfirmArchive} color="warning" variant="contained">
+            Archive
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
