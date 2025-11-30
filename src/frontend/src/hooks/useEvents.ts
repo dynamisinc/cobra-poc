@@ -15,6 +15,10 @@ import { toast } from 'react-toastify';
 import { eventService, eventCategoryService } from '../services/eventService';
 import type { Event, EventCategory, CreateEventRequest, EventType } from '../types';
 
+// Module-level request deduplication to prevent duplicate API calls
+// across multiple hook instances (React StrictMode protection)
+let fetchEventsInFlight: Promise<Event[]> | null = null;
+
 interface UseEventsResult {
   // State
   events: Event[];
@@ -79,12 +83,41 @@ export const useEvents = (): UseEventsResult => {
 
   /**
    * Fetch all active events from API
+   * Uses module-level deduplication to prevent duplicate API calls
+   * when multiple components mount simultaneously
    */
   const fetchEvents = useCallback(async () => {
+    // If there's already a request in flight, reuse it
+    if (fetchEventsInFlight) {
+      try {
+        const eventsArray = await fetchEventsInFlight;
+        setEvents(eventsArray);
+
+        // Update current event from shared result
+        if (!currentEvent && eventsArray.length > 0) {
+          const defaultEvent = eventsArray.find(e => e.id === DEFAULT_EVENT_ID) || eventsArray[0];
+          setCurrentEvent(defaultEvent);
+          storeEvent(defaultEvent);
+        } else if (currentEvent) {
+          const updatedEvent = eventsArray.find(e => e.id === currentEvent.id);
+          if (updatedEvent) {
+            setCurrentEvent(updatedEvent);
+            storeEvent(updatedEvent);
+          }
+        }
+      } catch {
+        // Error already handled by the original request
+      }
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-      const data = await eventService.getEvents(undefined, false); // Include inactive
+
+      // Create the promise and store it for deduplication
+      fetchEventsInFlight = eventService.getEvents(undefined, false);
+      const data = await fetchEventsInFlight;
 
       // Ensure data is an array (defensive programming)
       const eventsArray = Array.isArray(data) ? data : [];
@@ -111,6 +144,11 @@ export const useEvents = (): UseEventsResult => {
       console.error('Error fetching events:', err);
     } finally {
       setLoading(false);
+      // Clear the in-flight request after a short delay to allow
+      // all concurrent callers to receive the result
+      setTimeout(() => {
+        fetchEventsInFlight = null;
+      }, 100);
     }
   }, [currentEvent]);
 
