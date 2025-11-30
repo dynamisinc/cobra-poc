@@ -7,7 +7,11 @@ public class ChecklistInstance
     public Guid TemplateId { get; set; }
     
     // Event context
-    public string EventId { get; set; } = string.Empty;
+    public Guid EventId { get; set; }
+
+    /// <summary>
+    /// Denormalized event name for display performance (avoid JOINs)
+    /// </summary>
     public string EventName { get; set; } = string.Empty;
 
     /// <summary>
@@ -43,6 +47,7 @@ public class ChecklistInstance
     
     // Navigation
     public Template Template { get; set; } = null!;
+    public Event Event { get; set; } = null!;
     public OperationalPeriod? OperationalPeriod { get; set; }
     public ICollection<ChecklistItem> Items { get; set; } = new List<ChecklistItem>();
 }

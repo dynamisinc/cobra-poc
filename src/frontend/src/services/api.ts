@@ -15,9 +15,18 @@ import { toast } from 'react-toastify';
 
 /**
  * Base API URL from environment variable
- * Default: https://localhost:5001 for local development
+ * - Production: empty string (relative URLs like /api/events)
+ * - Development: http://localhost:5000
+ * - Fallback: https://localhost:5001 (only if env var is undefined)
+ *
+ * IMPORTANT: Use ?? instead of || because empty string is valid for production
  */
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://localhost:5001';
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://localhost:5001';
+
+/**
+ * Permission roles - matches backend PermissionRole enum
+ */
+export type PermissionRoleType = 'None' | 'Readonly' | 'Contributor' | 'Manage';
 
 /**
  * Mock user context for POC
@@ -29,18 +38,40 @@ export interface MockUserContext {
   position: string; // Primary position (first in positions array)
   positions?: string[]; // All positions for filtering checklists
   isAdmin: boolean;
+  role?: PermissionRoleType; // Permission role
 }
+
+/**
+ * Get stored account from localStorage (matches ProfileMenu storage)
+ */
+const getStoredAccount = (): { email: string; fullName: string } => {
+  try {
+    const stored = localStorage.getItem('mockUserAccount');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Failed to load stored account:', error);
+  }
+  return {
+    email: 'admin@cobra.mil',
+    fullName: 'Admin User',
+  };
+};
 
 /**
  * Current mock user (POC only)
  * TODO: Replace with real authentication in production
  * Default: Incident Commander to match backend MockUserMiddleware
+ * Initializes from localStorage if available
  */
+const storedAccount = getStoredAccount();
 let currentUser: MockUserContext = {
-  email: 'admin@cobra.mil',
-  fullName: 'Admin User',
+  email: storedAccount.email,
+  fullName: storedAccount.fullName,
   position: 'Incident Commander',
   isAdmin: true,
+  role: 'Contributor',
 };
 
 /**
@@ -72,6 +103,22 @@ export const apiClient: AxiosInstance = axios.create({
 });
 
 /**
+ * Get the current role from localStorage (synced with ProfileMenu)
+ */
+const getCurrentRole = (): PermissionRoleType => {
+  try {
+    const stored = localStorage.getItem('mockUserProfile');
+    if (stored) {
+      const profile = JSON.parse(stored);
+      return profile.role || 'Contributor';
+    }
+  } catch (error) {
+    console.error('Failed to load user role:', error);
+  }
+  return currentUser.role || 'Contributor';
+};
+
+/**
  * Request interceptor
  * Adds mock authentication headers to every request
  */
@@ -86,8 +133,13 @@ apiClient.interceptors.request.use(
     config.headers['X-User-Position'] = positionsHeader;
     config.headers['X-User-FullName'] = currentUser.fullName;
 
+    // Send role header (from localStorage, synced with ProfileMenu)
+    const role = getCurrentRole();
+    config.headers['X-User-Role'] = role;
+
     console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, {
       positions: positionsHeader,
+      role: role,
       data: config.data,
     });
 

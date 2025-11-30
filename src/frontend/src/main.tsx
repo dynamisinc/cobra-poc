@@ -9,6 +9,9 @@ import { cobraTheme } from './theme/cobraTheme'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import App from './App'
 
+// Initialize API health check utility (exposes window.apiHealthCheck in dev)
+import './utils/apiHealthCheck'
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider theme={cobraTheme}>

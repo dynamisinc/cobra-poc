@@ -65,7 +65,7 @@ public static class ChecklistCreationHelper
             Id = Guid.NewGuid(),
             Name = request.Name ?? $"{template.Name} - {DateTime.UtcNow:yyyy-MM-dd}",
             TemplateId = template.Id,
-            EventId = request.EventId ?? "POC-Event-001",
+            EventId = request.EventId ?? Guid.Empty,
             EventName = request.EventName ?? "POC Demo Event",
             OperationalPeriodId = request.OperationalPeriodId,
             OperationalPeriodName = request.OperationalPeriodName,
@@ -110,13 +110,15 @@ public static class ChecklistCreationHelper
     /// Supports both "clean copy" (reset status) and "direct copy" (preserve status)
     /// </summary>
     /// <param name="preserveStatus">If true, preserves completion status and notes; if false, resets to fresh checklist</param>
+    /// <param name="assignedPositions">Optional comma-separated positions; if null, inherits from original</param>
     public static async Task<ChecklistInstance> CloneChecklistAsync(
         ChecklistDbContext context,
         ILogger logger,
         Guid checklistId,
         string newName,
         bool preserveStatus,
-        UserContext userContext)
+        UserContext userContext,
+        string? assignedPositions = null)
     {
         logger.LogInformation(
             "Cloning checklist {ChecklistId} as '{NewName}' ({Mode})",
@@ -144,7 +146,10 @@ public static class ChecklistCreationHelper
             EventName = original.EventName,
             OperationalPeriodId = original.OperationalPeriodId,
             OperationalPeriodName = original.OperationalPeriodName,
-            AssignedPositions = original.AssignedPositions,
+            // Use provided assignedPositions if specified, otherwise inherit from original
+            AssignedPositions = !string.IsNullOrWhiteSpace(assignedPositions)
+                ? assignedPositions
+                : original.AssignedPositions,
             CreatedBy = userContext.Email,
             CreatedByPosition = userContext.Position,
             CreatedAt = DateTime.UtcNow

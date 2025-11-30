@@ -26,6 +26,12 @@ interface PermissionChecks {
   canInteractWithItems: boolean; // Toggle completion, change status, add notes
   canEditItems: boolean; // Edit item text, add/remove items
 
+  // Archive management permissions (Manage role only)
+  canArchiveChecklists: boolean;
+  canRestoreChecklists: boolean;
+  canPermanentlyDeleteChecklists: boolean;
+  canManageArchivedChecklists: boolean; // Access to archived checklists management page
+
   // General
   canViewChecklists: boolean;
   isReadonly: boolean;
@@ -101,6 +107,12 @@ export const usePermissions = (): PermissionChecks => {
     // Checklist item permissions
     canInteractWithItems: isContributor || isManage,
     canEditItems: isManage,
+
+    // Archive management permissions (Manage role only)
+    canArchiveChecklists: isManage,
+    canRestoreChecklists: isManage,
+    canPermanentlyDeleteChecklists: isManage,
+    canManageArchivedChecklists: isManage,
 
     // General
     canViewChecklists: isReadonly || isContributor || isManage,

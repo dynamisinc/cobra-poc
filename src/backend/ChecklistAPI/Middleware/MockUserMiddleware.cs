@@ -93,6 +93,21 @@ public class MockUserMiddleware
                 isAdmin = true; // POC: All mock users are admins by default
             }
 
+            // Parse permission role from header (Readonly, Contributor, Manage)
+            var roleStr = context.Request.Headers["X-User-Role"].FirstOrDefault();
+            var role = PermissionRole.Contributor; // Default to Contributor
+            if (!string.IsNullOrEmpty(roleStr))
+            {
+                if (Enum.TryParse<PermissionRole>(roleStr, true, out var parsedRole))
+                {
+                    role = parsedRole;
+                }
+                else
+                {
+                    _logger.LogWarning("Invalid role value '{Role}', defaulting to Contributor", roleStr);
+                }
+            }
+
             // Create mock user context
             var userContext = new UserContext
             {
@@ -101,6 +116,7 @@ public class MockUserMiddleware
                 Position = position,
                 Positions = positions,
                 IsAdmin = isAdmin,
+                Role = role,
                 CurrentEventId = null, // Could be set from query string in future
                 CurrentOperationalPeriod = null
             };
@@ -110,9 +126,10 @@ public class MockUserMiddleware
 
             // Log for debugging
             _logger.LogInformation(
-                "Mock user context created: {Email} (Positions: {Positions})",
+                "Mock user context created: {Email} (Positions: {Positions}, Role: {Role})",
                 userContext.Email,
-                string.Join(", ", userContext.Positions)
+                string.Join(", ", userContext.Positions),
+                userContext.Role
             );
         }
         else

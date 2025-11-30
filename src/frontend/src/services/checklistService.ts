@@ -104,6 +104,7 @@ export interface UpdateChecklistRequest {
 export interface CloneChecklistRequest {
   newName: string;
   preserveStatus?: boolean; // If true, preserves completion status and notes (direct copy); if false, resets (clean copy)
+  assignedPositions?: string; // Comma-separated list of positions; if not provided, inherits from original
 }
 
 /**
@@ -120,7 +121,7 @@ export const checklistService = {
   ): Promise<ChecklistInstanceDto[]> {
     try {
       const response = await apiClient.get<ChecklistInstanceDto[]>(
-        '/checklists/my-checklists',
+        '/api/checklists/my-checklists',
         {
           params: { includeArchived },
         }
@@ -148,7 +149,7 @@ export const checklistService = {
   ): Promise<ChecklistInstanceDto[]> {
     try {
       const response = await apiClient.get<ChecklistInstanceDto[]>(
-        '/checklists',
+        '/api/checklists',
         {
           params: { includeArchived },
         }
@@ -173,7 +174,7 @@ export const checklistService = {
   async getChecklistById(checklistId: string): Promise<ChecklistInstanceDto> {
     try {
       const response = await apiClient.get<ChecklistInstanceDto>(
-        `/checklists/${checklistId}`
+        `/api/checklists/${checklistId}`
       );
       return response.data;
     } catch (error) {
@@ -186,17 +187,19 @@ export const checklistService = {
    * Get checklists by event
    * @param eventId Event identifier
    * @param includeArchived Include archived checklists
+   * @param showAll If true and user has Manage role, shows all checklists regardless of position
    * @returns Array of checklists for event
    */
   async getChecklistsByEvent(
     eventId: string,
-    includeArchived = false
+    includeArchived = false,
+    showAll?: boolean
   ): Promise<ChecklistInstanceDto[]> {
     try {
       const response = await apiClient.get<ChecklistInstanceDto[]>(
-        `/checklists/event/${encodeURIComponent(eventId)}`,
+        `/api/checklists/event/${encodeURIComponent(eventId)}`,
         {
-          params: { includeArchived },
+          params: { includeArchived, showAll },
         }
       );
       return response.data;
@@ -220,7 +223,7 @@ export const checklistService = {
   ): Promise<ChecklistInstanceDto[]> {
     try {
       const response = await apiClient.get<ChecklistInstanceDto[]>(
-        `/checklists/event/${encodeURIComponent(
+        `/api/checklists/event/${encodeURIComponent(
           eventId
         )}/period/${encodeURIComponent(operationalPeriodId)}`,
         {
@@ -247,7 +250,7 @@ export const checklistService = {
   ): Promise<ChecklistInstanceDto> {
     try {
       const response = await apiClient.post<ChecklistInstanceDto>(
-        '/checklists',
+        '/api/checklists',
         request
       );
       return response.data;
@@ -269,7 +272,7 @@ export const checklistService = {
   ): Promise<ChecklistInstanceDto> {
     try {
       const response = await apiClient.put<ChecklistInstanceDto>(
-        `/checklists/${checklistId}`,
+        `/api/checklists/${checklistId}`,
         request
       );
       return response.data;
@@ -284,17 +287,19 @@ export const checklistService = {
    * @param checklistId Checklist ID to clone
    * @param newName Name for the cloned checklist
    * @param preserveStatus If true, preserves completion status and notes (direct copy); if false, resets (clean copy)
+   * @param assignedPositions Optional comma-separated list of positions; if not provided, inherits from original
    * @returns Newly created cloned checklist
    */
   async cloneChecklist(
     checklistId: string,
     newName: string,
-    preserveStatus = false
+    preserveStatus = false,
+    assignedPositions?: string
   ): Promise<ChecklistInstanceDto> {
     try {
       const response = await apiClient.post<ChecklistInstanceDto>(
-        `/checklists/${checklistId}/clone`,
-        { newName, preserveStatus }
+        `/api/checklists/${checklistId}/clone`,
+        { newName, preserveStatus, assignedPositions }
       );
       return response.data;
     } catch (error) {
@@ -309,7 +314,7 @@ export const checklistService = {
    */
   async archiveChecklist(checklistId: string): Promise<void> {
     try {
-      await apiClient.delete(`/checklists/${checklistId}`);
+      await apiClient.delete(`/api/checklists/${checklistId}`);
     } catch (error) {
       console.error(`Failed to archive checklist ${checklistId}:`, error);
       throw new Error(getErrorMessage(error));
@@ -317,12 +322,12 @@ export const checklistService = {
   },
 
   /**
-   * Restore an archived checklist (Admin only)
+   * Restore an archived checklist (Manage role)
    * @param checklistId Checklist ID to restore
    */
   async restoreChecklist(checklistId: string): Promise<void> {
     try {
-      await apiClient.post(`/checklists/${checklistId}/restore`);
+      await apiClient.post(`/api/checklists/${checklistId}/restore`);
     } catch (error) {
       console.error(`Failed to restore checklist ${checklistId}:`, error);
       throw new Error(getErrorMessage(error));
@@ -330,17 +335,48 @@ export const checklistService = {
   },
 
   /**
-   * Get all archived checklists (Admin only)
+   * Get all archived checklists (Manage role)
    * @returns Array of archived checklists
    */
   async getArchivedChecklists(): Promise<ChecklistInstanceDto[]> {
     try {
       const response = await apiClient.get<ChecklistInstanceDto[]>(
-        '/checklists/archived'
+        '/api/checklists/archived'
       );
       return response.data;
     } catch (error) {
       console.error('Failed to fetch archived checklists:', error);
+      throw new Error(getErrorMessage(error));
+    }
+  },
+
+  /**
+   * Get archived checklists for a specific event (Manage role)
+   * @param eventId Event identifier
+   * @returns Array of archived checklists for the event
+   */
+  async getArchivedChecklistsByEvent(eventId: string): Promise<ChecklistInstanceDto[]> {
+    try {
+      const response = await apiClient.get<ChecklistInstanceDto[]>(
+        `/api/checklists/event/${encodeURIComponent(eventId)}/archived`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch archived checklists for event ${eventId}:`, error);
+      throw new Error(getErrorMessage(error));
+    }
+  },
+
+  /**
+   * Permanently delete an archived checklist (Manage role)
+   * This action cannot be undone!
+   * @param checklistId Checklist ID to permanently delete
+   */
+  async permanentlyDeleteChecklist(checklistId: string): Promise<void> {
+    try {
+      await apiClient.delete(`/api/checklists/${checklistId}/permanent`);
+    } catch (error) {
+      console.error(`Failed to permanently delete checklist ${checklistId}:`, error);
       throw new Error(getErrorMessage(error));
     }
   },

@@ -111,6 +111,18 @@ public class ChecklistItemsController : ControllerBase
 
         var userContext = GetUserContext();
 
+        // Readonly users cannot modify items
+        if (userContext.IsReadonly)
+        {
+            _logger.LogWarning(
+                "Readonly user {User} attempted to update item completion",
+                userContext.Email);
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Readonly users cannot modify checklist items"
+            });
+        }
+
         try
         {
             var item = await _itemService.UpdateItemCompletionAsync(
@@ -177,6 +189,18 @@ public class ChecklistItemsController : ControllerBase
 
         var userContext = GetUserContext();
 
+        // Readonly users cannot modify items
+        if (userContext.IsReadonly)
+        {
+            _logger.LogWarning(
+                "Readonly user {User} attempted to update item status",
+                userContext.Email);
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Readonly users cannot modify checklist items"
+            });
+        }
+
         try
         {
             var item = await _itemService.UpdateItemStatusAsync(
@@ -242,6 +266,18 @@ public class ChecklistItemsController : ControllerBase
         }
 
         var userContext = GetUserContext();
+
+        // Readonly users cannot modify items
+        if (userContext.IsReadonly)
+        {
+            _logger.LogWarning(
+                "Readonly user {User} attempted to update item notes",
+                userContext.Email);
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Readonly users cannot modify checklist items"
+            });
+        }
 
         try
         {

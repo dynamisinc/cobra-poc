@@ -17,8 +17,14 @@
  * - /checklists/analytics - Analytics Dashboard (future)
  */
 
-import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import React, { useEffect } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
 import { Box, Typography, Container, Stack } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChartLine } from "@fortawesome/free-solid-svg-icons";
@@ -32,9 +38,36 @@ import { ChecklistDetailPage } from "./pages/ChecklistDetailPage";
 import { ManagePage } from "./pages/ManagePage";
 import { TemplateEditorPage } from "./pages/TemplateEditorPage";
 import { TemplatePreviewPage } from "./pages/TemplatePreviewPage";
+import { ItemLibraryPage } from "./pages/ItemLibraryPage";
+import { ManageChecklistsPage } from "./pages/ManageChecklistsPage";
+import { usePermissions } from "./hooks/usePermissions";
 
 // Styles
 import CobraStyles from "./theme/CobraStyles";
+
+/**
+ * Protected Route wrapper that redirects to /checklists if user lacks permission
+ */
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  requirePermission: boolean;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requirePermission }) => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!requirePermission) {
+      navigate('/checklists', { replace: true });
+    }
+  }, [requirePermission, navigate]);
+
+  if (!requirePermission) {
+    return null;
+  }
+
+  return <>{children}</>;
+};
 
 /**
  * Dashboard Page Wrapper
@@ -65,12 +98,34 @@ const ChecklistDetailWrapper: React.FC = () => {
 };
 
 /**
+ * Manage Page Wrapper
+ * Wraps ManagePage with AppLayout for template management
+ */
+const ManagePageWrapper: React.FC = () => {
+  const permissions = usePermissions();
+  const breadcrumbs: BreadcrumbItem[] = [
+    { label: "Home", path: "/" },
+    { label: "Checklist", path: "/checklists" },
+    { label: "Manage" },
+  ];
+
+  return (
+    <ProtectedRoute requirePermission={permissions.canViewTemplateLibrary}>
+      <AppLayout breadcrumbs={breadcrumbs}>
+        <ManagePage />
+      </AppLayout>
+    </ProtectedRoute>
+  );
+};
+
+/**
  * Template Editor Page Wrapper
  * Wraps TemplateEditorPage with AppLayout
  */
 const TemplateEditorWrapper: React.FC<{ mode: "new" | "edit" | "duplicate" }> = ({
   mode,
 }) => {
+  const permissions = usePermissions();
   const getTitle = () => {
     switch (mode) {
       case "new":
@@ -90,9 +145,11 @@ const TemplateEditorWrapper: React.FC<{ mode: "new" | "edit" | "duplicate" }> = 
   ];
 
   return (
-    <AppLayout breadcrumbs={breadcrumbs}>
-      <TemplateEditorPage />
-    </AppLayout>
+    <ProtectedRoute requirePermission={permissions.canEditTemplate}>
+      <AppLayout breadcrumbs={breadcrumbs}>
+        <TemplateEditorPage />
+      </AppLayout>
+    </ProtectedRoute>
   );
 };
 
@@ -101,6 +158,7 @@ const TemplateEditorWrapper: React.FC<{ mode: "new" | "edit" | "duplicate" }> = 
  * Wraps TemplatePreviewPage with AppLayout
  */
 const TemplatePreviewWrapper: React.FC = () => {
+  const permissions = usePermissions();
   const breadcrumbs: BreadcrumbItem[] = [
     { label: "Home", path: "/" },
     { label: "Checklist", path: "/checklists" },
@@ -109,9 +167,53 @@ const TemplatePreviewWrapper: React.FC = () => {
   ];
 
   return (
-    <AppLayout breadcrumbs={breadcrumbs}>
-      <TemplatePreviewPage />
-    </AppLayout>
+    <ProtectedRoute requirePermission={permissions.canViewTemplateLibrary}>
+      <AppLayout breadcrumbs={breadcrumbs}>
+        <TemplatePreviewPage />
+      </AppLayout>
+    </ProtectedRoute>
+  );
+};
+
+/**
+ * Item Library Page Wrapper
+ * Wraps ItemLibraryPage with AppLayout
+ */
+const ItemLibraryWrapper: React.FC = () => {
+  const permissions = usePermissions();
+  const breadcrumbs: BreadcrumbItem[] = [
+    { label: "Home", path: "/" },
+    { label: "Checklist", path: "/checklists" },
+    { label: "Item Library" },
+  ];
+
+  return (
+    <ProtectedRoute requirePermission={permissions.canAccessItemLibrary}>
+      <AppLayout breadcrumbs={breadcrumbs}>
+        <ItemLibraryPage />
+      </AppLayout>
+    </ProtectedRoute>
+  );
+};
+
+/**
+ * Manage Checklists Page Wrapper (Archive management)
+ * Wraps ManageChecklistsPage with AppLayout
+ */
+const ManageChecklistsWrapper: React.FC = () => {
+  const permissions = usePermissions();
+  const breadcrumbs: BreadcrumbItem[] = [
+    { label: "Home", path: "/" },
+    { label: "Checklist", path: "/checklists" },
+    { label: "Manage Checklists" },
+  ];
+
+  return (
+    <ProtectedRoute requirePermission={permissions.canManageArchivedChecklists}>
+      <AppLayout breadcrumbs={breadcrumbs}>
+        <ManageChecklistsPage />
+      </AppLayout>
+    </ProtectedRoute>
   );
 };
 
@@ -209,7 +311,7 @@ function App() {
           />
 
           {/* Manage Section (Templates & Item Library) */}
-          <Route path="/checklists/manage" element={<ManagePage />} />
+          <Route path="/checklists/manage" element={<ManagePageWrapper />} />
 
           {/* Template Management Routes */}
           <Route
@@ -231,6 +333,12 @@ function App() {
 
           {/* Analytics Page */}
           <Route path="/checklists/analytics" element={<AnalyticsPage />} />
+
+          {/* Item Library (standalone route for sidebar) */}
+          <Route path="/item-library" element={<ItemLibraryWrapper />} />
+
+          {/* Manage Checklists (archive management) */}
+          <Route path="/manage-checklists" element={<ManageChecklistsWrapper />} />
 
           {/* Legacy routes - redirect to new structure */}
           <Route
@@ -258,10 +366,6 @@ function App() {
             element={
               <Navigate to="/checklists/manage/templates/:templateId/duplicate" replace />
             }
-          />
-          <Route
-            path="/item-library"
-            element={<Navigate to="/checklists/manage?tab=items" replace />}
           />
 
           {/* Catch-all - redirect to dashboard */}

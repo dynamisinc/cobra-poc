@@ -447,6 +447,11 @@ const checklists: any = await checklistService.getMyChecklists();
 ```
 
 #### API Service Pattern
+
+> **CRITICAL:** All API endpoints MUST include the `/api/` prefix in service files.
+> Backend controllers use `[Route("api/[controller]")]`, so all service calls must use `/api/...` paths.
+> The `.env` `VITE_API_URL` should be the base URL without `/api` (e.g., `http://localhost:5000`).
+
 ```typescript
 // services/checklistService.ts
 import { apiClient } from './api';
@@ -457,17 +462,13 @@ export const checklistService = {
    * Fetch all checklists for the current user's position
    */
   getMyChecklists: async (): Promise<ChecklistDto[]> => {
+    // ✅ CORRECT: Includes /api/ prefix
     const response = await apiClient.get<ChecklistDto[]>('/api/checklists/my-checklists');
     return response.data;
   },
 
-  /**
-   * Create a new checklist from a template
-   */
-  createFromTemplate: async (request: CreateChecklistRequest): Promise<ChecklistDto> => {
-    const response = await apiClient.post<ChecklistDto>('/api/checklists', request);
-    return response.data;
-  },
+  // ❌ WRONG: Missing /api/ prefix - will return 404
+  // const response = await apiClient.get<ChecklistDto[]>('/checklists/my-checklists');
 };
 ```
 
@@ -1219,7 +1220,23 @@ it('fetches checklists on mount', async () => {
 
 ## Azure Deployment
 
-### Quick Deploy (Recommended)
+### Deploying with Claude (Recommended Prompt)
+
+When asking Claude to deploy to production, use this prompt:
+
+> **"Commit and deploy to Azure production using quick-deploy.ps1"**
+
+Or with a specific message:
+
+> **"Deploy to production with message 'fix: description of changes'"**
+
+Claude will:
+1. Run `deploy/scripts/quick-deploy.ps1` with appropriate options
+2. Build the frontend (includes automatic build verification)
+3. Push to Azure and sync assets
+4. Verify API endpoints are responding
+
+### Quick Deploy Script
 
 Use the `quick-deploy.ps1` script for reliable deployments:
 
@@ -1284,6 +1301,21 @@ git push azure HEAD:main
 ```bash
 az webapp restart --name checklist-poc-app --resource-group c5-poc-eastus2-rg
 ```
+
+#### 4. API Returns 404 or /api/api Double Prefix (FIXED)
+
+**Symptom:** Network requests show `/api/api/events` instead of `/api/events`.
+
+**Cause:** Previously, `.env.production` had `VITE_API_URL=/api` but service files already include `/api/` prefix.
+
+**Status:** This is now **automatically prevented** by the build verification script (`npm run build` runs `scripts/verify-build.cjs`).
+
+**If it happens:**
+1. Check `.env.production` has `VITE_API_URL=` (empty string, NOT `/api`)
+2. Check `api.ts` uses `??` not `||` for the fallback
+3. Rebuild and redeploy
+
+**Verification:** Run `npm run verify-build` to check the production bundle.
 
 ### Full Documentation
 
@@ -1360,10 +1392,65 @@ export default defineConfig({
 ```
 
 #### API Requests Failing (CORS/Network)
-- Ensure backend is running on https://localhost:5001
+- Ensure backend is running on http://localhost:5000
 - Check `.env` file has correct `VITE_API_URL`
 - Check browser console for CORS errors
 - Verify backend CORS policy includes `http://localhost:5173`
+
+#### CRITICAL: Frontend .env Configuration
+
+**Common Error:** API requests fail with 404 or return HTML instead of JSON, or URLs show `/api/api/...`.
+
+**Root Cause:** Service files already include `/api/` in their paths (e.g., `apiClient.get('/api/events')`). The `VITE_API_URL` must NOT add another `/api` prefix.
+
+**Environment Configuration:**
+
+| Environment | File | VITE_API_URL Value |
+|-------------|------|-------------------|
+| Local Dev | `.env` | `http://localhost:5000` |
+| Production | `.env.production` | `` (empty string) |
+
+```bash
+# ❌ WRONG - causes double /api/api/ in URLs
+VITE_API_URL=/api
+VITE_API_URL=http://localhost:5000/api
+
+# ✅ CORRECT - Local development
+VITE_API_URL=http://localhost:5000
+
+# ✅ CORRECT - Production (empty string, frontend served from same origin)
+VITE_API_URL=
+```
+
+**How API URLs are constructed:**
+
+Local development:
+- `.env`: `VITE_API_URL=http://localhost:5000`
+- Service: `apiClient.get('/api/events')`
+- Result: `http://localhost:5000/api/events` ✓
+
+Production:
+- `.env.production`: `VITE_API_URL=` (empty)
+- Service: `apiClient.get('/api/events')`
+- Result: `/api/events` (relative URL) ✓
+
+**If you see `/api/api/` in network requests, check the env files!**
+
+**Local `.env` file:**
+```bash
+VITE_API_URL=http://localhost:5000
+VITE_HUB_URL=http://localhost:5000/hubs/checklist
+VITE_ENABLE_MOCK_AUTH=true
+```
+
+**Production `.env.production` file:**
+```bash
+VITE_API_URL=
+VITE_HUB_URL=/hubs/checklist
+VITE_ENABLE_MOCK_AUTH=true
+```
+
+**Note:** After changing `.env`, you must restart the Vite dev server for changes to take effect.
 
 ---
 

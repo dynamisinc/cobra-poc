@@ -29,14 +29,19 @@ import {
   Collapse,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faNoteSticky, faCopy, faCircleInfo } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faNoteSticky, faCopy, faCircleInfo, faBoxArchive } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
 import { AppLayout, BreadcrumbItem } from '../components/navigation';
 import { useChecklistDetail } from '../hooks/useChecklistDetail';
 import { useItemActions } from '../hooks/useItemActions';
 import { useChecklistHub } from '../hooks/useChecklistHub';
 import { useChecklistVariant } from '../experiments';
+import { useEvents } from '../hooks/useEvents';
+import { usePermissions } from '../hooks/usePermissions';
+import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
+import { CobraDeleteButton, CobraLinkButton } from '../theme/styledComponents';
 import { c5Colors } from '../theme/c5Theme';
+import { cobraTheme } from '../theme/cobraTheme';
 import { ItemNotesDialog } from '../components/ItemNotesDialog';
 import { CreateChecklistDialog, type ChecklistCreationData } from '../components/CreateChecklistDialog';
 import {
@@ -87,6 +92,8 @@ export const ChecklistDetailPage: React.FC = () => {
   const { checklistId } = useParams<{ checklistId: string }>();
   const navigate = useNavigate();
   const { variant } = useChecklistVariant();
+  const { currentEvent } = useEvents();
+  const { canInteractWithItems, isReadonly, canArchiveChecklists } = usePermissions();
   const {
     checklist,
     loading,
@@ -178,6 +185,10 @@ export const ChecklistDetailPage: React.FC = () => {
   // Item info expanded state
   const [expandedItemInfo, setExpandedItemInfo] = useState<Set<string>>(new Set());
 
+  // Archive confirmation dialog state
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+
   // Breadcrumbs - dynamically built based on checklist name
   const breadcrumbs: BreadcrumbItem[] = useMemo(() => {
     const items: BreadcrumbItem[] = [
@@ -212,6 +223,19 @@ export const ChecklistDetailPage: React.FC = () => {
       fetchChecklist(checklistId);
     }
   }, [checklistId, fetchChecklist]);
+
+  // Navigate back to landing page when event changes and doesn't match checklist's event
+  useEffect(() => {
+    // Skip if checklist isn't loaded yet or no event is selected
+    if (!checklist || !currentEvent) return;
+
+    // If the current event doesn't match the checklist's event, navigate to landing
+    if (currentEvent.id !== checklist.eventId) {
+      console.log('[ChecklistDetailPage] Event changed, navigating to checklists landing');
+      toast.info('Switched to a different event - returning to checklists');
+      navigate('/checklists');
+    }
+  }, [currentEvent?.id, checklist?.eventId, navigate]);
 
   // Handle checkbox toggle
   const handleToggleComplete = async (
@@ -304,7 +328,8 @@ export const ChecklistDetailPage: React.FC = () => {
       const newChecklist = await checklistService.cloneChecklist(
         checklistId,
         data.name,
-        preserveStatus
+        preserveStatus,
+        data.assignedPositions
       );
 
       toast.success(`Checklist "${newChecklist.name}" created successfully!`);
@@ -320,6 +345,25 @@ export const ChecklistDetailPage: React.FC = () => {
       throw err; // Re-throw so dialog can show error
     } finally {
       setCopying(false);
+    }
+  };
+
+  // Handle archive checklist
+  const handleArchiveChecklist = async () => {
+    if (!checklistId || !checklist) return;
+
+    try {
+      setIsArchiving(true);
+      await checklistService.archiveChecklist(checklistId);
+      toast.success(`Checklist "${checklist.name}" has been archived`);
+      setArchiveDialogOpen(false);
+      // Navigate back to checklists list
+      navigate('/checklists');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to archive checklist';
+      toast.error(message);
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -503,30 +547,51 @@ export const ChecklistDetailPage: React.FC = () => {
           </IconButton>
           <Typography variant="h4" sx={{ flexGrow: 1 }}>{checklist.name}</Typography>
 
-          {/* Copy Buttons */}
+          {/* Action Buttons */}
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<FontAwesomeIcon icon={faCopy} />}
-              onClick={() => handleOpenCopyDialog('clone-clean')}
-              sx={{
-                minHeight: 48,
-              }}
-            >
-              Copy (Clean)
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<FontAwesomeIcon icon={faCopy} />}
-              onClick={() => handleOpenCopyDialog('clone-direct')}
-              sx={{
-                minHeight: 48,
-              }}
-            >
-              Copy (Direct)
-            </Button>
+            {/* Copy Buttons - only show for users who can interact */}
+            {canInteractWithItems && (
+              <>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<FontAwesomeIcon icon={faCopy} />}
+                  onClick={() => handleOpenCopyDialog('clone-clean')}
+                  sx={{
+                    minHeight: 48,
+                  }}
+                >
+                  Copy (Clean)
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<FontAwesomeIcon icon={faCopy} />}
+                  onClick={() => handleOpenCopyDialog('clone-direct')}
+                  sx={{
+                    minHeight: 48,
+                  }}
+                >
+                  Copy (Direct)
+                </Button>
+              </>
+            )}
+
+            {/* Archive Button - only show for Manage role */}
+            {canArchiveChecklists && (
+              <Button
+                variant="outlined"
+                size="small"
+                color="warning"
+                startIcon={<FontAwesomeIcon icon={faBoxArchive} />}
+                onClick={() => setArchiveDialogOpen(true)}
+                sx={{
+                  minHeight: 48,
+                }}
+              >
+                Archive
+              </Button>
+            )}
           </Box>
         </Box>
 
@@ -579,6 +644,26 @@ export const ChecklistDetailPage: React.FC = () => {
         )}
       </Box>
 
+      {/* Readonly Mode Banner */}
+      {isReadonly && (
+        <Box
+          sx={{
+            backgroundColor: '#FFF3E0',
+            border: '1px solid #FFB74D',
+            borderRadius: 1,
+            p: 1.5,
+            mb: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            <strong>View Only:</strong> You are viewing this checklist in read-only mode. Contact an administrator to request edit access.
+          </Typography>
+        </Box>
+      )}
+
       <Divider sx={{ mb: 2 }} />
 
       {/* Items List */}
@@ -625,7 +710,7 @@ export const ChecklistDetailPage: React.FC = () => {
                             onChange={() =>
                               handleToggleComplete(item.id, item.isCompleted || false)
                             }
-                            disabled={isProcessing(item.id)}
+                            disabled={isProcessing(item.id) || !canInteractWithItems}
                           />
                         }
                         label={
@@ -682,20 +767,22 @@ export const ChecklistDetailPage: React.FC = () => {
                           <FontAwesomeIcon icon={faCircleInfo} />
                         </IconButton>
 
-                        {/* Add/Edit Note button */}
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<FontAwesomeIcon icon={faNoteSticky} />}
-                          onClick={() => handleOpenNotesDialog(item)}
-                          disabled={isProcessing(item.id)}
-                          sx={{
-                            minWidth: 120,
-                            minHeight: 48,
-                          }}
-                        >
-                          {item.notes ? 'Edit Note' : 'Add Note'}
-                        </Button>
+                        {/* Add/Edit Note button - only show for users who can interact */}
+                        {canInteractWithItems && (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<FontAwesomeIcon icon={faNoteSticky} />}
+                            onClick={() => handleOpenNotesDialog(item)}
+                            disabled={isProcessing(item.id)}
+                            sx={{
+                              minWidth: 120,
+                              minHeight: 48,
+                            }}
+                          >
+                            {item.notes ? 'Edit Note' : 'Add Note'}
+                          </Button>
+                        )}
                       </Box>
                     </>
                   )}
@@ -724,7 +811,7 @@ export const ChecklistDetailPage: React.FC = () => {
                           value={item.currentStatus || ''}
                           onChange={(e) => handleStatusChange(item.id, e.target.value)}
                           label="Status"
-                          disabled={isProcessing(item.id)}
+                          disabled={isProcessing(item.id) || !canInteractWithItems}
                         >
                           {/* Empty option */}
                           <MenuItem value="">
@@ -782,20 +869,22 @@ export const ChecklistDetailPage: React.FC = () => {
                           <FontAwesomeIcon icon={faCircleInfo} />
                         </IconButton>
 
-                        {/* Add/Edit Note button */}
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<FontAwesomeIcon icon={faNoteSticky} />}
-                          onClick={() => handleOpenNotesDialog(item)}
-                          disabled={isProcessing(item.id)}
-                          sx={{
-                            minWidth: 120,
-                            minHeight: 48,
-                          }}
-                        >
-                          {item.notes ? 'Edit Note' : 'Add Note'}
-                        </Button>
+                        {/* Add/Edit Note button - only show for users who can interact */}
+                        {canInteractWithItems && (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<FontAwesomeIcon icon={faNoteSticky} />}
+                            onClick={() => handleOpenNotesDialog(item)}
+                            disabled={isProcessing(item.id)}
+                            sx={{
+                              minWidth: 120,
+                              minHeight: 48,
+                            }}
+                          >
+                            {item.notes ? 'Edit Note' : 'Add Note'}
+                          </Button>
+                        )}
                       </Box>
                     </>
                   )}
@@ -871,6 +960,46 @@ export const ChecklistDetailPage: React.FC = () => {
           saving={copying}
         />
       )}
+
+      {/* Archive Confirmation Dialog */}
+      <Dialog
+        open={archiveDialogOpen}
+        onClose={() => !isArchiving && setArchiveDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <FontAwesomeIcon
+            icon={faBoxArchive}
+            style={{ color: cobraTheme.palette.warning.main }}
+          />
+          Archive Checklist?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to archive{' '}
+            <strong>"{checklist?.name}"</strong>?
+          </DialogContentText>
+          <DialogContentText sx={{ mt: 2 }}>
+            Archived checklists are hidden from the main list but can be restored by an administrator from the Manage page.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <CobraLinkButton onClick={() => setArchiveDialogOpen(false)} disabled={isArchiving}>
+            Cancel
+          </CobraLinkButton>
+          <CobraDeleteButton onClick={handleArchiveChecklist} disabled={isArchiving}>
+            {isArchiving ? (
+              <>
+                <CircularProgress size={16} color="inherit" sx={{ mr: 1 }} />
+                Archiving...
+              </>
+            ) : (
+              'Archive Checklist'
+            )}
+          </CobraDeleteButton>
+        </DialogActions>
+      </Dialog>
     </Container>
     </AppLayout>
   );

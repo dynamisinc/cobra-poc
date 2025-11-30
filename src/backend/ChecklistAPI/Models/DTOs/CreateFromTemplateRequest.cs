@@ -51,12 +51,9 @@ public record CreateFromTemplateRequest
     public string? Name { get; init; }
 
     /// <summary>
-    /// Event this checklist belongs to (optional for POC)
-    /// Example: "Hurricane-2025-001"
-    /// Defaults to "POC-Event-001" if not provided
+    /// Event this checklist belongs to
     /// </summary>
-    [MaxLength(100, ErrorMessage = "Event ID cannot exceed 100 characters")]
-    public string? EventId { get; init; }
+    public Guid? EventId { get; init; }
 
     /// <summary>
     /// Human-readable event name (optional for POC)

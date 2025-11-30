@@ -40,7 +40,9 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useChecklists } from '../../hooks/useChecklists';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useEvents } from '../../hooks/useEvents';
 import { TemplatePickerDialog } from '../TemplatePickerDialog';
+import { ChecklistVisibilityToggle, getStoredVisibilityPreference } from '../ChecklistVisibilityToggle';
 import { CobraNewButton } from '../../theme/styledComponents';
 import CobraStyles from '../../theme/CobraStyles';
 import { cobraTheme } from '../../theme/cobraTheme';
@@ -57,23 +59,51 @@ interface IncompleteItem {
  */
 export const LandingSummaryCards: React.FC = () => {
   const navigate = useNavigate();
-  const { checklists, loading, error, fetchMyChecklists } = useChecklists();
+  const { checklists, loading, error, fetchMyChecklists, fetchChecklistsByEvent } = useChecklists();
   const permissions = usePermissions();
+  const { currentEvent } = useEvents();
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [showAllChecklists, setShowAllChecklists] = useState(getStoredVisibilityPreference);
 
-  // Fetch checklists on mount
+  // Fetch checklists filtered by current event
   useEffect(() => {
-    fetchMyChecklists(false);
-  }, [fetchMyChecklists]);
+    if (currentEvent?.id) {
+      fetchChecklistsByEvent(currentEvent.id, false, showAllChecklists);
+    } else {
+      fetchMyChecklists(false);
+    }
+  }, [currentEvent?.id, fetchChecklistsByEvent, fetchMyChecklists, showAllChecklists]);
 
-  // Listen for profile changes
+  // Listen for profile, event, and visibility preference changes
   useEffect(() => {
     const handleProfileChanged = () => {
-      fetchMyChecklists(false);
+      if (currentEvent?.id) {
+        fetchChecklistsByEvent(currentEvent.id, false, showAllChecklists);
+      } else {
+        fetchMyChecklists(false);
+      }
+    };
+    const handleEventChanged = () => {
+      const storedEvent = localStorage.getItem('currentEvent');
+      if (storedEvent) {
+        const event = JSON.parse(storedEvent);
+        fetchChecklistsByEvent(event.id, false, showAllChecklists);
+      } else {
+        fetchMyChecklists(false);
+      }
+    };
+    const handleVisibilityPreferenceChanged = (e: CustomEvent<boolean>) => {
+      setShowAllChecklists(e.detail);
     };
     window.addEventListener('profileChanged', handleProfileChanged);
-    return () => window.removeEventListener('profileChanged', handleProfileChanged);
-  }, [fetchMyChecklists]);
+    window.addEventListener('eventChanged', handleEventChanged);
+    window.addEventListener('visibilityPreferenceChanged', handleVisibilityPreferenceChanged as EventListener);
+    return () => {
+      window.removeEventListener('profileChanged', handleProfileChanged);
+      window.removeEventListener('eventChanged', handleEventChanged);
+      window.removeEventListener('visibilityPreferenceChanged', handleVisibilityPreferenceChanged as EventListener);
+    };
+  }, [currentEvent?.id, fetchMyChecklists, fetchChecklistsByEvent, showAllChecklists]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -149,20 +179,26 @@ export const LandingSummaryCards: React.FC = () => {
       const profile = storedProfile ? JSON.parse(storedProfile) : null;
       const position = profile?.positions?.[0] || 'Unknown';
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/checklists`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/checklists`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-User-Email': 'user@example.com',
           'X-User-Position': position,
         },
-        body: JSON.stringify({ templateId, name: checklistName }),
+        body: JSON.stringify({
+          templateId,
+          name: checklistName,
+          eventId: currentEvent?.id,
+          eventName: currentEvent?.name,
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to create checklist');
       const newChecklist = await response.json();
       toast.success(`Checklist "${checklistName}" created`);
-      fetchMyChecklists(false);
+      // Navigate to the new checklist
+      navigate(`/checklists/${newChecklist.id}`);
       return newChecklist;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create checklist';
@@ -206,11 +242,19 @@ export const LandingSummaryCards: React.FC = () => {
         {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h4">My Checklists</Typography>
-          {permissions.canCreateInstance && (
-            <CobraNewButton onClick={() => setTemplatePickerOpen(true)}>
-              Create Checklist
-            </CobraNewButton>
-          )}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            {/* Visibility Toggle - Only visible for Manage role */}
+            <ChecklistVisibilityToggle
+              showAll={showAllChecklists}
+              onChange={setShowAllChecklists}
+              disabled={loading}
+            />
+            {permissions.canCreateInstance && (
+              <CobraNewButton onClick={() => setTemplatePickerOpen(true)}>
+                Create Checklist
+              </CobraNewButton>
+            )}
+          </Box>
         </Box>
 
         {/* Summary Cards */}

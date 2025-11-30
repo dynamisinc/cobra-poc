@@ -35,6 +35,7 @@ import {
 import { ChecklistItemClassic } from './ChecklistItemClassic';
 import { ItemNotesDialog } from '../ItemNotesDialog';
 import { ChecklistProgressBar } from '../ChecklistProgressBar';
+import { usePermissions } from '../../hooks/usePermissions';
 import type { ChecklistInstanceDto, ChecklistItemDto } from '../../services/checklistService';
 
 interface ChecklistDetailClassicProps {
@@ -64,6 +65,7 @@ export const ChecklistDetailClassic: React.FC<ChecklistDetailClassicProps> = ({
   getItemRef,
 }) => {
   const navigate = useNavigate();
+  const { canInteractWithItems, isReadonly } = usePermissions();
 
   // Notes dialog state
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
@@ -116,14 +118,16 @@ export const ChecklistDetailClassic: React.FC<ChecklistDetailClassicProps> = ({
             {checklist.name}
           </Typography>
 
-          {/* Copy button */}
-          <IconButton
-            size="small"
-            onClick={() => onCopy('clone-clean')}
-            title="Copy checklist"
-          >
-            <FontAwesomeIcon icon={faCopy} />
-          </IconButton>
+          {/* Copy button - only show for users who can interact */}
+          {canInteractWithItems && (
+            <IconButton
+              size="small"
+              onClick={() => onCopy('clone-clean')}
+              title="Copy checklist"
+            >
+              <FontAwesomeIcon icon={faCopy} />
+            </IconButton>
+          )}
         </Box>
 
         {/* Context line */}
@@ -176,6 +180,23 @@ export const ChecklistDetailClassic: React.FC<ChecklistDetailClassicProps> = ({
         >
           Required: {checklist.requiredItemsCompleted}/{checklist.requiredItems} complete
         </Typography>
+      )}
+
+      {/* Readonly Mode Banner */}
+      {isReadonly && (
+        <Box
+          sx={{
+            backgroundColor: '#FFF3E0',
+            border: '1px solid #FFB74D',
+            borderRadius: 1,
+            p: 1.5,
+            mb: 2,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            <strong>View Only:</strong> You are viewing this checklist in read-only mode.
+          </Typography>
+        </Box>
       )}
 
       {/* Items List - Simple paper container */}

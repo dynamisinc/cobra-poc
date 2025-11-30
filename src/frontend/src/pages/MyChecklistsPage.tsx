@@ -24,10 +24,12 @@ import {
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronDown, faChevronUp, faBell } from '@fortawesome/free-solid-svg-icons';
+import { useNavigate } from 'react-router-dom';
 import { useChecklists } from '../hooks/useChecklists';
 import { useOperationalPeriodGrouping } from '../hooks/useOperationalPeriodGrouping';
 import { usePermissions } from '../hooks/usePermissions';
 import { useChecklistHub, type ChecklistCreatedEvent } from '../hooks/useChecklistHub';
+import { useEvents } from '../hooks/useEvents';
 import { ChecklistCard } from '../components/ChecklistCard';
 import { SectionHeader } from '../components/SectionHeader';
 import {
@@ -36,6 +38,7 @@ import {
   type CompletionStatusFilter,
 } from '../components/ChecklistFilters';
 import { TemplatePickerDialog } from '../components/TemplatePickerDialog';
+import { ChecklistVisibilityToggle, getStoredVisibilityPreference } from '../components/ChecklistVisibilityToggle';
 import { CobraNewButton, CobraSecondaryButton } from '../theme/styledComponents';
 import CobraStyles from '../theme/CobraStyles';
 import { cobraTheme } from '../theme/cobraTheme';
@@ -45,7 +48,9 @@ import { toast } from 'react-toastify';
  * My Checklists Page Component
  */
 export const MyChecklistsPage: React.FC = () => {
-  const { checklists, loading, error, fetchMyChecklists } = useChecklists();
+  const navigate = useNavigate();
+  const { checklists, loading, error, fetchMyChecklists, fetchChecklistsByEvent } = useChecklists();
+  const { currentEvent } = useEvents();
   const permissions = usePermissions();
   const [showPreviousPeriods, setShowPreviousPeriods] = useState(false);
 
@@ -57,6 +62,7 @@ export const MyChecklistsPage: React.FC = () => {
   const [selectedCompletionStatus, setSelectedCompletionStatus] = useState<CompletionStatusFilter>('all');
   const [showArchived, setShowArchived] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showAllChecklists, setShowAllChecklists] = useState(getStoredVisibilityPreference);
 
   // Real-time updates state
   const [newChecklistsCount, setNewChecklistsCount] = useState(0);
@@ -103,10 +109,14 @@ export const MyChecklistsPage: React.FC = () => {
 
   // Refresh checklists and clear badge
   const handleRefreshChecklists = useCallback(() => {
-    fetchMyChecklists(showArchived);
+    if (currentEvent?.id) {
+      fetchChecklistsByEvent(currentEvent.id, showArchived, showAllChecklists);
+    } else {
+      fetchMyChecklists(showArchived);
+    }
     setNewChecklistsCount(0);
     setShowNewChecklistsBadge(false);
-  }, [fetchMyChecklists, showArchived]);
+  }, [currentEvent?.id, fetchChecklistsByEvent, fetchMyChecklists, showArchived, showAllChecklists]);
 
   // Apply filters to checklists
   const filteredChecklists = useMemo(() => {
@@ -163,34 +173,59 @@ export const MyChecklistsPage: React.FC = () => {
     sortPreviousByDate: true,
   });
 
-  // Fetch checklists on mount and when showArchived changes
+  // Fetch checklists on mount, when event changes, or when filters change
   useEffect(() => {
-    fetchMyChecklists(showArchived);
-  }, [fetchMyChecklists, showArchived]);
+    if (currentEvent?.id) {
+      fetchChecklistsByEvent(currentEvent.id, showArchived, showAllChecklists);
+    } else {
+      fetchMyChecklists(showArchived);
+    }
+  }, [currentEvent?.id, fetchChecklistsByEvent, fetchMyChecklists, showArchived, showAllChecklists]);
 
-  // Listen for profile changes and refetch (without remounting)
+  // Listen for profile changes and event changes to refetch (without remounting)
   useEffect(() => {
     const handleProfileChanged = () => {
       console.log('[MyChecklistsPage] Profile changed, refetching checklists...');
-      fetchMyChecklists(showArchived);
+      handleRefreshChecklists();
+    };
+
+    const handleEventChanged = () => {
+      console.log('[MyChecklistsPage] Event changed, refetching checklists...');
+      // The useEffect with currentEvent?.id dependency will handle this
+    };
+
+    const handleVisibilityPreferenceChanged = (e: CustomEvent<boolean>) => {
+      setShowAllChecklists(e.detail);
     };
 
     window.addEventListener('profileChanged', handleProfileChanged);
-    return () => window.removeEventListener('profileChanged', handleProfileChanged);
-  }, [fetchMyChecklists, showArchived]);
+    window.addEventListener('eventChanged', handleEventChanged);
+    window.addEventListener('visibilityPreferenceChanged', handleVisibilityPreferenceChanged as EventListener);
+    return () => {
+      window.removeEventListener('profileChanged', handleProfileChanged);
+      window.removeEventListener('eventChanged', handleEventChanged);
+      window.removeEventListener('visibilityPreferenceChanged', handleVisibilityPreferenceChanged as EventListener);
+    };
+  }, [handleRefreshChecklists]);
 
   /**
    * Handle creating a new checklist from a template
    */
   const handleCreateChecklist = async (templateId: string, checklistName: string) => {
     try {
+      // Require an event to be selected
+      if (!currentEvent) {
+        toast.error('Please select an event before creating a checklist');
+        return null;
+      }
+
       // Get current user position from localStorage (mock auth)
       const storedProfile = localStorage.getItem('mockUserProfile');
       const profile = storedProfile ? JSON.parse(storedProfile) : null;
       const position = profile?.positions?.[0] || 'Unknown';
 
-      // Create checklist from template
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/checklists`, {
+      // Create checklist from template with current event
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/checklists`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -200,6 +235,8 @@ export const MyChecklistsPage: React.FC = () => {
         body: JSON.stringify({
           templateId,
           name: checklistName,
+          eventId: currentEvent.id,
+          eventName: currentEvent.name,
         }),
       });
 
@@ -211,8 +248,8 @@ export const MyChecklistsPage: React.FC = () => {
 
       toast.success(`Checklist "${checklistName}" created successfully`);
 
-      // Refresh checklists to show the new one
-      fetchMyChecklists(showArchived);
+      // Navigate to the new checklist
+      navigate(`/checklists/${newChecklist.id}`);
 
       return newChecklist;
     } catch (err) {
@@ -266,12 +303,21 @@ export const MyChecklistsPage: React.FC = () => {
                 My Checklists
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                No checklists assigned to your position
+                {currentEvent
+                  ? `No checklists for "${currentEvent.name}"`
+                  : showAllChecklists ? 'No checklists in this event' : 'No checklists assigned to your position'}
               </Typography>
             </Box>
 
             {/* Action Buttons */}
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+              {/* Visibility Toggle - Only visible for Manage role */}
+              <ChecklistVisibilityToggle
+                showAll={showAllChecklists}
+                onChange={setShowAllChecklists}
+                disabled={loading}
+              />
+
               {/* New Checklists Notification Badge */}
               <Fade in={showNewChecklistsBadge}>
                 <CobraSecondaryButton
@@ -316,10 +362,12 @@ export const MyChecklistsPage: React.FC = () => {
         {/* Empty State Message */}
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography variant="h5" color="text.secondary">
-            No checklists assigned
+            {currentEvent ? 'No checklists for this event' : 'No checklists assigned'}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mt: 2 }}>
-            You don't have any active checklists assigned to your position.
+            {currentEvent
+              ? `There are no checklists created for "${currentEvent.name}" yet.`
+              : "You don't have any active checklists assigned to your position."}
           </Typography>
           {permissions.canCreateInstance && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
@@ -349,8 +397,8 @@ export const MyChecklistsPage: React.FC = () => {
               My Checklists
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {totalChecklists} checklist{totalChecklists !== 1 ? 's' : ''} assigned
-              to your position
+              {totalChecklists} checklist{totalChecklists !== 1 ? 's' : ''}
+              {currentEvent ? ` for "${currentEvent.name}"` : showAllChecklists ? '' : ' assigned to your position'}
               {checklists.length !== totalChecklists && (
                 <> ({checklists.length} total, {totalChecklists} matching filters)</>
               )}
@@ -358,7 +406,14 @@ export const MyChecklistsPage: React.FC = () => {
           </Box>
 
           {/* Action Buttons */}
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+            {/* Visibility Toggle - Only visible for Manage role */}
+            <ChecklistVisibilityToggle
+              showAll={showAllChecklists}
+              onChange={setShowAllChecklists}
+              disabled={loading}
+            />
+
             {/* New Checklists Notification Badge */}
             <Fade in={showNewChecklistsBadge}>
               <CobraSecondaryButton

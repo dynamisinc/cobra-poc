@@ -432,7 +432,112 @@ public class ChecklistItemServiceTests : IDisposable
 
     #endregion
 
+    #region Additional Edge Case Tests
+
+    [Fact]
+    public async Task UpdateItemStatus_AllowsAnyStatus_WhenStatusConfigurationIsEmpty()
+    {
+        // Arrange
+        var (checklistId, itemId) = await SeedChecklistWithItem(
+            itemType: "status",
+            statusOptions: null); // No configuration = allow any status
+
+        var request = new UpdateItemStatusRequest
+        {
+            Status = "Any Custom Status"
+        };
+
+        // Act
+        var result = await _service.UpdateItemStatusAsync(checklistId, itemId, request, _testUser);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("Any Custom Status", result.CurrentStatus);
+    }
+
+    [Fact]
+    public async Task UpdateItemStatus_IsCaseInsensitive_ForStatusValidation()
+    {
+        // Arrange
+        var (checklistId, itemId) = await SeedChecklistWithItem(
+            itemType: "status",
+            statusOptions: "[{\"label\":\"In Progress\",\"isCompletion\":false,\"order\":1}]");
+
+        var request = new UpdateItemStatusRequest
+        {
+            Status = "IN PROGRESS" // Uppercase version of "In Progress"
+        };
+
+        // Act
+        var result = await _service.UpdateItemStatusAsync(checklistId, itemId, request, _testUser);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("IN PROGRESS", result.CurrentStatus);
+    }
+
+    [Fact]
+    public async Task UpdateItemCompletion_SetsLastModifiedFields()
+    {
+        // Arrange
+        var (checklistId, itemId) = await SeedChecklistWithItem(itemType: "checkbox");
+        var request = new UpdateItemCompletionRequest { IsCompleted = true };
+
+        // Act
+        var result = await _service.UpdateItemCompletionAsync(checklistId, itemId, request, _testUser);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(_testUser.Email, result.LastModifiedBy);
+        Assert.Equal(_testUser.Position, result.LastModifiedByPosition);
+        Assert.NotNull(result.LastModifiedAt);
+    }
+
+    [Fact]
+    public async Task UpdateItemCompletion_IsCaseInsensitive_ForPositionValidation()
+    {
+        // Arrange
+        var (checklistId, itemId) = await SeedChecklistWithItem(
+            itemType: "checkbox",
+            allowedPositions: "SAFETY OFFICER"); // Uppercase in config
+
+        var request = new UpdateItemCompletionRequest { IsCompleted = true };
+
+        // testUser.Position is "Safety Officer" (mixed case)
+        // Act
+        var result = await _service.UpdateItemCompletionAsync(checklistId, itemId, request, _testUser);
+
+        // Assert - Should succeed due to case-insensitive comparison
+        Assert.NotNull(result);
+        Assert.True(result.IsCompleted);
+    }
+
+    [Fact]
+    public async Task UpdateItemStatus_SetsLastModifiedFields()
+    {
+        // Arrange
+        var (checklistId, itemId) = await SeedChecklistWithItem(
+            itemType: "status",
+            statusOptions: "[{\"label\":\"Complete\",\"isCompletion\":true,\"order\":1}]");
+
+        var request = new UpdateItemStatusRequest { Status = "Complete" };
+
+        // Act
+        var result = await _service.UpdateItemStatusAsync(checklistId, itemId, request, _testUser);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(_testUser.Email, result.LastModifiedBy);
+        Assert.Equal(_testUser.Position, result.LastModifiedByPosition);
+        Assert.NotNull(result.LastModifiedAt);
+    }
+
+    #endregion
+
     #region Helper Methods
+
+    // Test event ID
+    private static readonly Guid TestEventId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
 
     private async Task<(Guid checklistId, Guid itemId)> SeedChecklistWithItem(
         string itemType = "checkbox",
@@ -450,7 +555,7 @@ public class ChecklistItemServiceTests : IDisposable
             Id = checklistId,
             Name = "Test Checklist",
             TemplateId = Guid.NewGuid(),
-            EventId = "Event-001",
+            EventId = TestEventId,
             EventName = "Test Event",
             CreatedBy = "test@test.com",
             CreatedByPosition = "Test Position"

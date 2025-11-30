@@ -48,6 +48,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { ItemNotesDialog } from '../ItemNotesDialog';
 import { ChecklistProgressBarCompact } from '../ChecklistProgressBar';
+import { usePermissions } from '../../hooks/usePermissions';
 import type { ChecklistInstanceDto, ChecklistItemDto } from '../../services/checklistService';
 import type { StatusOption } from '../../types';
 import { c5Colors } from '../../theme/c5Theme';
@@ -111,6 +112,7 @@ const CompactItemCard: React.FC<{
   isHighlighted,
   itemRef,
 }) => {
+  const { canInteractWithItems } = usePermissions();
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const statusOptions = parseStatusOptions(item.statusConfiguration);
   const hasNotes = Boolean(item.notes);
@@ -140,7 +142,7 @@ const CompactItemCard: React.FC<{
           <Checkbox
             checked={item.isCompleted || false}
             onChange={() => onToggleComplete(item.id, item.isCompleted || false)}
-            disabled={isProcessing}
+            disabled={isProcessing || !canInteractWithItems}
             size="small"
             sx={{
               p: 0.5,
@@ -163,7 +165,7 @@ const CompactItemCard: React.FC<{
               <Select
                 value={item.currentStatus || ''}
                 onChange={(e) => onStatusChange(item.id, e.target.value)}
-                disabled={isProcessing}
+                disabled={isProcessing || !canInteractWithItems}
                 displayEmpty
                 variant="standard"
                 sx={{
@@ -241,17 +243,20 @@ const CompactItemCard: React.FC<{
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         >
-          <MenuItem
-            onClick={() => {
-              onOpenNotes(item);
-              setMenuAnchor(null);
-            }}
-          >
-            <ListItemIcon>
-              <FontAwesomeIcon icon={faNoteSticky} />
-            </ListItemIcon>
-            <ListItemText>{hasNotes ? 'Edit Note' : 'Add Note'}</ListItemText>
-          </MenuItem>
+          {/* Add/Edit Note - only for users who can interact */}
+          {canInteractWithItems && (
+            <MenuItem
+              onClick={() => {
+                onOpenNotes(item);
+                setMenuAnchor(null);
+              }}
+            >
+              <ListItemIcon>
+                <FontAwesomeIcon icon={faNoteSticky} />
+              </ListItemIcon>
+              <ListItemText>{hasNotes ? 'Edit Note' : 'Add Note'}</ListItemText>
+            </MenuItem>
+          )}
           <MenuItem
             onClick={() => {
               onViewInfo(item);
@@ -281,6 +286,7 @@ export const ChecklistDetailCompact: React.FC<ChecklistDetailCompactProps> = ({
   getItemRef,
 }) => {
   const navigate = useNavigate();
+  const { canInteractWithItems, isReadonly } = usePermissions();
 
   // Dialog states
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
@@ -326,9 +332,12 @@ export const ChecklistDetailCompact: React.FC<ChecklistDetailCompactProps> = ({
           </Typography>
         </Box>
 
-        <IconButton size="small" onClick={() => onCopy('clone-clean')}>
-          <FontAwesomeIcon icon={faCopy} />
-        </IconButton>
+        {/* Copy button - only show for users who can interact */}
+        {canInteractWithItems && (
+          <IconButton size="small" onClick={() => onCopy('clone-clean')}>
+            <FontAwesomeIcon icon={faCopy} />
+          </IconButton>
+        )}
       </Stack>
 
       {/* Compact Progress */}
@@ -338,6 +347,23 @@ export const ChecklistDetailCompact: React.FC<ChecklistDetailCompactProps> = ({
           {checklist.completedItems}/{checklist.totalItems} items
         </Typography>
       </Box>
+
+      {/* Readonly Mode Banner */}
+      {isReadonly && (
+        <Box
+          sx={{
+            backgroundColor: '#FFF3E0',
+            border: '1px solid #FFB74D',
+            borderRadius: 1,
+            p: 1,
+            mb: 2,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            <strong>View Only:</strong> Read-only mode
+          </Typography>
+        </Box>
+      )}
 
       {/* Items */}
       {checklist.items.length === 0 ? (

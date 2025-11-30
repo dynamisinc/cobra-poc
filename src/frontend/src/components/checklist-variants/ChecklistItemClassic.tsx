@@ -32,6 +32,7 @@ import {
   faCircleInfo,
   faCheck,
 } from '@fortawesome/free-solid-svg-icons';
+import { usePermissions } from '../../hooks/usePermissions';
 import type { ChecklistItemDto } from '../../services/checklistService';
 import type { StatusOption } from '../../types';
 import { c5Colors } from '../../theme/c5Theme';
@@ -91,6 +92,7 @@ export const ChecklistItemClassic: React.FC<ChecklistItemClassicProps> = ({
   isHighlighted,
   itemRef,
 }) => {
+  const { canInteractWithItems } = usePermissions();
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -139,7 +141,7 @@ export const ChecklistItemClassic: React.FC<ChecklistItemClassicProps> = ({
         <Checkbox
           checked={item.isCompleted || false}
           onChange={() => onToggleComplete(item.id, item.isCompleted || false)}
-          disabled={isProcessing}
+          disabled={isProcessing || !canInteractWithItems}
           sx={{
             p: 0.5,
             '& .MuiSvgIcon-root': {
@@ -155,7 +157,7 @@ export const ChecklistItemClassic: React.FC<ChecklistItemClassicProps> = ({
           <Select
             value={item.currentStatus || ''}
             onChange={(e) => onStatusChange(item.id, e.target.value)}
-            disabled={isProcessing}
+            disabled={isProcessing || !canInteractWithItems}
             displayEmpty
             sx={{
               fontSize: '0.875rem',
@@ -257,17 +259,20 @@ export const ChecklistItemClassic: React.FC<ChecklistItemClassicProps> = ({
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <MenuItem
-          onClick={() => {
-            onOpenNotes(item);
-            handleMenuClose();
-          }}
-        >
-          <ListItemIcon>
-            <FontAwesomeIcon icon={faNoteSticky} />
-          </ListItemIcon>
-          <ListItemText>{hasNotes ? 'Edit Note' : 'Add Note'}</ListItemText>
-        </MenuItem>
+        {/* Add/Edit Note - only for users who can interact */}
+        {canInteractWithItems && (
+          <MenuItem
+            onClick={() => {
+              onOpenNotes(item);
+              handleMenuClose();
+            }}
+          >
+            <ListItemIcon>
+              <FontAwesomeIcon icon={faNoteSticky} />
+            </ListItemIcon>
+            <ListItemText>{hasNotes ? 'Edit Note' : 'Add Note'}</ListItemText>
+          </MenuItem>
+        )}
         <MenuItem
           onClick={() => {
             onViewInfo(item);

@@ -16,6 +16,8 @@ public class ChecklistDbContext : DbContext
     public DbSet<ChecklistItem> ChecklistItems { get; set; }
     public DbSet<OperationalPeriod> OperationalPeriods { get; set; }
     public DbSet<ItemLibraryEntry> ItemLibraryEntries { get; set; }
+    public DbSet<Event> Events { get; set; }
+    public DbSet<EventCategory> EventCategories { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -59,12 +61,18 @@ public class ChecklistDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.EventId).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.EventName).HasMaxLength(200);
             entity.Property(e => e.ProgressPercentage).HasPrecision(5, 2);
             entity.HasMany(e => e.Items)
                 .WithOne(e => e.ChecklistInstance)
                 .HasForeignKey(e => e.ChecklistInstanceId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // FK to Event - Restrict delete (don't delete checklists when event is deleted)
+            entity.HasOne(e => e.Event)
+                .WithMany()
+                .HasForeignKey(e => e.EventId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Optional FK to OperationalPeriod - SET NULL on delete (checklists survive period deletion)
             entity.HasOne(e => e.OperationalPeriod)
@@ -101,9 +109,14 @@ public class ChecklistDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.EventId).IsRequired().HasMaxLength(50);
             entity.Property(e => e.StartTime).IsRequired();
             entity.Property(e => e.Description).HasMaxLength(1000);
+
+            // FK to Event - Cascade delete (periods deleted with event)
+            entity.HasOne(e => e.Event)
+                .WithMany()
+                .HasForeignKey(e => e.EventId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => e.EventId);
             entity.HasIndex(e => new { e.EventId, e.IsCurrent });
@@ -133,6 +146,48 @@ public class ChecklistDbContext : DbContext
             entity.HasIndex(e => e.ItemType);
             entity.HasIndex(e => e.IsArchived);
             entity.HasIndex(e => e.UsageCount); // For sorting by popularity
+        });
+
+        // EventCategory configuration
+        modelBuilder.Entity<EventCategory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.EventType).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.SubGroup).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.IconName).HasMaxLength(50);
+
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasIndex(e => e.EventType);
+            entity.HasIndex(e => new { e.EventType, e.DisplayOrder });
+            entity.HasIndex(e => e.IsActive);
+        });
+
+        // Event configuration
+        modelBuilder.Entity<Event>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.EventType).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.CreatedBy).IsRequired().HasMaxLength(200);
+
+            // Only configure column type for relational databases
+            if (Database.IsRelational())
+            {
+                entity.Property(e => e.AdditionalCategoryIds).HasColumnType("nvarchar(max)");
+            }
+
+            // FK to EventCategory
+            entity.HasOne(e => e.PrimaryCategory)
+                .WithMany()
+                .HasForeignKey(e => e.PrimaryCategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => e.EventType);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.IsArchived);
+            entity.HasIndex(e => e.PrimaryCategoryId);
         });
     }
 }

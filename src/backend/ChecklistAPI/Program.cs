@@ -31,6 +31,8 @@ builder.Services.AddScoped<IChecklistService, ChecklistService>();
 builder.Services.AddScoped<IChecklistItemService, ChecklistItemService>();
 builder.Services.AddScoped<IItemLibraryService, ItemLibraryService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IEventCategoryService, EventCategoryService>();
+builder.Services.AddScoped<IEventService, EventService>();
 
 // Add HTTP context accessor for service to access current user
 builder.Services.AddHttpContextAccessor();
