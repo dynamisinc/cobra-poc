@@ -107,7 +107,7 @@ export const ChecklistDetailClassic: React.FC<ChecklistDetailClassicProps> = ({
         {/* Title row */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
           <IconButton
-            onClick={() => navigate('/checklists')}
+            onClick={() => navigate('/checklists/dashboard')}
             size="small"
             sx={{ mr: 0.5 }}
           >

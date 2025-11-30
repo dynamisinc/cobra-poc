@@ -234,7 +234,7 @@ export const ChecklistDetailPage: React.FC = () => {
     if (currentEvent.id !== checklist.eventId) {
       console.log('[ChecklistDetailPage] Event changed, navigating to checklists landing');
       toast.info('Switched to a different event - returning to checklists');
-      navigate('/checklists');
+      navigate('/checklists/dashboard');
     }
   }, [currentEvent?.id, checklist?.eventId, navigate]);
 
@@ -359,7 +359,7 @@ export const ChecklistDetailPage: React.FC = () => {
       toast.success(`Checklist "${checklist.name}" has been archived`);
       setArchiveDialogOpen(false);
       // Navigate back to checklists list
-      navigate('/checklists');
+      navigate('/checklists/dashboard');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to archive checklist';
       toast.error(message);
@@ -392,7 +392,7 @@ export const ChecklistDetailPage: React.FC = () => {
           <Button
             variant="outlined"
             sx={{ mt: 2 }}
-            onClick={() => navigate('/checklists')}
+            onClick={() => navigate('/checklists/dashboard')}
           >
             Back to My Checklists
           </Button>
@@ -410,7 +410,7 @@ export const ChecklistDetailPage: React.FC = () => {
           <Button
             variant="outlined"
             sx={{ mt: 2 }}
-            onClick={() => navigate('/checklists')}
+            onClick={() => navigate('/checklists/dashboard')}
           >
             Back to My Checklists
           </Button>
@@ -543,7 +543,7 @@ export const ChecklistDetailPage: React.FC = () => {
       {/* Header */}
       <Box sx={{ mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <IconButton onClick={() => navigate('/checklists')} sx={{ mr: 1 }}>
+          <IconButton onClick={() => navigate('/checklists/dashboard')} sx={{ mr: 1 }}>
             <FontAwesomeIcon icon={faArrowLeft} />
           </IconButton>
           <Typography variant="h4" sx={{ flexGrow: 1 }}>{checklist.name}</Typography>

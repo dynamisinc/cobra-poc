@@ -38,8 +38,10 @@ import {
   faListCheck,
   faBrain,
   faFileLines,
+  faGear,
 } from "@fortawesome/free-solid-svg-icons";
 import type { IconDefinition } from "@fortawesome/free-solid-svg-icons";
+import { usePermissions } from "../../hooks/usePermissions";
 
 interface NavItem {
   id: string;
@@ -67,6 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const permissions = usePermissions();
 
   const drawerWidth = open
     ? theme.cssStyling.drawerOpenWidth
@@ -139,6 +142,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       disabled: true,
     },
   ];
+
+  // Admin navigation item - only visible for Manage role
+  const adminNavItem: NavItem = {
+    id: "admin",
+    label: "Admin",
+    icon: faGear,
+    path: "/checklists/manage",
+  };
 
   const handleNavClick = (item: NavItem) => {
     if (item.disabled) return;
@@ -355,6 +366,74 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </List>
       </Box>
+
+      {/* Admin Section - pinned to bottom, only visible for Manage role */}
+      {permissions.canViewTemplateLibrary && (
+        <Box
+          sx={{
+            borderTop: `1px solid ${theme.palette.divider}`,
+            py: 1,
+          }}
+        >
+          <List sx={{ pt: 0, pb: 0 }}>
+            <ListItem disablePadding sx={{ display: "block" }}>
+              <Tooltip
+                title={!open ? adminNavItem.label : ""}
+                placement="right"
+                arrow
+              >
+                <ListItemButton
+                  onClick={() => handleNavClick(adminNavItem)}
+                  sx={{
+                    minHeight: 44,
+                    justifyContent: open ? "flex-start" : "center",
+                    px: 2,
+                    mx: open ? 1 : 0.5,
+                    my: 0.25,
+                    borderRadius: 1,
+                    backgroundColor: isActive(adminNavItem.path)
+                      ? theme.palette.grid.main
+                      : "transparent",
+                    borderLeft: isActive(adminNavItem.path) && open
+                      ? `3px solid ${theme.palette.buttonPrimary.main}`
+                      : open ? "3px solid transparent" : "none",
+                    "&:hover": {
+                      backgroundColor: isActive(adminNavItem.path)
+                        ? theme.palette.grid.main
+                        : theme.palette.grid.light,
+                    },
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: open ? 2 : "auto",
+                      justifyContent: "center",
+                      color: isActive(adminNavItem.path)
+                        ? theme.palette.buttonPrimary.main
+                        : theme.palette.text.primary,
+                    }}
+                  >
+                    <FontAwesomeIcon icon={adminNavItem.icon} fixedWidth />
+                  </ListItemIcon>
+                  {open && (
+                    <ListItemText
+                      primary={adminNavItem.label}
+                      primaryTypographyProps={{
+                        fontSize: 14,
+                        fontWeight: isActive(adminNavItem.path) ? 600 : 400,
+                        color: isActive(adminNavItem.path)
+                          ? theme.palette.buttonPrimary.main
+                          : theme.palette.text.primary,
+                      }}
+                    />
+                  )}
+                </ListItemButton>
+              </Tooltip>
+            </ListItem>
+          </List>
+        </Box>
+      )}
     </Box>
   );
 

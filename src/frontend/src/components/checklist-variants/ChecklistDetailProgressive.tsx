@@ -354,7 +354,7 @@ export const ChecklistDetailProgressive: React.FC<ChecklistDetailProgressiveProp
     <Container maxWidth={false} disableGutters sx={{ py: 2, px: 2 }}>
       {/* Header */}
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-        <IconButton onClick={() => navigate('/checklists')} size="small">
+        <IconButton onClick={() => navigate('/checklists/dashboard')} size="small">
           <FontAwesomeIcon icon={faArrowLeft} />
         </IconButton>
 
