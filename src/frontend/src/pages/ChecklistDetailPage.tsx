@@ -8,7 +8,7 @@
  * User Story 3.1-3.3: Item completion, status updates, notes
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useHighlightItem } from '../hooks/useHighlightItem';
 import {
@@ -31,6 +31,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft, faNoteSticky, faCopy, faCircleInfo } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'react-toastify';
+import { AppLayout, BreadcrumbItem } from '../components/navigation';
 import { useChecklistDetail } from '../hooks/useChecklistDetail';
 import { useItemActions } from '../hooks/useItemActions';
 import { useChecklistHub } from '../hooks/useChecklistHub';
@@ -177,6 +178,21 @@ export const ChecklistDetailPage: React.FC = () => {
   // Item info expanded state
   const [expandedItemInfo, setExpandedItemInfo] = useState<Set<string>>(new Set());
 
+  // Breadcrumbs - dynamically built based on checklist name
+  const breadcrumbs: BreadcrumbItem[] = useMemo(() => {
+    const items: BreadcrumbItem[] = [
+      { label: "Home", path: "/" },
+      { label: "Checklist", path: "/checklists" },
+      { label: "Dashboard", path: "/checklists" },
+    ];
+    if (checklist) {
+      items.push({ label: checklist.name });
+    } else {
+      items.push({ label: "Loading..." });
+    }
+    return items;
+  }, [checklist]);
+
   // Toggle item info display
   const toggleItemInfo = (itemId: string) => {
     setExpandedItemInfo((prev) => {
@@ -310,45 +326,51 @@ export const ChecklistDetailPage: React.FC = () => {
   // Loading state
   if (loading && !checklist) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4, textAlign: 'center' }}>
-        <CircularProgress />
-        <Typography sx={{ mt: 2 }}>Loading checklist...</Typography>
-      </Container>
+      <AppLayout breadcrumbs={breadcrumbs}>
+        <Container maxWidth="lg" sx={{ mt: 4, textAlign: 'center' }}>
+          <CircularProgress />
+          <Typography sx={{ mt: 2 }}>Loading checklist...</Typography>
+        </Container>
+      </AppLayout>
     );
   }
 
   // Error state
   if (error) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Typography color="error" variant="h6">
-          Error loading checklist
-        </Typography>
-        <Typography color="error">{error}</Typography>
-        <Button
-          variant="outlined"
-          sx={{ mt: 2 }}
-          onClick={() => navigate('/checklists')}
-        >
-          Back to My Checklists
-        </Button>
-      </Container>
+      <AppLayout breadcrumbs={breadcrumbs}>
+        <Container maxWidth="lg" sx={{ mt: 4 }}>
+          <Typography color="error" variant="h6">
+            Error loading checklist
+          </Typography>
+          <Typography color="error">{error}</Typography>
+          <Button
+            variant="outlined"
+            sx={{ mt: 2 }}
+            onClick={() => navigate('/checklists')}
+          >
+            Back to My Checklists
+          </Button>
+        </Container>
+      </AppLayout>
     );
   }
 
   // Not found state
   if (!checklist) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Typography variant="h6">Checklist not found</Typography>
-        <Button
-          variant="outlined"
-          sx={{ mt: 2 }}
-          onClick={() => navigate('/checklists')}
-        >
-          Back to My Checklists
-        </Button>
-      </Container>
+      <AppLayout breadcrumbs={breadcrumbs}>
+        <Container maxWidth="lg" sx={{ mt: 4 }}>
+          <Typography variant="h6">Checklist not found</Typography>
+          <Button
+            variant="outlined"
+            sx={{ mt: 2 }}
+            onClick={() => navigate('/checklists')}
+          >
+            Back to My Checklists
+          </Button>
+        </Container>
+      </AppLayout>
     );
   }
 
@@ -378,7 +400,7 @@ export const ChecklistDetailPage: React.FC = () => {
   // Render variant-specific views (non-control variants)
   if (variant === 'classic') {
     return (
-      <>
+      <AppLayout breadcrumbs={breadcrumbs}>
         <ChecklistDetailClassic
           checklist={checklist}
           onToggleComplete={variantHandleToggleComplete}
@@ -403,13 +425,13 @@ export const ChecklistDetailPage: React.FC = () => {
           onCancel={handleCloseCopyDialog}
           saving={copying}
         />
-      </>
+      </AppLayout>
     );
   }
 
   if (variant === 'compact') {
     return (
-      <>
+      <AppLayout breadcrumbs={breadcrumbs}>
         <ChecklistDetailCompact
           checklist={checklist}
           onToggleComplete={variantHandleToggleComplete}
@@ -434,13 +456,13 @@ export const ChecklistDetailPage: React.FC = () => {
           onCancel={handleCloseCopyDialog}
           saving={copying}
         />
-      </>
+      </AppLayout>
     );
   }
 
   if (variant === 'progressive') {
     return (
-      <>
+      <AppLayout breadcrumbs={breadcrumbs}>
         <ChecklistDetailProgressive
           checklist={checklist}
           onToggleComplete={variantHandleToggleComplete}
@@ -465,12 +487,13 @@ export const ChecklistDetailPage: React.FC = () => {
           onCancel={handleCloseCopyDialog}
           saving={copying}
         />
-      </>
+      </AppLayout>
     );
   }
 
   // Default: Control variant (existing implementation)
   return (
+    <AppLayout breadcrumbs={breadcrumbs}>
     <Container maxWidth="lg" sx={{ mt: 2, mb: 2 }}>
       {/* Header */}
       <Box sx={{ mb: 2 }}>
@@ -849,5 +872,6 @@ export const ChecklistDetailPage: React.FC = () => {
         />
       )}
     </Container>
+    </AppLayout>
   );
 };

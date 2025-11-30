@@ -1,136 +1,190 @@
 /**
  * App Component - Main Application Entry Point
  *
- * Sets up routing and global layout for the COBRA Checklist POC.
- * Uses BrowserRouter for clean URLs (not hash routing).
+ * Implements C5-style navigation with:
+ * - Collapsible left sidebar
+ * - Breadcrumb navigation
+ * - Hierarchical routing under /checklists/*
+ *
+ * Route Structure:
+ * - /checklists - Dashboard (My Checklists)
+ * - /checklists/:id - Checklist Detail
+ * - /checklists/manage - Templates & Item Library (Manage role)
+ * - /checklists/manage/templates/new - Create Template
+ * - /checklists/manage/templates/:id/edit - Edit Template
+ * - /checklists/manage/templates/:id/preview - Preview Template
+ * - /checklists/manage/templates/:id/duplicate - Duplicate Template
+ * - /checklists/analytics - Analytics Dashboard (future)
  */
 
 import React from "react";
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate,
-  Link,
-  useLocation,
-} from "react-router-dom";
-import { Box, AppBar, Toolbar, Typography, Button } from "@mui/material";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Box, Typography, Container, Stack } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faClipboardList,
-  faBook,
-  faBoxArchive,
-} from "@fortawesome/free-solid-svg-icons";
+import { faChartLine } from "@fortawesome/free-solid-svg-icons";
+
+// Navigation components
+import { AppLayout, BreadcrumbItem } from "./components/navigation";
+
+// Pages
 import { LandingPage } from "./pages/LandingPage";
 import { ChecklistDetailPage } from "./pages/ChecklistDetailPage";
-import { TemplateLibraryPage } from "./pages/TemplateLibraryPage";
+import { ManagePage } from "./pages/ManagePage";
 import { TemplateEditorPage } from "./pages/TemplateEditorPage";
 import { TemplatePreviewPage } from "./pages/TemplatePreviewPage";
-import { ItemLibraryPage } from "./pages/ItemLibraryPage";
-import { ProfileMenu } from "./components/ProfileMenu";
-import { usePermissions } from "./hooks/usePermissions";
-import { PermissionRole } from "./types";
-import { cobraTheme } from "./theme/cobraTheme";
 
-interface AppNavBarProps {
-  onProfileChange: (positions: string[], role: PermissionRole) => void;
-}
+// Styles
+import CobraStyles from "./theme/CobraStyles";
 
 /**
- * App Navigation Bar
+ * Dashboard Page Wrapper
+ * Wraps LandingPage (My Checklists) with AppLayout
  */
-const AppNavBar: React.FC<AppNavBarProps> = ({ onProfileChange }) => {
-  const location = useLocation();
-  const permissions = usePermissions();
+const DashboardPage: React.FC = () => {
+  const breadcrumbs: BreadcrumbItem[] = [
+    { label: "Home", path: "/" },
+    { label: "Checklist", path: "/checklists" },
+    { label: "Dashboard" },
+  ];
 
   return (
-    <AppBar
-      position="static"
-      sx={{
-        backgroundColor: cobraTheme.palette.buttonPrimary.main,
-        boxShadow: 2,
-      }}
-    >
-      <Toolbar>
-        <FontAwesomeIcon
-          icon={faClipboardList}
-          size="lg"
-          style={{ marginRight: 16 }}
-        />
-        <Typography variant="h6" sx={{ fontWeight: "bold", color: "#FFFACD" }}>
-          COBRA Checklist
-        </Typography>
+    <AppLayout breadcrumbs={breadcrumbs}>
+      <LandingPage />
+    </AppLayout>
+  );
+};
 
-        {/* Navigation Links */}
-        <Box sx={{ flexGrow: 1, ml: 4, display: "flex", gap: 2 }}>
-          {/* My Checklists - visible to all except None */}
-          <Button
-            component={Link}
-            to="/checklists"
-            sx={{
-              color: "#FFFACD",
-              fontWeight:
-                location.pathname === "/checklists" ? "bold" : "normal",
-              textDecoration:
-                location.pathname === "/checklists" ? "underline" : "none",
-              "&:hover": {
-                backgroundColor: "rgba(255, 250, 205, 0.1)",
-              },
-            }}
-          >
-            <FontAwesomeIcon
-              icon={faClipboardList}
-              style={{ marginRight: 8 }}
-            />
-            My Checklists
-          </Button>
+/**
+ * Checklist Detail Page Wrapper
+ * Wraps ChecklistDetailPage with AppLayout
+ */
+const ChecklistDetailWrapper: React.FC = () => {
+  // Breadcrumbs will be set by the ChecklistDetailPage itself
+  // since it needs to know the checklist name
+  return <ChecklistDetailPage />;
+};
 
-          {/* Template Library - only visible to Manage role */}
-          {permissions.canViewTemplateLibrary && (
-            <Button
-              component={Link}
-              to="/templates"
-              sx={{
-                color: "#FFFACD",
-                fontWeight:
-                  location.pathname === "/templates" ? "bold" : "normal",
-                textDecoration:
-                  location.pathname === "/templates" ? "underline" : "none",
-                "&:hover": {
-                  backgroundColor: "rgba(255, 250, 205, 0.1)",
-                },
-              }}
-            >
-              <FontAwesomeIcon icon={faBook} style={{ marginRight: 8 }} />
-              Template Library
-            </Button>
-          )}
+/**
+ * Template Editor Page Wrapper
+ * Wraps TemplateEditorPage with AppLayout
+ */
+const TemplateEditorWrapper: React.FC<{ mode: "new" | "edit" | "duplicate" }> = ({
+  mode,
+}) => {
+  const getTitle = () => {
+    switch (mode) {
+      case "new":
+        return "Create Template";
+      case "duplicate":
+        return "Duplicate Template";
+      case "edit":
+        return "Edit Template";
+    }
+  };
 
-          {/* Item Library - only visible to Manage role */}
-          {permissions.canAccessItemLibrary && (
-            <Button
-              component={Link}
-              to="/item-library"
-              sx={{
-                color: "#FFFACD",
-                fontWeight:
-                  location.pathname === "/item-library" ? "bold" : "normal",
-                textDecoration:
-                  location.pathname === "/item-library" ? "underline" : "none",
-                "&:hover": {
-                  backgroundColor: "rgba(255, 250, 205, 0.1)",
-                },
-              }}
-            >
-              <FontAwesomeIcon icon={faBoxArchive} style={{ marginRight: 8 }} />
-              Item Library
-            </Button>
-          )}
-        </Box>
+  const breadcrumbs: BreadcrumbItem[] = [
+    { label: "Home", path: "/" },
+    { label: "Checklist", path: "/checklists" },
+    { label: "Manage", path: "/checklists/manage?tab=templates" },
+    { label: getTitle() },
+  ];
 
-        <ProfileMenu onProfileChange={onProfileChange} />
-      </Toolbar>
-    </AppBar>
+  return (
+    <AppLayout breadcrumbs={breadcrumbs}>
+      <TemplateEditorPage />
+    </AppLayout>
+  );
+};
+
+/**
+ * Template Preview Page Wrapper
+ * Wraps TemplatePreviewPage with AppLayout
+ */
+const TemplatePreviewWrapper: React.FC = () => {
+  const breadcrumbs: BreadcrumbItem[] = [
+    { label: "Home", path: "/" },
+    { label: "Checklist", path: "/checklists" },
+    { label: "Manage", path: "/checklists/manage?tab=templates" },
+    { label: "Preview" },
+  ];
+
+  return (
+    <AppLayout breadcrumbs={breadcrumbs}>
+      <TemplatePreviewPage />
+    </AppLayout>
+  );
+};
+
+/**
+ * Analytics Page (Placeholder)
+ */
+const AnalyticsPage: React.FC = () => {
+  const breadcrumbs: BreadcrumbItem[] = [
+    { label: "Home", path: "/" },
+    { label: "Checklist", path: "/checklists" },
+    { label: "Analytics" },
+  ];
+
+  return (
+    <AppLayout breadcrumbs={breadcrumbs}>
+      <Container maxWidth="lg">
+        <Stack
+          spacing={3}
+          padding={CobraStyles.Padding.MainWindow}
+          sx={{ textAlign: "center", py: 8 }}
+        >
+          <FontAwesomeIcon
+            icon={faChartLine}
+            size="4x"
+            style={{ color: "#c0c0c0" }}
+          />
+          <Typography variant="h4" color="text.secondary">
+            Analytics Dashboard
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Coming soon - Progress tracking, trends, and workload analysis
+          </Typography>
+        </Stack>
+      </Container>
+    </AppLayout>
+  );
+};
+
+/**
+ * Home Page - Redirects to dashboard
+ */
+const HomePage: React.FC = () => {
+  const breadcrumbs: BreadcrumbItem[] = [{ label: "Home" }];
+
+  return (
+    <AppLayout breadcrumbs={breadcrumbs}>
+      <Container maxWidth="lg">
+        <Stack spacing={3} padding={CobraStyles.Padding.MainWindow}>
+          <Typography variant="h4">COBRA Checklist Tool</Typography>
+          <Typography variant="body1" color="text.secondary">
+            Welcome to the COBRA Checklist POC. Use the sidebar to navigate.
+          </Typography>
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              Quick Links
+            </Typography>
+            <Stack spacing={1}>
+              <Typography>
+                • <a href="/checklists">Dashboard</a> - View your checklists
+              </Typography>
+              <Typography>
+                • <a href="/checklists/manage">Manage</a> - Templates & Item
+                Library
+              </Typography>
+              <Typography>
+                • <a href="/checklists/analytics">Analytics</a> - Progress &
+                Trends
+              </Typography>
+            </Stack>
+          </Box>
+        </Stack>
+      </Container>
+    </AppLayout>
   );
 };
 
@@ -138,62 +192,79 @@ const AppNavBar: React.FC<AppNavBarProps> = ({ onProfileChange }) => {
  * Main App Component
  */
 function App() {
-  /**
-   * Handle profile change from ProfileMenu
-   * Note: The profileChanged event is already dispatched by saveProfile in ProfileMenu,
-   * so we don't dispatch it here to avoid duplicate network requests.
-   */
-  const handleProfileChange = (positions: string[], role: PermissionRole) => {
-    console.log("[App] Profile changed - Positions:", positions, "Role:", role);
-    // Event is already dispatched by saveProfile in ProfileMenu - no need to dispatch again
-  };
-
   return (
     <BrowserRouter>
       <Box sx={{ minHeight: "100vh", backgroundColor: "#F5F5F5" }}>
-        <AppNavBar onProfileChange={handleProfileChange} />
-
         <Routes>
-          {/* Default route - redirect to My Checklists */}
-          <Route path="/" element={<Navigate to="/checklists" replace />} />
+          {/* Home page */}
+          <Route path="/" element={<HomePage />} />
 
-          {/* My Checklists page - uses variant switcher */}
-          <Route path="/checklists" element={<LandingPage />} />
+          {/* Checklist Dashboard (My Checklists) */}
+          <Route path="/checklists" element={<DashboardPage />} />
 
-          {/* Checklist Detail page */}
+          {/* Checklist Detail */}
           <Route
             path="/checklists/:checklistId"
-            element={<ChecklistDetailPage />}
+            element={<ChecklistDetailWrapper />}
           />
 
-          {/* Template Library page */}
-          <Route path="/templates" element={<TemplateLibraryPage />} />
+          {/* Manage Section (Templates & Item Library) */}
+          <Route path="/checklists/manage" element={<ManagePage />} />
 
-          {/* Item Library page */}
-          <Route path="/item-library" element={<ItemLibraryPage />} />
-
-          {/* Create New Template */}
-          <Route path="/templates/new" element={<TemplateEditorPage />} />
-
-          {/* Preview Template */}
+          {/* Template Management Routes */}
           <Route
-            path="/templates/:templateId/preview"
-            element={<TemplatePreviewPage />}
+            path="/checklists/manage/templates/new"
+            element={<TemplateEditorWrapper mode="new" />}
           />
-
-          {/* Duplicate Template */}
           <Route
-            path="/templates/:templateId/duplicate"
-            element={<TemplateEditorPage />}
+            path="/checklists/manage/templates/:templateId/edit"
+            element={<TemplateEditorWrapper mode="edit" />}
+          />
+          <Route
+            path="/checklists/manage/templates/:templateId/preview"
+            element={<TemplatePreviewWrapper />}
+          />
+          <Route
+            path="/checklists/manage/templates/:templateId/duplicate"
+            element={<TemplateEditorWrapper mode="duplicate" />}
           />
 
-          {/* Edit Existing Template */}
+          {/* Analytics Page */}
+          <Route path="/checklists/analytics" element={<AnalyticsPage />} />
+
+          {/* Legacy routes - redirect to new structure */}
+          <Route
+            path="/templates"
+            element={<Navigate to="/checklists/manage?tab=templates" replace />}
+          />
+          <Route
+            path="/templates/new"
+            element={<Navigate to="/checklists/manage/templates/new" replace />}
+          />
           <Route
             path="/templates/:templateId/edit"
-            element={<TemplateEditorPage />}
+            element={
+              <Navigate to="/checklists/manage/templates/:templateId/edit" replace />
+            }
+          />
+          <Route
+            path="/templates/:templateId/preview"
+            element={
+              <Navigate to="/checklists/manage/templates/:templateId/preview" replace />
+            }
+          />
+          <Route
+            path="/templates/:templateId/duplicate"
+            element={
+              <Navigate to="/checklists/manage/templates/:templateId/duplicate" replace />
+            }
+          />
+          <Route
+            path="/item-library"
+            element={<Navigate to="/checklists/manage?tab=items" replace />}
           />
 
-          {/* Catch-all route - redirect to My Checklists */}
+          {/* Catch-all - redirect to dashboard */}
           <Route path="*" element={<Navigate to="/checklists" replace />} />
         </Routes>
       </Box>
