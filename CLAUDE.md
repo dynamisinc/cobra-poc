@@ -1220,7 +1220,23 @@ it('fetches checklists on mount', async () => {
 
 ## Azure Deployment
 
-### Quick Deploy (Recommended)
+### Deploying with Claude (Recommended Prompt)
+
+When asking Claude to deploy to production, use this prompt:
+
+> **"Commit and deploy to Azure production using quick-deploy.ps1"**
+
+Or with a specific message:
+
+> **"Deploy to production with message 'fix: description of changes'"**
+
+Claude will:
+1. Run `deploy/scripts/quick-deploy.ps1` with appropriate options
+2. Build the frontend (includes automatic build verification)
+3. Push to Azure and sync assets
+4. Verify API endpoints are responding
+
+### Quick Deploy Script
 
 Use the `quick-deploy.ps1` script for reliable deployments:
 
@@ -1285,6 +1301,21 @@ git push azure HEAD:main
 ```bash
 az webapp restart --name checklist-poc-app --resource-group c5-poc-eastus2-rg
 ```
+
+#### 4. API Returns 404 or /api/api Double Prefix (FIXED)
+
+**Symptom:** Network requests show `/api/api/events` instead of `/api/events`.
+
+**Cause:** Previously, `.env.production` had `VITE_API_URL=/api` but service files already include `/api/` prefix.
+
+**Status:** This is now **automatically prevented** by the build verification script (`npm run build` runs `scripts/verify-build.cjs`).
+
+**If it happens:**
+1. Check `.env.production` has `VITE_API_URL=` (empty string, NOT `/api`)
+2. Check `api.ts` uses `??` not `||` for the fallback
+3. Rebuild and redeploy
+
+**Verification:** Run `npm run verify-build` to check the production bundle.
 
 ### Full Documentation
 
