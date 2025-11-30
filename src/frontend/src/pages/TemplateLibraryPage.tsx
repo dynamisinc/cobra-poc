@@ -126,7 +126,7 @@ export const TemplateLibraryPage: React.FC = () => {
   // Loading state
   if (loading && templates.length === 0) {
     return (
-      <Container maxWidth="lg">
+      <Container maxWidth={false} disableGutters>
         <Stack spacing={3} padding={CobraStyles.Padding.MainWindow} sx={{ textAlign: 'center' }}>
           <CircularProgress />
           <Typography>Loading templates...</Typography>
@@ -138,7 +138,7 @@ export const TemplateLibraryPage: React.FC = () => {
   // Error state
   if (error && templates.length === 0) {
     return (
-      <Container maxWidth="lg">
+      <Container maxWidth={false} disableGutters>
         <Stack spacing={3} padding={CobraStyles.Padding.MainWindow}>
           <Typography color="error" variant="h6">
             Error loading templates
@@ -153,7 +153,7 @@ export const TemplateLibraryPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth={false} disableGutters>
       <Stack spacing={3} padding={CobraStyles.Padding.MainWindow}>
         {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

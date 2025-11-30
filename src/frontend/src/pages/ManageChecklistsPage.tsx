@@ -157,7 +157,7 @@ export const ManageChecklistsPage: React.FC = () => {
   // Check permissions
   if (!permissions.canManageArchivedChecklists) {
     return (
-      <Container maxWidth="lg">
+      <Container maxWidth={false} disableGutters>
         <Stack spacing={2} padding={CobraStyles.Padding.MainWindow} alignItems="center">
           <Typography color="error" variant="h6">
             Access Denied
@@ -173,7 +173,7 @@ export const ManageChecklistsPage: React.FC = () => {
   // No event selected
   if (!currentEvent) {
     return (
-      <Container maxWidth="lg">
+      <Container maxWidth={false} disableGutters>
         <Stack spacing={2} padding={CobraStyles.Padding.MainWindow}>
           <Typography variant="h4" sx={{ mb: 1 }}>
             Manage Archived Checklists
@@ -189,7 +189,7 @@ export const ManageChecklistsPage: React.FC = () => {
   // Loading state
   if (loading) {
     return (
-      <Container maxWidth="lg">
+      <Container maxWidth={false} disableGutters>
         <Stack
           spacing={2}
           padding={CobraStyles.Padding.MainWindow}
@@ -207,7 +207,7 @@ export const ManageChecklistsPage: React.FC = () => {
   // Error state
   if (error) {
     return (
-      <Container maxWidth="lg">
+      <Container maxWidth={false} disableGutters>
         <Stack spacing={2} padding={CobraStyles.Padding.MainWindow}>
           <Typography color="error" variant="h6">
             Error loading archived checklists
@@ -219,7 +219,7 @@ export const ManageChecklistsPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth={false} disableGutters>
       <Stack spacing={3} padding={CobraStyles.Padding.MainWindow}>
         {/* Page Header */}
         <Box>

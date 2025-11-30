@@ -101,7 +101,7 @@ export const ChecklistDetailClassic: React.FC<ChecklistDetailClassicProps> = ({
   const progressPercentage = Number(checklist.progressPercentage);
 
   return (
-    <Container maxWidth="md" sx={{ py: 2 }}>
+    <Container maxWidth={false} disableGutters sx={{ py: 2, px: 2 }}>
       {/* Compact Header */}
       <Box sx={{ mb: 2 }}>
         {/* Title row */}

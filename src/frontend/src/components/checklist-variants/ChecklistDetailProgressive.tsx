@@ -351,7 +351,7 @@ export const ChecklistDetailProgressive: React.FC<ChecklistDetailProgressiveProp
   const progressPercentage = Number(checklist.progressPercentage);
 
   return (
-    <Container maxWidth="md" sx={{ py: 2 }}>
+    <Container maxWidth={false} disableGutters sx={{ py: 2, px: 2 }}>
       {/* Header */}
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
         <IconButton onClick={() => navigate('/checklists')} size="small">

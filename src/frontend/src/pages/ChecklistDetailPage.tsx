@@ -42,6 +42,7 @@ import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } 
 import { CobraDeleteButton, CobraLinkButton } from '../theme/styledComponents';
 import { c5Colors } from '../theme/c5Theme';
 import { cobraTheme } from '../theme/cobraTheme';
+import CobraStyles from '../theme/CobraStyles';
 import { ItemNotesDialog } from '../components/ItemNotesDialog';
 import { CreateChecklistDialog, type ChecklistCreationData } from '../components/CreateChecklistDialog';
 import {
@@ -371,7 +372,7 @@ export const ChecklistDetailPage: React.FC = () => {
   if (loading && !checklist) {
     return (
       <AppLayout breadcrumbs={breadcrumbs}>
-        <Container maxWidth="lg" sx={{ mt: 4, textAlign: 'center' }}>
+        <Container maxWidth={false} disableGutters sx={{ mt: 4, textAlign: 'center' }}>
           <CircularProgress />
           <Typography sx={{ mt: 2 }}>Loading checklist...</Typography>
         </Container>
@@ -383,7 +384,7 @@ export const ChecklistDetailPage: React.FC = () => {
   if (error) {
     return (
       <AppLayout breadcrumbs={breadcrumbs}>
-        <Container maxWidth="lg" sx={{ mt: 4 }}>
+        <Container maxWidth={false} disableGutters sx={{ mt: 4 }}>
           <Typography color="error" variant="h6">
             Error loading checklist
           </Typography>
@@ -404,7 +405,7 @@ export const ChecklistDetailPage: React.FC = () => {
   if (!checklist) {
     return (
       <AppLayout breadcrumbs={breadcrumbs}>
-        <Container maxWidth="lg" sx={{ mt: 4 }}>
+        <Container maxWidth={false} disableGutters sx={{ mt: 4 }}>
           <Typography variant="h6">Checklist not found</Typography>
           <Button
             variant="outlined"
@@ -538,7 +539,7 @@ export const ChecklistDetailPage: React.FC = () => {
   // Default: Control variant (existing implementation)
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-    <Container maxWidth="lg" sx={{ mt: 2, mb: 2 }}>
+    <Container maxWidth={false} disableGutters sx={{ p: CobraStyles.Padding.MainWindow }}>
       {/* Header */}
       <Box sx={{ mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
