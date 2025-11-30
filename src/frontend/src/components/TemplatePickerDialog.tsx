@@ -103,7 +103,7 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
 
       // Fetch smart suggestions based on position
       const suggestionsResponse = await fetch(
-        `${import.meta.env.VITE_API_URL}/templates/suggestions?position=${encodeURIComponent(position)}&limit=10`
+        `${import.meta.env.VITE_API_URL}/api/templates/suggestions?position=${encodeURIComponent(position)}&limit=10`
       );
 
       if (suggestionsResponse.ok) {
@@ -115,7 +115,7 @@ export const TemplatePickerDialog: React.FC<TemplatePickerDialogProps> = ({
 
       // Fetch all templates as fallback
       const allResponse = await fetch(
-        `${import.meta.env.VITE_API_URL}/templates?includeArchived=false`
+        `${import.meta.env.VITE_API_URL}/api/templates?includeArchived=false`
       );
 
       if (!allResponse.ok) {

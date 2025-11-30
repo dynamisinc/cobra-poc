@@ -4,20 +4,34 @@
 -- Creates test operational periods for POC testing
 -- Allows testing of period grouping in frontend
 --
--- USAGE: Run this AFTER applying migrations and base seed data
+-- IMPORTANT: Run these first:
+--   1. seed-events.sql (creates Events and EventCategories)
+--   2. seed-templates.sql (creates Templates)
+--   3. seed-checklists.sql (creates ChecklistInstances)
+--
+-- USAGE: Run this AFTER applying the above seed data
 -- ==========================================
 
 USE ChecklistPOC;
 GO
 
--- Declare variables for consistent test data
-DECLARE @EventId NVARCHAR(50) = 'INCIDENT-2025-001';
+-- Get the Event ID for Hurricane Milton (created by seed-events.sql)
+DECLARE @EventId UNIQUEIDENTIFIER;
+SELECT @EventId = Id FROM Events WHERE Name = 'Hurricane Milton Response - November 2025';
+
+IF @EventId IS NULL
+BEGIN
+    RAISERROR('Event not found. Run seed-events.sql first.', 16, 1);
+    RETURN;
+END
+
+PRINT 'Using Event ID: ' + CAST(@EventId AS VARCHAR(50));
+
 DECLARE @CreatedBy NVARCHAR(255) = 'System Seed';
 DECLARE @UtcNow DATETIME2 = GETUTCDATE();
 
 -- Clear existing test operational periods (if running multiple times)
 DELETE FROM OperationalPeriods WHERE CreatedBy = 'System Seed';
-GO
 
 -- ==========================================
 -- Operational Period 1: Morning Shift (completed)
@@ -32,7 +46,7 @@ INSERT INTO OperationalPeriods (
 )
 VALUES (
     @OP1_Id,
-    'INCIDENT-2025-001',
+    @EventId,
     'OP 1 - Morning Shift (0600-1800)',
     @OP1_StartTime,
     @OP1_EndTime,
@@ -46,7 +60,6 @@ VALUES (
 );
 
 PRINT 'Created OP 1 - Morning Shift (Past)';
-GO
 
 -- ==========================================
 -- Operational Period 2: Night Shift (completed)
@@ -61,7 +74,7 @@ INSERT INTO OperationalPeriods (
 )
 VALUES (
     @OP2_Id,
-    'INCIDENT-2025-001',
+    @EventId,
     'OP 2 - Night Shift (1800-0600)',
     @OP2_StartTime,
     @OP2_EndTime,
@@ -75,7 +88,6 @@ VALUES (
 );
 
 PRINT 'Created OP 2 - Night Shift (Past)';
-GO
 
 -- ==========================================
 -- Operational Period 3: Current Morning Shift (ACTIVE)
@@ -89,7 +101,7 @@ INSERT INTO OperationalPeriods (
 )
 VALUES (
     @OP3_Id,
-    'INCIDENT-2025-001',
+    @EventId,
     'OP 3 - Current Shift (0600-1800)',
     @OP3_StartTime,
     NULL, -- Still active, no end time
@@ -103,7 +115,6 @@ VALUES (
 );
 
 PRINT 'Created OP 3 - Current Shift (ACTIVE)';
-GO
 
 -- ==========================================
 -- Associate existing checklists with operational periods
@@ -113,30 +124,30 @@ GO
 -- Update a few checklists to belong to OP 1 (past)
 UPDATE TOP (2) ChecklistInstances
 SET
-    OperationalPeriodId = (SELECT TOP 1 Id FROM OperationalPeriods WHERE Name LIKE '%OP 1%'),
+    OperationalPeriodId = @OP1_Id,
     OperationalPeriodName = 'OP 1 - Morning Shift (0600-1800)'
 WHERE OperationalPeriodId IS NULL
-  AND EventId = 'INCIDENT-2025-001';
+  AND EventId = @EventId;
 
 PRINT 'Associated 2 checklists with OP 1';
 
 -- Update a few checklists to belong to OP 2 (past)
 UPDATE TOP (2) ChecklistInstances
 SET
-    OperationalPeriodId = (SELECT TOP 1 Id FROM OperationalPeriods WHERE Name LIKE '%OP 2%'),
+    OperationalPeriodId = @OP2_Id,
     OperationalPeriodName = 'OP 2 - Night Shift (1800-0600)'
 WHERE OperationalPeriodId IS NULL
-  AND EventId = 'INCIDENT-2025-001';
+  AND EventId = @EventId;
 
 PRINT 'Associated 2 checklists with OP 2';
 
 -- Update a few checklists to belong to OP 3 (current)
 UPDATE TOP (3) ChecklistInstances
 SET
-    OperationalPeriodId = (SELECT TOP 1 Id FROM OperationalPeriods WHERE Name LIKE '%OP 3%'),
+    OperationalPeriodId = @OP3_Id,
     OperationalPeriodName = 'OP 3 - Current Shift (0600-1800)'
 WHERE OperationalPeriodId IS NULL
-  AND EventId = 'INCIDENT-2025-001';
+  AND EventId = @EventId;
 
 PRINT 'Associated 3 checklists with OP 3 (current)';
 
@@ -183,7 +194,7 @@ SELECT
     COUNT(*) AS [Count]
 FROM ChecklistInstances
 WHERE OperationalPeriodId IS NULL
-  AND EventId = 'INCIDENT-2025-001';
+  AND EventId = @EventId;
 
 GO
 

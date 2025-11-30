@@ -64,7 +64,7 @@ public interface IChecklistService
     /// <param name="includeArchived">If true, includes archived checklists (default: false)</param>
     /// <returns>List of checklists for this event</returns>
     Task<List<ChecklistInstanceDto>> GetChecklistsByEventAsync(
-        string eventId,
+        Guid eventId,
         bool includeArchived = false);
 
     /// <summary>
@@ -76,7 +76,7 @@ public interface IChecklistService
     /// <param name="includeArchived">If true, includes archived checklists (default: false)</param>
     /// <returns>List of checklists for this operational period</returns>
     Task<List<ChecklistInstanceDto>> GetChecklistsByOperationalPeriodAsync(
-        string eventId,
+        Guid eventId,
         Guid? operationalPeriodId,
         bool includeArchived = false);
 
@@ -129,10 +129,28 @@ public interface IChecklistService
 
     /// <summary>
     /// Get all archived checklists
-    /// Admin-only operation to view archived checklists
+    /// Manage role operation to view archived checklists
     /// </summary>
     /// <returns>List of archived checklists</returns>
     Task<List<ChecklistInstanceDto>> GetArchivedChecklistsAsync();
+
+    /// <summary>
+    /// Get archived checklists for a specific event
+    /// Manage role operation to view archived checklists for an event
+    /// </summary>
+    /// <param name="eventId">Event identifier</param>
+    /// <returns>List of archived checklists for this event</returns>
+    Task<List<ChecklistInstanceDto>> GetArchivedChecklistsByEventAsync(Guid eventId);
+
+    /// <summary>
+    /// Permanently delete an archived checklist
+    /// Manage role operation - cannot be undone!
+    /// Only archived checklists can be permanently deleted
+    /// </summary>
+    /// <param name="id">Checklist ID to permanently delete</param>
+    /// <param name="userContext">Current user context for audit trail</param>
+    /// <returns>True if deleted, false if not archived, null if not found</returns>
+    Task<bool?> PermanentlyDeleteChecklistAsync(Guid id, UserContext userContext);
 
     /// <summary>
     /// Recalculate progress for a checklist
@@ -152,10 +170,12 @@ public interface IChecklistService
     /// <param name="newName">Name for the cloned checklist</param>
     /// <param name="preserveStatus">If true, preserves completion status and notes; if false, resets to fresh checklist</param>
     /// <param name="userContext">Current user context for audit trail</param>
+    /// <param name="assignedPositions">Optional comma-separated positions; if null, inherits from original</param>
     /// <returns>Newly created cloned checklist</returns>
     Task<ChecklistInstanceDto?> CloneChecklistAsync(
         Guid id,
         string newName,
         bool preserveStatus,
-        UserContext userContext);
+        UserContext userContext,
+        string? assignedPositions = null);
 }

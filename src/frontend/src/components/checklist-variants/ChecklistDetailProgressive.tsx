@@ -40,6 +40,7 @@ import {
   faSave,
 } from '@fortawesome/free-solid-svg-icons';
 import { ChecklistProgressBar } from '../ChecklistProgressBar';
+import { usePermissions } from '../../hooks/usePermissions';
 import type { ChecklistInstanceDto, ChecklistItemDto } from '../../services/checklistService';
 import type { StatusOption } from '../../types';
 import { c5Colors } from '../../theme/c5Theme';
@@ -95,6 +96,7 @@ const ProgressiveItem: React.FC<{
   isHighlighted,
   itemRef,
 }) => {
+  const { canInteractWithItems } = usePermissions();
   const [editedNotes, setEditedNotes] = useState(item.notes || '');
   const [notesChanged, setNotesChanged] = useState(false);
   const statusOptions = parseStatusOptions(item.statusConfiguration);
@@ -153,7 +155,7 @@ const ProgressiveItem: React.FC<{
               e.stopPropagation();
               onToggleComplete(item.id, item.isCompleted || false);
             }}
-            disabled={isProcessing}
+            disabled={isProcessing || !canInteractWithItems}
             onClick={(e) => e.stopPropagation()}
             sx={{
               p: 0.5,
@@ -260,7 +262,7 @@ const ProgressiveItem: React.FC<{
                 value={item.currentStatus || ''}
                 onChange={(e) => onStatusChange(item.id, e.target.value)}
                 label="Status"
-                disabled={isProcessing}
+                disabled={isProcessing || !canInteractWithItems}
               >
                 <MenuItem value="">
                   <em>(Not set)</em>
@@ -275,7 +277,7 @@ const ProgressiveItem: React.FC<{
             </FormControl>
           )}
 
-          {/* Notes editor */}
+          {/* Notes editor - show read-only for readonly users */}
           <TextField
             label="Notes"
             multiline
@@ -284,11 +286,12 @@ const ProgressiveItem: React.FC<{
             size="small"
             value={editedNotes}
             onChange={(e) => handleNotesChange(e.target.value)}
-            placeholder="Add notes about this item..."
+            placeholder={canInteractWithItems ? "Add notes about this item..." : "No notes"}
             sx={{ mb: 1 }}
+            disabled={!canInteractWithItems}
           />
 
-          {notesChanged && (
+          {notesChanged && canInteractWithItems && (
             <Button
               size="small"
               variant="contained"
@@ -338,6 +341,7 @@ export const ChecklistDetailProgressive: React.FC<ChecklistDetailProgressiveProp
   getItemRef,
 }) => {
   const navigate = useNavigate();
+  const { canInteractWithItems, isReadonly } = usePermissions();
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
 
   const handleToggleExpand = (itemId: string) => {
@@ -364,9 +368,12 @@ export const ChecklistDetailProgressive: React.FC<ChecklistDetailProgressiveProp
           </Typography>
         </Box>
 
-        <IconButton size="small" onClick={() => onCopy('clone-clean')}>
-          <FontAwesomeIcon icon={faCopy} />
-        </IconButton>
+        {/* Copy button - only show for users who can interact */}
+        {canInteractWithItems && (
+          <IconButton size="small" onClick={() => onCopy('clone-clean')}>
+            <FontAwesomeIcon icon={faCopy} />
+          </IconButton>
+        )}
       </Stack>
 
       {/* Progress */}
@@ -391,13 +398,32 @@ export const ChecklistDetailProgressive: React.FC<ChecklistDetailProgressiveProp
         )}
       </Box>
 
+      {/* Readonly Mode Banner */}
+      {isReadonly && (
+        <Box
+          sx={{
+            backgroundColor: '#FFF3E0',
+            border: '1px solid #FFB74D',
+            borderRadius: 1,
+            p: 1.5,
+            mb: 2,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            <strong>View Only:</strong> You are viewing this checklist in read-only mode.
+          </Typography>
+        </Box>
+      )}
+
       {/* Instruction hint */}
       <Typography
         variant="caption"
         color="text.secondary"
         sx={{ display: 'block', mb: 1, fontStyle: 'italic' }}
       >
-        Tap an item to expand details and add notes
+        {canInteractWithItems
+          ? 'Tap an item to expand details and add notes'
+          : 'Tap an item to view details'}
       </Typography>
 
       {/* Items */}

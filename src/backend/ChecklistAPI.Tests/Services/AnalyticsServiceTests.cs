@@ -19,6 +19,10 @@ public class AnalyticsServiceTests : IDisposable
     private readonly AnalyticsService _service;
     private readonly string _testUser = "test@test.com";
 
+    // Test event IDs
+    private static readonly Guid TestEvent1Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    private static readonly Guid TestEvent2Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+
     public AnalyticsServiceTests()
     {
         _context = TestDbContextFactory.CreateInMemoryContext();
@@ -468,7 +472,7 @@ public class AnalyticsServiceTests : IDisposable
                 Id = Guid.NewGuid(),
                 TemplateId = template1.Id,
                 Name = "Instance 1",
-                EventId = "Event-001",
+                EventId = TestEvent1Id,
                 CreatedBy = _testUser,
                 CreatedAt = DateTime.UtcNow.AddDays(-8),
                 IsArchived = false
@@ -478,7 +482,7 @@ public class AnalyticsServiceTests : IDisposable
                 Id = Guid.NewGuid(),
                 TemplateId = template1.Id,
                 Name = "Instance 2",
-                EventId = "Event-001",
+                EventId = TestEvent1Id,
                 CreatedBy = _testUser,
                 CreatedAt = DateTime.UtcNow.AddDays(-7),
                 IsArchived = false
@@ -488,7 +492,7 @@ public class AnalyticsServiceTests : IDisposable
                 Id = Guid.NewGuid(),
                 TemplateId = template1.Id,
                 Name = "Instance 3",
-                EventId = "Event-001",
+                EventId = TestEvent1Id,
                 CreatedBy = _testUser,
                 CreatedAt = DateTime.UtcNow.AddDays(-6),
                 IsArchived = false
@@ -498,7 +502,7 @@ public class AnalyticsServiceTests : IDisposable
                 Id = Guid.NewGuid(),
                 TemplateId = template2.Id,
                 Name = "Instance 4",
-                EventId = "Event-002",
+                EventId = TestEvent2Id,
                 CreatedBy = _testUser,
                 CreatedAt = DateTime.UtcNow.AddDays(-4),
                 IsArchived = false
@@ -508,7 +512,7 @@ public class AnalyticsServiceTests : IDisposable
                 Id = Guid.NewGuid(),
                 TemplateId = template2.Id,
                 Name = "Instance 5",
-                EventId = "Event-002",
+                EventId = TestEvent2Id,
                 CreatedBy = _testUser,
                 CreatedAt = DateTime.UtcNow.AddDays(-3),
                 IsArchived = false
@@ -619,7 +623,7 @@ public class AnalyticsServiceTests : IDisposable
                 Id = Guid.NewGuid(),
                 TemplateId = template1.Id,
                 Name = "Active Instance 1",
-                EventId = "Event-001",
+                EventId = TestEvent1Id,
                 CreatedBy = _testUser,
                 CreatedAt = DateTime.UtcNow,
                 IsArchived = false
@@ -629,7 +633,7 @@ public class AnalyticsServiceTests : IDisposable
                 Id = Guid.NewGuid(),
                 TemplateId = template1.Id,
                 Name = "Active Instance 2",
-                EventId = "Event-001",
+                EventId = TestEvent1Id,
                 CreatedBy = _testUser,
                 CreatedAt = DateTime.UtcNow,
                 IsArchived = false
@@ -642,7 +646,7 @@ public class AnalyticsServiceTests : IDisposable
             Id = Guid.NewGuid(),
             TemplateId = template1.Id,
             Name = "Archived Instance",
-            EventId = "Event-001",
+            EventId = TestEvent1Id,
             CreatedBy = _testUser,
             CreatedAt = DateTime.UtcNow,
             IsArchived = true,
@@ -749,7 +753,7 @@ public class AnalyticsServiceTests : IDisposable
                     Id = Guid.NewGuid(),
                     TemplateId = template.Id,
                     Name = $"Instance {j + 1}",
-                    EventId = "Event-001",
+                    EventId = TestEvent1Id,
                     CreatedBy = _testUser,
                     CreatedAt = DateTime.UtcNow,
                     IsArchived = false
@@ -841,7 +845,7 @@ public class AnalyticsServiceTests : IDisposable
             Id = Guid.NewGuid(),
             TemplateId = template.Id,
             Name = "Instance",
-            EventId = "Event-001",
+            EventId = TestEvent1Id,
             CreatedBy = _testUser,
             CreatedAt = DateTime.UtcNow,
             IsArchived = false

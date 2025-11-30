@@ -84,18 +84,21 @@ export const useEvents = (): UseEventsResult => {
       setLoading(true);
       setError(null);
       const data = await eventService.getEvents(undefined, false); // Include inactive
-      setEvents(data);
+
+      // Ensure data is an array (defensive programming)
+      const eventsArray = Array.isArray(data) ? data : [];
+      setEvents(eventsArray);
 
       // If no current event is set, try to select the default or first event
-      if (!currentEvent && data.length > 0) {
-        const defaultEvent = data.find(e => e.id === DEFAULT_EVENT_ID) || data[0];
+      if (!currentEvent && eventsArray.length > 0) {
+        const defaultEvent = eventsArray.find(e => e.id === DEFAULT_EVENT_ID) || eventsArray[0];
         setCurrentEvent(defaultEvent);
         storeEvent(defaultEvent);
       }
 
       // If current event is not in the list, update it with fresh data
       if (currentEvent) {
-        const updatedEvent = data.find(e => e.id === currentEvent.id);
+        const updatedEvent = eventsArray.find(e => e.id === currentEvent.id);
         if (updatedEvent) {
           setCurrentEvent(updatedEvent);
           storeEvent(updatedEvent);
@@ -119,7 +122,6 @@ export const useEvents = (): UseEventsResult => {
       const data = await eventCategoryService.getCategories(eventType);
       setCategories(data);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load categories';
       console.error('Error fetching categories:', err);
       // Don't set error state for categories - it's not critical
     } finally {

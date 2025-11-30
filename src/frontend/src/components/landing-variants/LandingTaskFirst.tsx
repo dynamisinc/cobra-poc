@@ -131,7 +131,7 @@ export const LandingTaskFirst: React.FC = () => {
       const profile = storedProfile ? JSON.parse(storedProfile) : null;
       const position = profile?.positions?.[0] || 'Unknown';
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/checklists`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/checklists`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

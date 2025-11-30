@@ -132,7 +132,7 @@ public class ChecklistService : IChecklistService
     }
 
     public async Task<List<ChecklistInstanceDto>> GetChecklistsByEventAsync(
-        string eventId,
+        Guid eventId,
         bool includeArchived = false)
     {
         _logger.LogInformation(
@@ -163,7 +163,7 @@ public class ChecklistService : IChecklistService
     }
 
     public async Task<List<ChecklistInstanceDto>> GetChecklistsByOperationalPeriodAsync(
-        string eventId,
+        Guid eventId,
         Guid? operationalPeriodId,
         bool includeArchived = false)
     {
@@ -355,13 +355,74 @@ public class ChecklistService : IChecklistService
         var checklists = await _context.ChecklistInstances
             .Include(c => c.Items.OrderBy(i => i.DisplayOrder))
             .Where(c => c.IsArchived)
-            .OrderBy(c => c.ArchivedAt)
+            .OrderByDescending(c => c.ArchivedAt)
             .AsNoTracking()
             .ToListAsync();
 
         _logger.LogInformation("Retrieved {Count} archived checklists", checklists.Count);
 
         return checklists.Select(ChecklistMapper.MapToDto).ToList();
+    }
+
+    public async Task<List<ChecklistInstanceDto>> GetArchivedChecklistsByEventAsync(Guid eventId)
+    {
+        _logger.LogInformation("Fetching archived checklists for event {EventId}", eventId);
+
+        var checklists = await _context.ChecklistInstances
+            .Include(c => c.Items.OrderBy(i => i.DisplayOrder))
+            .Where(c => c.IsArchived && c.EventId == eventId)
+            .OrderByDescending(c => c.ArchivedAt)
+            .AsNoTracking()
+            .ToListAsync();
+
+        _logger.LogInformation(
+            "Retrieved {Count} archived checklists for event {EventId}",
+            checklists.Count,
+            eventId);
+
+        return checklists.Select(ChecklistMapper.MapToDto).ToList();
+    }
+
+    public async Task<bool?> PermanentlyDeleteChecklistAsync(Guid id, UserContext userContext)
+    {
+        _logger.LogInformation(
+            "Permanently deleting checklist {ChecklistId} by {User}",
+            id,
+            userContext.Email);
+
+        var checklist = await _context.ChecklistInstances
+            .Include(c => c.Items)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (checklist == null)
+        {
+            _logger.LogWarning("Checklist {ChecklistId} not found for permanent deletion", id);
+            return null;
+        }
+
+        // Only archived checklists can be permanently deleted
+        if (!checklist.IsArchived)
+        {
+            _logger.LogWarning(
+                "Checklist {ChecklistId} must be archived before permanent deletion",
+                id);
+            return false;
+        }
+
+        // Remove all items first (cascade should handle this, but being explicit)
+        _context.ChecklistItems.RemoveRange(checklist.Items);
+
+        // Remove the checklist
+        _context.ChecklistInstances.Remove(checklist);
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Permanently deleted checklist {ChecklistId} with {ItemCount} items",
+            id,
+            checklist.Items.Count);
+
+        return true;
     }
 
     public async Task RecalculateProgressAsync(Guid checklistId)
@@ -376,7 +437,8 @@ public class ChecklistService : IChecklistService
         Guid id,
         string newName,
         bool preserveStatus,
-        UserContext userContext)
+        UserContext userContext,
+        string? assignedPositions = null)
     {
         try
         {
@@ -386,7 +448,8 @@ public class ChecklistService : IChecklistService
                 id,
                 newName,
                 preserveStatus,
-                userContext);
+                userContext,
+                assignedPositions);
 
             _context.ChecklistInstances.Add(clone);
             await _context.SaveChangesAsync();

@@ -20,6 +20,11 @@ import { toast } from 'react-toastify';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://localhost:5001';
 
 /**
+ * Permission roles - matches backend PermissionRole enum
+ */
+export type PermissionRoleType = 'None' | 'Readonly' | 'Contributor' | 'Manage';
+
+/**
  * Mock user context for POC
  * In production, this would come from authentication system
  */
@@ -29,6 +34,7 @@ export interface MockUserContext {
   position: string; // Primary position (first in positions array)
   positions?: string[]; // All positions for filtering checklists
   isAdmin: boolean;
+  role?: PermissionRoleType; // Permission role
 }
 
 /**
@@ -41,6 +47,7 @@ let currentUser: MockUserContext = {
   fullName: 'Admin User',
   position: 'Incident Commander',
   isAdmin: true,
+  role: 'Contributor',
 };
 
 /**
@@ -72,6 +79,22 @@ export const apiClient: AxiosInstance = axios.create({
 });
 
 /**
+ * Get the current role from localStorage (synced with ProfileMenu)
+ */
+const getCurrentRole = (): PermissionRoleType => {
+  try {
+    const stored = localStorage.getItem('mockUserProfile');
+    if (stored) {
+      const profile = JSON.parse(stored);
+      return profile.role || 'Contributor';
+    }
+  } catch (error) {
+    console.error('Failed to load user role:', error);
+  }
+  return currentUser.role || 'Contributor';
+};
+
+/**
  * Request interceptor
  * Adds mock authentication headers to every request
  */
@@ -86,8 +109,13 @@ apiClient.interceptors.request.use(
     config.headers['X-User-Position'] = positionsHeader;
     config.headers['X-User-FullName'] = currentUser.fullName;
 
+    // Send role header (from localStorage, synced with ProfileMenu)
+    const role = getCurrentRole();
+    config.headers['X-User-Role'] = role;
+
     console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, {
       positions: positionsHeader,
+      role: role,
       data: config.data,
     });
 

@@ -62,4 +62,37 @@ public class UserContext
     /// Example: "2024-11-19 06:00 - 18:00"
     /// </summary>
     public string? CurrentOperationalPeriod { get; set; }
+
+    /// <summary>
+    /// User's permission role (Readonly, Contributor, Manage)
+    /// Readonly users can view but not modify checklists/items
+    /// </summary>
+    public PermissionRole Role { get; set; } = PermissionRole.Contributor;
+
+    /// <summary>
+    /// Returns true if user has readonly permissions only
+    /// </summary>
+    public bool IsReadonly => Role == PermissionRole.Readonly;
+
+    /// <summary>
+    /// Returns true if user can modify checklists/items (Contributor or Manage)
+    /// </summary>
+    public bool CanEdit => Role == PermissionRole.Contributor || Role == PermissionRole.Manage;
+
+    /// <summary>
+    /// Returns true if user has Manage role permissions (can archive/restore/permanently delete)
+    /// </summary>
+    public bool CanManage => Role == PermissionRole.Manage;
+}
+
+/// <summary>
+/// Permission roles for access control
+/// Matches frontend PermissionRole enum
+/// </summary>
+public enum PermissionRole
+{
+    None,
+    Readonly,
+    Contributor,
+    Manage
 }

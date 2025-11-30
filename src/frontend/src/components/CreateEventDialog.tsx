@@ -57,37 +57,56 @@ export const CreateEventDialog: React.FC<CreateEventDialogProps> = ({
 
   // Form state
   const [name, setName] = useState('');
-  const [eventType, setEventType] = useState<EventType>('UNPLANNED');
+  const [eventType, setEventType] = useState<EventType>('Unplanned');
   const [primaryCategoryId, setPrimaryCategoryId] = useState('');
   const [additionalCategoryIds, setAdditionalCategoryIds] = useState<string[]>([]);
 
-  // Categories state
-  const [categories, setCategories] = useState<EventCategory[]>([]);
+  // Categories state - separate for primary (filtered) and all (for additional)
+  const [primaryCategories, setPrimaryCategories] = useState<EventCategory[]>([]);
+  const [allCategories, setAllCategories] = useState<EventCategory[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
 
   // UI state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load categories when event type changes
+  // Load all categories once when dialog opens
   useEffect(() => {
-    const loadCategories = async () => {
+    const loadAllCategories = async () => {
+      try {
+        const data = await eventCategoryService.getCategories();
+        setAllCategories(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Error loading all categories:', err);
+        setAllCategories([]);
+      }
+    };
+
+    if (open) {
+      loadAllCategories();
+    }
+  }, [open]);
+
+  // Load primary categories filtered by event type
+  useEffect(() => {
+    const loadPrimaryCategories = async () => {
       setLoadingCategories(true);
       try {
         const data = await eventCategoryService.getCategories(eventType);
-        setCategories(data);
-        // Reset selections when type changes
+        // Ensure data is an array (defensive programming)
+        setPrimaryCategories(Array.isArray(data) ? data : []);
+        // Reset primary selection when type changes
         setPrimaryCategoryId('');
-        setAdditionalCategoryIds([]);
       } catch (err) {
         console.error('Error loading categories:', err);
+        setPrimaryCategories([]);
       } finally {
         setLoadingCategories(false);
       }
     };
 
     if (open) {
-      loadCategories();
+      loadPrimaryCategories();
     }
   }, [eventType, open]);
 
@@ -95,21 +114,24 @@ export const CreateEventDialog: React.FC<CreateEventDialogProps> = ({
   useEffect(() => {
     if (open) {
       setName('');
-      setEventType('UNPLANNED');
+      setEventType('Unplanned');
       setPrimaryCategoryId('');
       setAdditionalCategoryIds([]);
       setError(null);
     }
   }, [open]);
 
-  // Group categories by SubGroup for display
-  const categoriesByGroup = categories.reduce((acc, cat) => {
+  // Group primary categories by SubGroup for display
+  const primaryCategoriesByGroup = primaryCategories.reduce((acc, cat) => {
     if (!acc[cat.subGroup]) {
       acc[cat.subGroup] = [];
     }
     acc[cat.subGroup].push(cat);
     return acc;
   }, {} as Record<string, EventCategory[]>);
+
+  // Note: allCategoriesByGroup could be used for grouped additional categories dropdown
+  // Currently we use a flat list for additionalOptions
 
   const handleEventTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEventType(e.target.value as EventType);
@@ -156,10 +178,10 @@ export const CreateEventDialog: React.FC<CreateEventDialogProps> = ({
   };
 
   // Get primary category display name
-  const primaryCategory = categories.find(c => c.id === primaryCategoryId);
+  const primaryCategory = primaryCategories.find(c => c.id === primaryCategoryId);
 
-  // Available additional categories (exclude primary)
-  const additionalOptions = categories.filter(c => c.id !== primaryCategoryId);
+  // Available additional categories (exclude primary) - uses ALL categories, not filtered by event type
+  const additionalOptions = allCategories.filter(c => c.id !== primaryCategoryId);
 
   return (
     <CobraDialog
@@ -195,7 +217,7 @@ export const CreateEventDialog: React.FC<CreateEventDialogProps> = ({
             onChange={handleEventTypeChange}
           >
             <FormControlLabel
-              value="UNPLANNED"
+              value="Unplanned"
               control={<Radio size="small" />}
               label={
                 <Box>
@@ -210,7 +232,7 @@ export const CreateEventDialog: React.FC<CreateEventDialogProps> = ({
               sx={{ mr: 4 }}
             />
             <FormControlLabel
-              value="PLANNED"
+              value="Planned"
               control={<Radio size="small" />}
               label={
                 <Box>
@@ -243,7 +265,7 @@ export const CreateEventDialog: React.FC<CreateEventDialogProps> = ({
                 Loading categories...
               </MenuItem>
             )}
-            {Object.entries(categoriesByGroup).map(([group, cats]) => [
+            {Object.entries(primaryCategoriesByGroup).map(([group, cats]) => [
               <MenuItem key={`header-${group}`} disabled sx={{ fontWeight: 'bold', opacity: 1 }}>
                 {group}
               </MenuItem>,
@@ -266,7 +288,7 @@ export const CreateEventDialog: React.FC<CreateEventDialogProps> = ({
           multiple
           options={additionalOptions}
           getOptionLabel={(option) => option.name}
-          value={categories.filter(c => additionalCategoryIds.includes(c.id))}
+          value={allCategories.filter(c => additionalCategoryIds.includes(c.id))}
           onChange={(_, newValue) => {
             setAdditionalCategoryIds(newValue.map(v => v.id));
           }}

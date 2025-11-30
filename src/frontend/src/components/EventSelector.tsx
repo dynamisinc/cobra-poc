@@ -80,7 +80,6 @@ export const EventSelector: React.FC<EventSelectorProps> = ({ onCreateEventClick
   // Display text when no event is selected
   const displayName = currentEvent?.name || 'No Event Selected';
   const displayCategory = currentEvent?.primaryCategory?.name || '';
-  const displayType = currentEvent?.eventType || '';
 
   return (
     <>

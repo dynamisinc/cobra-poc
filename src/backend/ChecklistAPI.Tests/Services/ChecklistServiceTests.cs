@@ -31,6 +31,13 @@ public class ChecklistServiceTests : IDisposable
     private static readonly Guid TestOpPeriod1Id = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid TestOpPeriodNewId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
+    // Test event IDs
+    private static readonly Guid TestEvent1Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    private static readonly Guid TestEventTestId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+    private static readonly Guid TestEventUpdatedId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+    private static readonly Guid TestEvent2Id = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+    private static readonly Guid TestEvent3Id = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
+
     public ChecklistServiceTests()
     {
         _context = TestDbContextFactory.CreateInMemoryContext();
@@ -170,11 +177,11 @@ public class ChecklistServiceTests : IDisposable
         await SeedTestData();
 
         // Act
-        var result = await _service.GetChecklistsByEventAsync("EVENT-001", includeArchived: false);
+        var result = await _service.GetChecklistsByEventAsync(TestEvent1Id, includeArchived: false);
 
         // Assert
         Assert.Equal(3, result.Count); // Safety, Operations, and General checklists (excluding archived)
-        Assert.All(result, c => Assert.Equal("EVENT-001", c.EventId));
+        Assert.All(result, c => Assert.Equal(TestEvent1Id, c.EventId));
     }
 
     [Fact]
@@ -184,7 +191,7 @@ public class ChecklistServiceTests : IDisposable
         await SeedTestData();
 
         // Act
-        var result = await _service.GetChecklistsByEventAsync("EVENT-001", includeArchived: false);
+        var result = await _service.GetChecklistsByEventAsync(TestEvent1Id, includeArchived: false);
 
         // Assert
         Assert.DoesNotContain(result, c => c.IsArchived);
@@ -202,7 +209,7 @@ public class ChecklistServiceTests : IDisposable
 
         // Act
         var result = await _service.GetChecklistsByOperationalPeriodAsync(
-            "EVENT-001",
+            TestEvent1Id,
             TestOpPeriod1Id,
             includeArchived: false);
 
@@ -224,7 +231,7 @@ public class ChecklistServiceTests : IDisposable
         {
             TemplateId = _templateId,
             Name = "Test Checklist",
-            EventId = "EVENT-TEST",
+            EventId = TestEventTestId,
             EventName = "Test Event"
         };
 
@@ -234,7 +241,7 @@ public class ChecklistServiceTests : IDisposable
         // Assert
         Assert.NotNull(result);
         Assert.Equal("Test Checklist", result.Name);
-        Assert.Equal("EVENT-TEST", result.EventId);
+        Assert.Equal(TestEventTestId, result.EventId);
         Assert.Equal(3, result.Items.Count); // Same as template
         Assert.Equal(_testUser.Email, result.CreatedBy);
         Assert.Equal(_testUser.Position, result.CreatedByPosition);
@@ -248,7 +255,7 @@ public class ChecklistServiceTests : IDisposable
         var request = new CreateFromTemplateRequest
         {
             TemplateId = _templateId,
-            EventId = "EVENT-TEST",
+            EventId = TestEventTestId,
             EventName = "Test Event"
         };
 
@@ -271,7 +278,7 @@ public class ChecklistServiceTests : IDisposable
         var request = new CreateFromTemplateRequest
         {
             TemplateId = _templateId,
-            EventId = "EVENT-TEST",
+            EventId = TestEventTestId,
             EventName = "Test Event"
         };
 
@@ -290,7 +297,7 @@ public class ChecklistServiceTests : IDisposable
         var request = new CreateFromTemplateRequest
         {
             TemplateId = Guid.NewGuid(),
-            EventId = "EVENT-TEST",
+            EventId = TestEventTestId,
             EventName = "Test Event"
         };
 
@@ -311,7 +318,7 @@ public class ChecklistServiceTests : IDisposable
         var request = new CreateFromTemplateRequest
         {
             TemplateId = _templateId,
-            EventId = "EVENT-TEST",
+            EventId = TestEventTestId,
             EventName = "Test Event"
         };
 
@@ -333,7 +340,7 @@ public class ChecklistServiceTests : IDisposable
         var request = new UpdateChecklistRequest
         {
             Name = "Updated Name",
-            EventId = "EVENT-UPDATED",
+            EventId = TestEventUpdatedId,
             EventName = "Updated Event",
             OperationalPeriodId = TestOpPeriodNewId,
             OperationalPeriodName = "New Period"
@@ -345,7 +352,7 @@ public class ChecklistServiceTests : IDisposable
         // Assert
         Assert.NotNull(result);
         Assert.Equal("Updated Name", result.Name);
-        Assert.Equal("EVENT-UPDATED", result.EventId);
+        Assert.Equal(TestEventUpdatedId, result.EventId);
         Assert.Equal(TestOpPeriodNewId, result.OperationalPeriodId);
         Assert.Equal(_testUser.Email, result.LastModifiedBy);
         Assert.Equal(_testUser.Position, result.LastModifiedByPosition);
@@ -359,7 +366,7 @@ public class ChecklistServiceTests : IDisposable
         var request = new UpdateChecklistRequest
         {
             Name = "Updated",
-            EventId = "EVENT-001",
+            EventId = TestEvent1Id,
             EventName = "Event"
         };
 
@@ -570,7 +577,7 @@ public class ChecklistServiceTests : IDisposable
             Id = Guid.NewGuid(),
             Name = "Empty Checklist",
             TemplateId = _templateId,
-            EventId = "EVENT-002",
+            EventId = TestEvent2Id,
             EventName = "Empty Event",
             CreatedBy = "test@test.com",
             CreatedByPosition = "Safety Officer",
@@ -623,7 +630,7 @@ public class ChecklistServiceTests : IDisposable
             Id = checklistId,
             Name = "Rounding Test Checklist",
             TemplateId = _templateId,
-            EventId = "EVENT-003",
+            EventId = TestEvent3Id,
             EventName = "Rounding Test",
             CreatedBy = "test@test.com",
             CreatedByPosition = "Safety Officer",
@@ -736,6 +743,240 @@ public class ChecklistServiceTests : IDisposable
         Assert.Null(result);
     }
 
+    [Fact]
+    public async Task CloneChecklistAsync_PreservesStatus_WhenPreserveStatusIsTrue()
+    {
+        // Arrange
+        await SeedTestData();
+
+        // Mark items complete on original
+        var checklist = await _context.ChecklistInstances
+            .Include(c => c.Items)
+            .FirstAsync();
+        foreach (var item in checklist.Items)
+        {
+            item.IsCompleted = true;
+            item.CompletedBy = "original@test.com";
+            item.CompletedAt = DateTime.UtcNow.AddHours(-1);
+            item.Notes = "Original notes";
+        }
+        checklist.CompletedItems = 3;
+        checklist.ProgressPercentage = 100;
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _service.CloneChecklistAsync(checklist.Id, "Preserved Clone", preserveStatus: true, _testUser);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(100, result.ProgressPercentage);
+        Assert.Equal(3, result.CompletedItems);
+        Assert.All(result.Items, i => Assert.True(i.IsCompleted));
+        Assert.All(result.Items, i => Assert.Equal("original@test.com", i.CompletedBy));
+        Assert.All(result.Items, i => Assert.Equal("Original notes", i.Notes));
+    }
+
+    [Fact]
+    public async Task CloneChecklistAsync_OverridesAssignedPositions_WhenProvided()
+    {
+        // Arrange
+        await SeedTestData();
+        var originalId = _context.ChecklistInstances.First().Id;
+        var newPositions = "Planning Section Chief,Logistics Section Chief";
+
+        // Act
+        var result = await _service.CloneChecklistAsync(
+            originalId,
+            "Clone With New Positions",
+            preserveStatus: false,
+            _testUser,
+            assignedPositions: newPositions);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(newPositions, result.AssignedPositions);
+    }
+
+    [Fact]
+    public async Task CloneChecklistAsync_InheritsAssignedPositions_WhenNotProvided()
+    {
+        // Arrange
+        await SeedTestData();
+        var original = _context.ChecklistInstances.First(c => c.AssignedPositions != null);
+
+        // Act
+        var result = await _service.CloneChecklistAsync(
+            original.Id,
+            "Clone Inheriting Positions",
+            preserveStatus: false,
+            _testUser);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(original.AssignedPositions, result.AssignedPositions);
+    }
+
+    #endregion
+
+    #region GetChecklistsByEventAsync Additional Tests
+
+    [Fact]
+    public async Task GetChecklistsByEventAsync_IncludesArchivedChecklists_WhenRequested()
+    {
+        // Arrange
+        await SeedTestData();
+
+        // Act
+        var result = await _service.GetChecklistsByEventAsync(TestEvent1Id, includeArchived: true);
+
+        // Assert
+        Assert.Equal(4, result.Count); // All 4 checklists including archived
+        Assert.Contains(result, c => c.IsArchived);
+    }
+
+    [Fact]
+    public async Task GetChecklistsByEventAsync_ReturnsEmptyList_WhenEventHasNoChecklists()
+    {
+        // Arrange
+        await SeedTestData();
+        var emptyEventId = Guid.NewGuid();
+
+        // Act
+        var result = await _service.GetChecklistsByEventAsync(emptyEventId, includeArchived: false);
+
+        // Assert
+        Assert.Empty(result);
+    }
+
+    #endregion
+
+    #region RestoreChecklistAsync Additional Tests
+
+    [Fact]
+    public async Task RestoreChecklistAsync_ReturnsFalse_WhenChecklistNotFound()
+    {
+        // Act
+        var result = await _service.RestoreChecklistAsync(Guid.NewGuid(), _adminUser);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task RestoreChecklistAsync_SetsLastModifiedFields()
+    {
+        // Arrange
+        await SeedTestData();
+        var archivedChecklist = _context.ChecklistInstances.First(c => c.IsArchived);
+
+        // Act
+        var result = await _service.RestoreChecklistAsync(archivedChecklist.Id, _adminUser);
+
+        // Assert
+        Assert.True(result);
+        var restored = await _context.ChecklistInstances.FindAsync(archivedChecklist.Id);
+        Assert.NotNull(restored);
+        Assert.Equal(_adminUser.Email, restored.LastModifiedBy);
+        Assert.Equal(_adminUser.Position, restored.LastModifiedByPosition);
+        Assert.NotNull(restored.LastModifiedAt);
+    }
+
+    #endregion
+
+    #region CreateFromTemplateAsync Additional Tests
+
+    [Fact]
+    public async Task CreateFromTemplateAsync_SetsAssignedPositions_WhenProvided()
+    {
+        // Arrange
+        await SeedTestTemplate();
+        var request = new CreateFromTemplateRequest
+        {
+            TemplateId = _templateId,
+            Name = "Assigned Checklist",
+            EventId = TestEventTestId,
+            EventName = "Test Event",
+            AssignedPositions = "Safety Officer,Incident Commander"
+        };
+
+        // Act
+        var result = await _service.CreateFromTemplateAsync(request, _testUser);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("Safety Officer,Incident Commander", result.AssignedPositions);
+    }
+
+    [Fact]
+    public async Task CreateFromTemplateAsync_SetsOperationalPeriod_WhenProvided()
+    {
+        // Arrange
+        await SeedTestTemplate();
+        var opPeriodId = Guid.NewGuid();
+        var request = new CreateFromTemplateRequest
+        {
+            TemplateId = _templateId,
+            Name = "Period Checklist",
+            EventId = TestEventTestId,
+            EventName = "Test Event",
+            OperationalPeriodId = opPeriodId,
+            OperationalPeriodName = "Day Shift - Nov 29"
+        };
+
+        // Act
+        var result = await _service.CreateFromTemplateAsync(request, _testUser);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(opPeriodId, result.OperationalPeriodId);
+        Assert.Equal("Day Shift - Nov 29", result.OperationalPeriodName);
+    }
+
+    [Fact]
+    public async Task CreateFromTemplateAsync_IncrementsTemplateUsageCount()
+    {
+        // Arrange
+        await SeedTestTemplate();
+        var template = await _context.Templates.FindAsync(_templateId);
+        var originalUsageCount = template!.UsageCount;
+
+        var request = new CreateFromTemplateRequest
+        {
+            TemplateId = _templateId,
+            EventId = TestEventTestId,
+            EventName = "Test Event"
+        };
+
+        // Act
+        await _service.CreateFromTemplateAsync(request, _testUser);
+
+        // Assert
+        var updatedTemplate = await _context.Templates.FindAsync(_templateId);
+        Assert.Equal(originalUsageCount + 1, updatedTemplate!.UsageCount);
+        Assert.NotNull(updatedTemplate.LastUsedAt);
+    }
+
+    [Fact]
+    public async Task CreateFromTemplateAsync_ThrowsException_WhenTemplateIsArchived()
+    {
+        // Arrange
+        await SeedTestTemplate();
+        var template = await _context.Templates.FindAsync(_templateId);
+        template!.IsArchived = true;
+        await _context.SaveChangesAsync();
+
+        var request = new CreateFromTemplateRequest
+        {
+            TemplateId = _templateId,
+            EventId = TestEventTestId,
+            EventName = "Test Event"
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.CreateFromTemplateAsync(request, _testUser));
+    }
+
     #endregion
 
     #region Helper Methods
@@ -798,7 +1039,7 @@ public class ChecklistServiceTests : IDisposable
             Id = Guid.NewGuid(),
             Name = "Safety Checklist",
             TemplateId = _templateId,
-            EventId = "EVENT-001",
+            EventId = TestEvent1Id,
             EventName = "Test Event",
             OperationalPeriodId = TestOpPeriod1Id,
             AssignedPositions = "Safety Officer",
@@ -849,7 +1090,7 @@ public class ChecklistServiceTests : IDisposable
             Id = Guid.NewGuid(),
             Name = "Operations Checklist",
             TemplateId = _templateId,
-            EventId = "EVENT-001",
+            EventId = TestEvent1Id,
             EventName = "Test Event",
             AssignedPositions = "Operations Section Chief",
             CreatedBy = "ops@test.com",
@@ -899,7 +1140,7 @@ public class ChecklistServiceTests : IDisposable
             Id = Guid.NewGuid(),
             Name = "General Checklist",
             TemplateId = _templateId,
-            EventId = "EVENT-001",
+            EventId = TestEvent1Id,
             EventName = "Test Event",
             AssignedPositions = null, // Visible to all
             CreatedBy = "admin@test.com",
@@ -949,7 +1190,7 @@ public class ChecklistServiceTests : IDisposable
             Id = Guid.NewGuid(),
             Name = "Archived Checklist",
             TemplateId = _templateId,
-            EventId = "EVENT-001",
+            EventId = TestEvent1Id,
             EventName = "Test Event",
             AssignedPositions = null,
             IsArchived = true,

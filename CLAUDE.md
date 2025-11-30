@@ -447,6 +447,11 @@ const checklists: any = await checklistService.getMyChecklists();
 ```
 
 #### API Service Pattern
+
+> **CRITICAL:** All API endpoints MUST include the `/api/` prefix in service files.
+> Backend controllers use `[Route("api/[controller]")]`, so all service calls must use `/api/...` paths.
+> The `.env` `VITE_API_URL` should be the base URL without `/api` (e.g., `http://localhost:5000`).
+
 ```typescript
 // services/checklistService.ts
 import { apiClient } from './api';
@@ -457,17 +462,13 @@ export const checklistService = {
    * Fetch all checklists for the current user's position
    */
   getMyChecklists: async (): Promise<ChecklistDto[]> => {
+    // ✅ CORRECT: Includes /api/ prefix
     const response = await apiClient.get<ChecklistDto[]>('/api/checklists/my-checklists');
     return response.data;
   },
 
-  /**
-   * Create a new checklist from a template
-   */
-  createFromTemplate: async (request: CreateChecklistRequest): Promise<ChecklistDto> => {
-    const response = await apiClient.post<ChecklistDto>('/api/checklists', request);
-    return response.data;
-  },
+  // ❌ WRONG: Missing /api/ prefix - will return 404
+  // const response = await apiClient.get<ChecklistDto[]>('/checklists/my-checklists');
 };
 ```
 
@@ -1360,10 +1361,40 @@ export default defineConfig({
 ```
 
 #### API Requests Failing (CORS/Network)
-- Ensure backend is running on https://localhost:5001
+- Ensure backend is running on http://localhost:5000
 - Check `.env` file has correct `VITE_API_URL`
 - Check browser console for CORS errors
 - Verify backend CORS policy includes `http://localhost:5173`
+
+#### CRITICAL: Frontend .env Configuration
+
+**Common Error:** API requests fail with 404 or return HTML instead of JSON.
+
+**Root Cause:** The `VITE_API_URL` in `.env` should NOT include `/api` suffix because the API service files already include `/api/` in their paths.
+
+```bash
+# ❌ WRONG - causes double /api/api/ in URLs
+VITE_API_URL=http://localhost:5000/api
+
+# ✅ CORRECT - base URL only
+VITE_API_URL=http://localhost:5000
+```
+
+**How API URLs are constructed:**
+- `.env`: `VITE_API_URL=http://localhost:5000`
+- Service file: `apiClient.get('/api/eventcategories')`
+- Result: `http://localhost:5000/api/eventcategories` ✓
+
+**If you see `/api/api/` in network requests, fix the `.env` file!**
+
+The correct `.env` file for local development:
+```bash
+VITE_API_URL=http://localhost:5000
+VITE_HUB_URL=http://localhost:5000/hubs/checklist
+VITE_ENABLE_MOCK_AUTH=true
+```
+
+**Note:** After changing `.env`, you must restart the Vite dev server for changes to take effect.
 
 ---
 

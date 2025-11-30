@@ -48,11 +48,9 @@ public record UpdateChecklistRequest
 
     /// <summary>
     /// Event this checklist belongs to
-    /// Example: "Hurricane-2025-001"
     /// </summary>
     [Required(ErrorMessage = "Event ID is required")]
-    [MaxLength(100, ErrorMessage = "Event ID cannot exceed 100 characters")]
-    public string EventId { get; init; } = string.Empty;
+    public Guid EventId { get; init; }
 
     /// <summary>
     /// Human-readable event name

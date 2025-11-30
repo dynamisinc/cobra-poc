@@ -7,7 +7,9 @@
 --   3. Active Shelter Opening checklist (nearly complete)
 --   4. Archived checklist (complete)
 --
--- IMPORTANT: Run seed-templates.sql first to create templates
+-- IMPORTANT: Run these first:
+--   1. seed-events.sql (creates Events and EventCategories)
+--   2. seed-templates.sql (creates Templates)
 -- ============================================================================
 
 USE ChecklistPOC;
@@ -41,11 +43,25 @@ PRINT '  IC Initial Actions: ' + CAST(@ICActionsTemplateId AS VARCHAR(50));
 PRINT '  Shelter Opening: ' + CAST(@ShelterTemplateId AS VARCHAR(50));
 
 -- ============================================================================
+-- Get Event ID (created by seed-events.sql)
+-- ============================================================================
+DECLARE @EventId UNIQUEIDENTIFIER;
+DECLARE @EventName VARCHAR(200);
+
+SELECT @EventId = Id, @EventName = Name FROM Events WHERE Name = 'Hurricane Milton Response - November 2025';
+
+IF @EventId IS NULL
+BEGIN
+    RAISERROR('Event not found. Run seed-events.sql first.', 16, 1);
+    RETURN;
+END
+
+PRINT 'Found event: ' + @EventName + ' (' + CAST(@EventId AS VARCHAR(50)) + ')';
+
+-- ============================================================================
 -- Checklist 1: Safety Briefing - OP 1 (Partially Complete - 3/7 items)
 -- ============================================================================
 DECLARE @Checklist1Id UNIQUEIDENTIFIER = NEWID();
-DECLARE @EventId VARCHAR(100) = 'HURRICANE-2025-001';
-DECLARE @EventName VARCHAR(200) = 'Hurricane Milton Response - November 2025';
 
 INSERT INTO ChecklistInstances (
     Id, Name, TemplateId,

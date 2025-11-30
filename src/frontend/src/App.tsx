@@ -5,7 +5,7 @@
  * Uses BrowserRouter for clean URLs (not hash routing).
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -13,6 +13,7 @@ import {
   Navigate,
   Link,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 import { Box, AppBar, Toolbar, Typography, Button, Divider } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -20,6 +21,7 @@ import {
   faClipboardList,
   faBook,
   faBoxArchive,
+  faGear,
 } from "@fortawesome/free-solid-svg-icons";
 import { LandingPage } from "./pages/LandingPage";
 import { ChecklistDetailPage } from "./pages/ChecklistDetailPage";
@@ -27,12 +29,37 @@ import { TemplateLibraryPage } from "./pages/TemplateLibraryPage";
 import { TemplateEditorPage } from "./pages/TemplateEditorPage";
 import { TemplatePreviewPage } from "./pages/TemplatePreviewPage";
 import { ItemLibraryPage } from "./pages/ItemLibraryPage";
+import { ManageChecklistsPage } from "./pages/ManageChecklistsPage";
 import { ProfileMenu } from "./components/ProfileMenu";
 import { EventSelector } from "./components/EventSelector";
 import { CreateEventDialog } from "./components/CreateEventDialog";
 import { usePermissions } from "./hooks/usePermissions";
 import { PermissionRole } from "./types";
 import { cobraTheme } from "./theme/cobraTheme";
+
+/**
+ * Protected Route wrapper that redirects to /checklists if user lacks permission
+ */
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  requirePermission: boolean;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requirePermission }) => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!requirePermission) {
+      navigate('/checklists', { replace: true });
+    }
+  }, [requirePermission, navigate]);
+
+  if (!requirePermission) {
+    return null;
+  }
+
+  return <>{children}</>;
+};
 
 interface AppNavBarProps {
   onProfileChange: (positions: string[], role: PermissionRole) => void;
@@ -61,7 +88,7 @@ const AppNavBar: React.FC<AppNavBarProps> = ({ onProfileChange, onCreateEventCli
           style={{ marginRight: 16 }}
         />
         <Typography variant="h6" sx={{ fontWeight: "bold", color: "#FFFACD", mr: 2 }}>
-          COBRA Checklist
+          C5 POC
         </Typography>
 
         {/* Event Selector */}
@@ -139,11 +166,128 @@ const AppNavBar: React.FC<AppNavBarProps> = ({ onProfileChange, onCreateEventCli
               Item Library
             </Button>
           )}
+
+          {/* Manage Archived Checklists - only visible to Manage role */}
+          {permissions.canManageArchivedChecklists && (
+            <Button
+              component={Link}
+              to="/manage-checklists"
+              sx={{
+                color: "#FFFACD",
+                fontWeight:
+                  location.pathname === "/manage-checklists" ? "bold" : "normal",
+                textDecoration:
+                  location.pathname === "/manage-checklists" ? "underline" : "none",
+                "&:hover": {
+                  backgroundColor: "rgba(255, 250, 205, 0.1)",
+                },
+              }}
+            >
+              <FontAwesomeIcon icon={faGear} style={{ marginRight: 8 }} />
+              Manage
+            </Button>
+          )}
         </Box>
 
         <ProfileMenu onProfileChange={onProfileChange} />
       </Toolbar>
     </AppBar>
+  );
+};
+
+/**
+ * App Routes Component - handles route protection based on permissions
+ */
+const AppRoutes: React.FC<{ appKey: number }> = ({ appKey }) => {
+  const permissions = usePermissions();
+
+  return (
+    <Routes key={appKey}>
+      {/* Default route - redirect to My Checklists */}
+      <Route path="/" element={<Navigate to="/checklists" replace />} />
+
+      {/* My Checklists page - uses variant switcher */}
+      <Route path="/checklists" element={<LandingPage />} />
+
+      {/* Checklist Detail page */}
+      <Route
+        path="/checklists/:checklistId"
+        element={<ChecklistDetailPage />}
+      />
+
+      {/* Template Library page - Manage role only */}
+      <Route
+        path="/templates"
+        element={
+          <ProtectedRoute requirePermission={permissions.canViewTemplateLibrary}>
+            <TemplateLibraryPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Item Library page - Manage role only */}
+      <Route
+        path="/item-library"
+        element={
+          <ProtectedRoute requirePermission={permissions.canAccessItemLibrary}>
+            <ItemLibraryPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Create New Template - Manage role only */}
+      <Route
+        path="/templates/new"
+        element={
+          <ProtectedRoute requirePermission={permissions.canEditTemplate}>
+            <TemplateEditorPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Preview Template - Manage role only */}
+      <Route
+        path="/templates/:templateId/preview"
+        element={
+          <ProtectedRoute requirePermission={permissions.canViewTemplateLibrary}>
+            <TemplatePreviewPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Duplicate Template - Manage role only */}
+      <Route
+        path="/templates/:templateId/duplicate"
+        element={
+          <ProtectedRoute requirePermission={permissions.canEditTemplate}>
+            <TemplateEditorPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Edit Existing Template - Manage role only */}
+      <Route
+        path="/templates/:templateId/edit"
+        element={
+          <ProtectedRoute requirePermission={permissions.canEditTemplate}>
+            <TemplateEditorPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Manage Archived Checklists - Manage role only */}
+      <Route
+        path="/manage-checklists"
+        element={
+          <ProtectedRoute requirePermission={permissions.canManageArchivedChecklists}>
+            <ManageChecklistsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Catch-all route - redirect to My Checklists */}
+      <Route path="*" element={<Navigate to="/checklists" replace />} />
+    </Routes>
   );
 };
 
@@ -196,49 +340,7 @@ function App() {
           onEventCreated={handleEventCreated}
         />
 
-        <Routes key={appKey}>
-          {/* Default route - redirect to My Checklists */}
-          <Route path="/" element={<Navigate to="/checklists" replace />} />
-
-          {/* My Checklists page - uses variant switcher */}
-          <Route path="/checklists" element={<LandingPage />} />
-
-          {/* Checklist Detail page */}
-          <Route
-            path="/checklists/:checklistId"
-            element={<ChecklistDetailPage />}
-          />
-
-          {/* Template Library page */}
-          <Route path="/templates" element={<TemplateLibraryPage />} />
-
-          {/* Item Library page */}
-          <Route path="/item-library" element={<ItemLibraryPage />} />
-
-          {/* Create New Template */}
-          <Route path="/templates/new" element={<TemplateEditorPage />} />
-
-          {/* Preview Template */}
-          <Route
-            path="/templates/:templateId/preview"
-            element={<TemplatePreviewPage />}
-          />
-
-          {/* Duplicate Template */}
-          <Route
-            path="/templates/:templateId/duplicate"
-            element={<TemplateEditorPage />}
-          />
-
-          {/* Edit Existing Template */}
-          <Route
-            path="/templates/:templateId/edit"
-            element={<TemplateEditorPage />}
-          />
-
-          {/* Catch-all route - redirect to My Checklists */}
-          <Route path="*" element={<Navigate to="/checklists" replace />} />
-        </Routes>
+        <AppRoutes appKey={appKey} />
       </Box>
     </BrowserRouter>
   );

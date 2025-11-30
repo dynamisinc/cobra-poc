@@ -50,9 +50,8 @@ public record ChecklistInstanceDto
 
     /// <summary>
     /// Event this checklist belongs to
-    /// Example: "Hurricane-2025-001"
     /// </summary>
-    public string EventId { get; init; } = string.Empty;
+    public Guid EventId { get; init; }
 
     /// <summary>
     /// Human-readable event name

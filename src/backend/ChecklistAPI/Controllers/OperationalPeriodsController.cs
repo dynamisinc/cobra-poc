@@ -33,7 +33,7 @@ public class OperationalPeriodsController : ControllerBase
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<List<OperationalPeriod>>> GetOperationalPeriods(
-        [FromQuery] string? eventId,
+        [FromQuery] Guid? eventId,
         [FromQuery] bool includeArchived = false)
     {
         _logger.LogInformation("Fetching operational periods for event: {EventId}, includeArchived: {IncludeArchived}",
@@ -42,9 +42,9 @@ public class OperationalPeriodsController : ControllerBase
         var query = _context.OperationalPeriods.AsQueryable();
 
         // Filter by event
-        if (!string.IsNullOrEmpty(eventId))
+        if (eventId.HasValue)
         {
-            query = query.Where(op => op.EventId == eventId);
+            query = query.Where(op => op.EventId == eventId.Value);
         }
 
         // Filter archived
@@ -88,7 +88,7 @@ public class OperationalPeriodsController : ControllerBase
     [HttpGet("current")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<OperationalPeriod>> GetCurrentPeriod([FromQuery] string eventId)
+    public async Task<ActionResult<OperationalPeriod>> GetCurrentPeriod([FromQuery] Guid eventId)
     {
         _logger.LogInformation("Fetching current operational period for event: {EventId}", eventId);
 
@@ -238,7 +238,7 @@ public class OperationalPeriodsController : ControllerBase
 /// Request model for creating operational periods
 /// </summary>
 public record CreateOperationalPeriodRequest(
-    string EventId,
+    Guid EventId,
     string Name,
     DateTime StartTime,
     DateTime? EndTime,

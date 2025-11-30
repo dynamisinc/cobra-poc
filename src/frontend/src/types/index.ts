@@ -370,15 +370,21 @@ export interface MockOperationalPeriod {
 /**
  * Event type - planned or unplanned
  */
-export type EventType = 'PLANNED' | 'UNPLANNED';
+export type EventType = 'Planned' | 'Unplanned';
 
 /**
- * Event category sub-groups
+ * Event category sub-groups (FEMA/ICS/NIMS based)
  */
 export type EventCategorySubGroup =
+  // Unplanned
+  | 'Natural - Weather'
+  | 'Natural - Geologic'
+  | 'Technological'
+  | 'Human-Caused'
+  | 'Public Health'
+  // Planned
   | 'Special Event'
-  | 'Natural Disaster'
-  | 'Technological/Human-Caused';
+  | 'Exercise';
 
 /**
  * Event category - FEMA/NIMS standard categories

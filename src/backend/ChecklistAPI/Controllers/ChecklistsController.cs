@@ -19,11 +19,13 @@ namespace ChecklistAPI.Controllers;
 ///   GET    /api/checklists/{id}                       - Get single checklist
 ///   GET    /api/checklists/event/{eventId}            - Get checklists for event
 ///   GET    /api/checklists/event/{eventId}/period/{periodId} - Get checklists for operational period
-///   GET    /api/checklists/archived                   - Get archived checklists (Admin only)
+///   GET    /api/checklists/archived                   - Get all archived checklists (Manage role)
+///   GET    /api/checklists/event/{eventId}/archived   - Get archived checklists for event (Manage role)
 ///   POST   /api/checklists                            - Create checklist from template
 ///   PUT    /api/checklists/{id}                       - Update checklist metadata
-///   DELETE /api/checklists/{id}                       - Archive checklist (soft delete)
-///   POST   /api/checklists/{id}/restore               - Restore archived checklist (Admin only)
+///   DELETE /api/checklists/{id}                       - Archive checklist (Manage role)
+///   POST   /api/checklists/{id}/restore               - Restore archived checklist (Manage role)
+///   DELETE /api/checklists/{id}/permanent             - Permanently delete checklist (Manage role)
 ///   POST   /api/checklists/{id}/clone                 - Clone checklist
 ///
 /// User Context:
@@ -100,7 +102,7 @@ public class ChecklistsController : ControllerBase
     [HttpGet("event/{eventId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<List<ChecklistInstanceDto>>> GetChecklistsByEvent(
-        string eventId,
+        Guid eventId,
         [FromQuery] bool includeArchived = false)
     {
         var checklists = await _checklistService.GetChecklistsByEventAsync(eventId, includeArchived);
@@ -117,7 +119,7 @@ public class ChecklistsController : ControllerBase
     [HttpGet("event/{eventId}/period/{operationalPeriodId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<List<ChecklistInstanceDto>>> GetChecklistsByOperationalPeriod(
-        string eventId,
+        Guid eventId,
         Guid operationalPeriodId,
         [FromQuery] bool includeArchived = false)
     {
@@ -136,6 +138,7 @@ public class ChecklistsController : ControllerBase
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ChecklistInstanceDto>> CreateFromTemplate(
         [FromBody] CreateFromTemplateRequest request)
     {
@@ -145,6 +148,18 @@ public class ChecklistsController : ControllerBase
         }
 
         var userContext = GetUserContext();
+
+        // Readonly users cannot create checklists
+        if (userContext.IsReadonly)
+        {
+            _logger.LogWarning(
+                "Readonly user {User} attempted to create checklist",
+                userContext.Email);
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Readonly users cannot create checklists"
+            });
+        }
 
         try
         {
@@ -177,6 +192,7 @@ public class ChecklistsController : ControllerBase
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ChecklistInstanceDto>> UpdateChecklist(
         Guid id,
@@ -188,6 +204,19 @@ public class ChecklistsController : ControllerBase
         }
 
         var userContext = GetUserContext();
+
+        // Readonly users cannot update checklists
+        if (userContext.IsReadonly)
+        {
+            _logger.LogWarning(
+                "Readonly user {User} attempted to update checklist {ChecklistId}",
+                userContext.Email,
+                id);
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Readonly users cannot update checklists"
+            });
+        }
 
         var checklist = await _checklistService.UpdateChecklistAsync(id, request, userContext);
 
@@ -207,15 +236,31 @@ public class ChecklistsController : ControllerBase
 
     /// <summary>
     /// Archive a checklist (soft delete)
+    /// Requires Manage role
     /// </summary>
     /// <param name="id">Checklist ID to archive</param>
     /// <returns>No content on success</returns>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ArchiveChecklist(Guid id)
     {
         var userContext = GetUserContext();
+
+        // Only Manage role can archive checklists
+        if (!userContext.CanManage)
+        {
+            _logger.LogWarning(
+                "User {User} with role {Role} attempted to archive checklist {ChecklistId}",
+                userContext.Email,
+                userContext.Role,
+                id);
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Only users with Manage role can archive checklists"
+            });
+        }
 
         var success = await _checklistService.ArchiveChecklistAsync(id, userContext);
 
@@ -234,7 +279,7 @@ public class ChecklistsController : ControllerBase
     }
 
     /// <summary>
-    /// Get all archived checklists (Admin only)
+    /// Get all archived checklists (Manage role)
     /// </summary>
     /// <returns>List of archived checklists</returns>
     [HttpGet("archived")]
@@ -244,11 +289,12 @@ public class ChecklistsController : ControllerBase
     {
         var userContext = GetUserContext();
 
-        if (!userContext.IsAdmin)
+        if (!userContext.CanManage)
         {
             _logger.LogWarning(
-                "Non-admin user {User} attempted to access archived checklists",
-                userContext.Email);
+                "User {User} with role {Role} attempted to access archived checklists",
+                userContext.Email,
+                userContext.Role);
             return Forbid();
         }
 
@@ -257,7 +303,33 @@ public class ChecklistsController : ControllerBase
     }
 
     /// <summary>
-    /// Restore an archived checklist (Admin only)
+    /// Get archived checklists for a specific event (Manage role)
+    /// </summary>
+    /// <param name="eventId">Event identifier</param>
+    /// <returns>List of archived checklists for this event</returns>
+    [HttpGet("event/{eventId}/archived")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<List<ChecklistInstanceDto>>> GetArchivedChecklistsByEvent(Guid eventId)
+    {
+        var userContext = GetUserContext();
+
+        if (!userContext.CanManage)
+        {
+            _logger.LogWarning(
+                "User {User} with role {Role} attempted to access archived checklists for event {EventId}",
+                userContext.Email,
+                userContext.Role,
+                eventId);
+            return Forbid();
+        }
+
+        var checklists = await _checklistService.GetArchivedChecklistsByEventAsync(eventId);
+        return Ok(checklists);
+    }
+
+    /// <summary>
+    /// Restore an archived checklist (Manage role)
     /// </summary>
     /// <param name="id">Checklist ID to restore</param>
     /// <returns>No content on success</returns>
@@ -269,11 +341,12 @@ public class ChecklistsController : ControllerBase
     {
         var userContext = GetUserContext();
 
-        if (!userContext.IsAdmin)
+        if (!userContext.CanManage)
         {
             _logger.LogWarning(
-                "Non-admin user {User} attempted to restore checklist {ChecklistId}",
+                "User {User} with role {Role} attempted to restore checklist {ChecklistId}",
                 userContext.Email,
+                userContext.Role,
                 id);
             return Forbid();
         }
@@ -287,7 +360,54 @@ public class ChecklistsController : ControllerBase
         }
 
         _logger.LogInformation(
-            "Checklist {ChecklistId} restored by admin {User}",
+            "Checklist {ChecklistId} restored by {User}",
+            id,
+            userContext.Email);
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Permanently delete an archived checklist (Manage role)
+    /// This action cannot be undone!
+    /// </summary>
+    /// <param name="id">Checklist ID to permanently delete</param>
+    /// <returns>No content on success</returns>
+    [HttpDelete("{id:guid}/permanent")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> PermanentlyDeleteChecklist(Guid id)
+    {
+        var userContext = GetUserContext();
+
+        if (!userContext.CanManage)
+        {
+            _logger.LogWarning(
+                "User {User} with role {Role} attempted to permanently delete checklist {ChecklistId}",
+                userContext.Email,
+                userContext.Role,
+                id);
+            return Forbid();
+        }
+
+        var result = await _checklistService.PermanentlyDeleteChecklistAsync(id, userContext);
+
+        if (result == null)
+        {
+            _logger.LogWarning("Checklist {ChecklistId} not found for permanent deletion", id);
+            return NotFound(new { message = $"Checklist {id} not found" });
+        }
+
+        if (!result.Value)
+        {
+            _logger.LogWarning("Checklist {ChecklistId} must be archived before permanent deletion", id);
+            return BadRequest(new { message = "Checklist must be archived before it can be permanently deleted" });
+        }
+
+        _logger.LogInformation(
+            "Checklist {ChecklistId} permanently deleted by {User}",
             id,
             userContext.Email);
 
@@ -304,6 +424,7 @@ public class ChecklistsController : ControllerBase
     [HttpPost("{id:guid}/clone")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ChecklistInstanceDto>> CloneChecklist(
         Guid id,
@@ -316,11 +437,25 @@ public class ChecklistsController : ControllerBase
 
         var userContext = GetUserContext();
 
+        // Readonly users cannot clone checklists
+        if (userContext.IsReadonly)
+        {
+            _logger.LogWarning(
+                "Readonly user {User} attempted to clone checklist {ChecklistId}",
+                userContext.Email,
+                id);
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Readonly users cannot clone checklists"
+            });
+        }
+
         var clone = await _checklistService.CloneChecklistAsync(
             id,
             request.NewName,
             request.PreserveStatus,
-            userContext);
+            userContext,
+            request.AssignedPositions);
 
         if (clone == null)
         {
@@ -380,4 +515,10 @@ public record CloneChecklistRequest
     /// - true: "Direct copy" - preserves completion status, notes, timestamps
     /// </summary>
     public bool PreserveStatus { get; init; } = false;
+
+    /// <summary>
+    /// Comma-separated list of positions that can see this checklist (optional)
+    /// If null/empty, inherits from original checklist
+    /// </summary>
+    public string? AssignedPositions { get; init; }
 }
