@@ -73,7 +73,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     : theme.cssStyling.drawerClosedWidth;
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+    <Box sx={{ minHeight: "100vh" }}>
       {/* Top Header */}
       <AppHeader
         onMobileMenuToggle={handleMobileMenuToggle}
@@ -81,19 +81,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       />
 
       {/* Left Sidebar - Desktop */}
-      <Box
-        component="nav"
-        sx={{
-          width: { md: drawerWidth },
-          flexShrink: { md: 0 },
-          display: { xs: "none", md: "block" },
-        }}
-      >
-        <Sidebar
-          open={sidebarOpen}
-          onToggle={handleSidebarToggle}
-        />
-      </Box>
+      <Sidebar
+        open={sidebarOpen}
+        onToggle={handleSidebarToggle}
+      />
 
       {/* Left Sidebar - Mobile */}
       <Sidebar
@@ -107,19 +98,18 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       <Box
         component="main"
         sx={{
-          flexGrow: 1,
           display: "flex",
           flexDirection: "column",
           minHeight: "100vh",
           backgroundColor: theme.palette.background.default,
           // Account for header height
           pt: `${theme.cssStyling.headerHeight}px`,
-          // Responsive width
-          width: {
-            xs: "100%",
-            md: `calc(100% - ${drawerWidth}px)`,
+          // Account for sidebar width with margin
+          ml: {
+            xs: 0,
+            md: `${drawerWidth}px`,
           },
-          transition: theme.transitions.create(["width", "margin"], {
+          transition: theme.transitions.create(["margin"], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
           }),
