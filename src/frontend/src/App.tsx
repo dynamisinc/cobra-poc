@@ -3,17 +3,21 @@
  *
  * Implements C5-style navigation with:
  * - Collapsible left sidebar
- * - Breadcrumb navigation
- * - Hierarchical routing under /checklists/*
+ * - Auto-generated breadcrumb navigation
+ * - Hierarchical routing
  *
  * Route Structure:
- * - /checklists - Dashboard (My Checklists)
- * - /checklists/:id - Checklist Detail
+ * - /events - Events list (Home)
+ * - /events/:eventId - Event landing page
+ * - /checklists - Checklist tool landing (Dashboard, Manage, Analytics)
+ * - /checklists/dashboard - My Checklists (Dashboard)
+ * - /checklists/:checklistId - Checklist detail
  * - /checklists/manage - Templates & Item Library (Manage role)
  * - /checklists/manage/templates/new - Create Template
  * - /checklists/manage/templates/:id/edit - Edit Template
  * - /checklists/manage/templates/:id/preview - Preview Template
  * - /checklists/manage/templates/:id/duplicate - Duplicate Template
+ * - /checklists/instances - Manage Checklists (archive/restore)
  * - /checklists/analytics - Analytics Dashboard (future)
  */
 
@@ -30,9 +34,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChartLine } from "@fortawesome/free-solid-svg-icons";
 
 // Navigation components
-import { AppLayout, BreadcrumbItem } from "./components/navigation";
+import { AppLayout } from "./components/navigation";
 
 // Pages
+import { EventsListPage } from "./pages/EventsListPage";
+import { EventLandingPage } from "./pages/EventLandingPage";
+import { ChecklistToolPage } from "./pages/ChecklistToolPage";
 import { LandingPage } from "./pages/LandingPage";
 import { ChecklistDetailPage } from "./pages/ChecklistDetailPage";
 import { ManagePage } from "./pages/ManagePage";
@@ -70,18 +77,48 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requirePermis
 };
 
 /**
+ * Events List Page Wrapper
+ * Shows list of all events
+ */
+const EventsListWrapper: React.FC = () => {
+  return (
+    <AppLayout>
+      <EventsListPage />
+    </AppLayout>
+  );
+};
+
+/**
+ * Event Landing Page Wrapper
+ * Shows event details and tool navigation
+ */
+const EventLandingWrapper: React.FC = () => {
+  return (
+    <AppLayout>
+      <EventLandingPage />
+    </AppLayout>
+  );
+};
+
+/**
+ * Checklist Tool Page Wrapper
+ * Tool-level navigation (Dashboard, Manage, Analytics)
+ */
+const ChecklistToolWrapper: React.FC = () => {
+  return (
+    <AppLayout>
+      <ChecklistToolPage />
+    </AppLayout>
+  );
+};
+
+/**
  * Dashboard Page Wrapper
  * Wraps LandingPage (My Checklists) with AppLayout
  */
 const DashboardPage: React.FC = () => {
-  const breadcrumbs: BreadcrumbItem[] = [
-    { label: "Home", path: "/" },
-    { label: "Checklist", path: "/checklists" },
-    { label: "Dashboard" },
-  ];
-
   return (
-    <AppLayout breadcrumbs={breadcrumbs}>
+    <AppLayout>
       <LandingPage />
     </AppLayout>
   );
@@ -103,15 +140,10 @@ const ChecklistDetailWrapper: React.FC = () => {
  */
 const ManagePageWrapper: React.FC = () => {
   const permissions = usePermissions();
-  const breadcrumbs: BreadcrumbItem[] = [
-    { label: "Home", path: "/" },
-    { label: "Checklist", path: "/checklists" },
-    { label: "Manage" },
-  ];
 
   return (
     <ProtectedRoute requirePermission={permissions.canViewTemplateLibrary}>
-      <AppLayout breadcrumbs={breadcrumbs}>
+      <AppLayout>
         <ManagePage />
       </AppLayout>
     </ProtectedRoute>
@@ -123,30 +155,13 @@ const ManagePageWrapper: React.FC = () => {
  * Wraps TemplateEditorPage with AppLayout
  */
 const TemplateEditorWrapper: React.FC<{ mode: "new" | "edit" | "duplicate" }> = ({
-  mode,
+  mode: _mode,
 }) => {
   const permissions = usePermissions();
-  const getTitle = () => {
-    switch (mode) {
-      case "new":
-        return "Create Template";
-      case "duplicate":
-        return "Duplicate Template";
-      case "edit":
-        return "Edit Template";
-    }
-  };
-
-  const breadcrumbs: BreadcrumbItem[] = [
-    { label: "Home", path: "/" },
-    { label: "Checklist", path: "/checklists" },
-    { label: "Manage", path: "/checklists/manage?tab=templates" },
-    { label: getTitle() },
-  ];
 
   return (
     <ProtectedRoute requirePermission={permissions.canEditTemplate}>
-      <AppLayout breadcrumbs={breadcrumbs}>
+      <AppLayout>
         <TemplateEditorPage />
       </AppLayout>
     </ProtectedRoute>
@@ -159,16 +174,10 @@ const TemplateEditorWrapper: React.FC<{ mode: "new" | "edit" | "duplicate" }> = 
  */
 const TemplatePreviewWrapper: React.FC = () => {
   const permissions = usePermissions();
-  const breadcrumbs: BreadcrumbItem[] = [
-    { label: "Home", path: "/" },
-    { label: "Checklist", path: "/checklists" },
-    { label: "Manage", path: "/checklists/manage?tab=templates" },
-    { label: "Preview" },
-  ];
 
   return (
     <ProtectedRoute requirePermission={permissions.canViewTemplateLibrary}>
-      <AppLayout breadcrumbs={breadcrumbs}>
+      <AppLayout>
         <TemplatePreviewPage />
       </AppLayout>
     </ProtectedRoute>
@@ -181,15 +190,10 @@ const TemplatePreviewWrapper: React.FC = () => {
  */
 const ItemLibraryWrapper: React.FC = () => {
   const permissions = usePermissions();
-  const breadcrumbs: BreadcrumbItem[] = [
-    { label: "Home", path: "/" },
-    { label: "Checklist", path: "/checklists" },
-    { label: "Item Library" },
-  ];
 
   return (
     <ProtectedRoute requirePermission={permissions.canAccessItemLibrary}>
-      <AppLayout breadcrumbs={breadcrumbs}>
+      <AppLayout>
         <ItemLibraryPage />
       </AppLayout>
     </ProtectedRoute>
@@ -202,15 +206,10 @@ const ItemLibraryWrapper: React.FC = () => {
  */
 const ManageChecklistsWrapper: React.FC = () => {
   const permissions = usePermissions();
-  const breadcrumbs: BreadcrumbItem[] = [
-    { label: "Home", path: "/" },
-    { label: "Checklist", path: "/checklists" },
-    { label: "Manage Checklists" },
-  ];
 
   return (
     <ProtectedRoute requirePermission={permissions.canManageArchivedChecklists}>
-      <AppLayout breadcrumbs={breadcrumbs}>
+      <AppLayout>
         <ManageChecklistsPage />
       </AppLayout>
     </ProtectedRoute>
@@ -221,14 +220,8 @@ const ManageChecklistsWrapper: React.FC = () => {
  * Analytics Page (Placeholder)
  */
 const AnalyticsPage: React.FC = () => {
-  const breadcrumbs: BreadcrumbItem[] = [
-    { label: "Home", path: "/" },
-    { label: "Checklist", path: "/checklists" },
-    { label: "Analytics" },
-  ];
-
   return (
-    <AppLayout breadcrumbs={breadcrumbs}>
+    <AppLayout>
       <Container maxWidth="lg">
         <Stack
           spacing={3}
@@ -253,44 +246,6 @@ const AnalyticsPage: React.FC = () => {
 };
 
 /**
- * Home Page - Redirects to dashboard
- */
-const HomePage: React.FC = () => {
-  const breadcrumbs: BreadcrumbItem[] = [{ label: "Home" }];
-
-  return (
-    <AppLayout breadcrumbs={breadcrumbs}>
-      <Container maxWidth="lg">
-        <Stack spacing={3} padding={CobraStyles.Padding.MainWindow}>
-          <Typography variant="h4">COBRA Checklist Tool</Typography>
-          <Typography variant="body1" color="text.secondary">
-            Welcome to the COBRA Checklist POC. Use the sidebar to navigate.
-          </Typography>
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h6" gutterBottom>
-              Quick Links
-            </Typography>
-            <Stack spacing={1}>
-              <Typography>
-                • <a href="/checklists">Dashboard</a> - View your checklists
-              </Typography>
-              <Typography>
-                • <a href="/checklists/manage">Manage</a> - Templates & Item
-                Library
-              </Typography>
-              <Typography>
-                • <a href="/checklists/analytics">Analytics</a> - Progress &
-                Trends
-              </Typography>
-            </Stack>
-          </Box>
-        </Stack>
-      </Container>
-    </AppLayout>
-  );
-};
-
-/**
  * Main App Component
  */
 function App() {
@@ -298,13 +253,20 @@ function App() {
     <BrowserRouter>
       <Box sx={{ minHeight: "100vh", backgroundColor: "#F5F5F5" }}>
         <Routes>
-          {/* Home page */}
-          <Route path="/" element={<HomePage />} />
+          {/* Root - redirect to events */}
+          <Route path="/" element={<Navigate to="/events" replace />} />
+
+          {/* Events */}
+          <Route path="/events" element={<EventsListWrapper />} />
+          <Route path="/events/:eventId" element={<EventLandingWrapper />} />
+
+          {/* Checklist Tool Landing (Dashboard, Manage, Analytics navigation) */}
+          <Route path="/checklists" element={<ChecklistToolWrapper />} />
 
           {/* Checklist Dashboard (My Checklists) */}
-          <Route path="/checklists" element={<DashboardPage />} />
+          <Route path="/checklists/dashboard" element={<DashboardPage />} />
 
-          {/* Checklist Detail */}
+          {/* Checklist Detail - must come after /dashboard to avoid conflict */}
           <Route
             path="/checklists/:checklistId"
             element={<ChecklistDetailWrapper />}
@@ -331,16 +293,20 @@ function App() {
             element={<TemplateEditorWrapper mode="duplicate" />}
           />
 
+          {/* Manage Checklists (archive/restore/delete instances) */}
+          <Route path="/checklists/instances" element={<ManageChecklistsWrapper />} />
+
           {/* Analytics Page */}
           <Route path="/checklists/analytics" element={<AnalyticsPage />} />
 
-          {/* Item Library (standalone route for sidebar) */}
+          {/* Item Library (standalone route) */}
           <Route path="/item-library" element={<ItemLibraryWrapper />} />
 
-          {/* Manage Checklists (archive management) */}
-          <Route path="/manage-checklists" element={<ManageChecklistsWrapper />} />
-
           {/* Legacy routes - redirect to new structure */}
+          <Route
+            path="/manage-checklists"
+            element={<Navigate to="/checklists/instances" replace />}
+          />
           <Route
             path="/templates"
             element={<Navigate to="/checklists/manage?tab=templates" replace />}
@@ -368,8 +334,8 @@ function App() {
             }
           />
 
-          {/* Catch-all - redirect to dashboard */}
-          <Route path="*" element={<Navigate to="/checklists" replace />} />
+          {/* Catch-all - redirect to events */}
+          <Route path="*" element={<Navigate to="/events" replace />} />
         </Routes>
       </Box>
     </BrowserRouter>

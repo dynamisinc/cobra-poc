@@ -3,7 +3,7 @@
  *
  * Implements C5-style header with:
  * - App branding (left)
- * - Event selector (center)
+ * - Event selector (left, after branding)
  * - Profile menu (right)
  * - Mobile menu toggle
  *
@@ -20,10 +20,7 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faClipboardList,
-  faBars,
-} from "@fortawesome/free-solid-svg-icons";
+import { faBars } from "@fortawesome/free-solid-svg-icons";
 import { ProfileMenu } from "../ProfileMenu";
 import { EventSelector } from "../EventSelector";
 import { CreateEventDialog } from "../CreateEventDialog";
@@ -74,36 +71,24 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           </IconButton>
 
           {/* App Logo/Name */}
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            <FontAwesomeIcon
-              icon={faClipboardList}
-              size="lg"
-              style={{ marginRight: 12, color: "#FFFACD" }}
-            />
-            <Typography
-              variant="h6"
-              noWrap
-              sx={{
-                fontWeight: "bold",
-                color: "#FFFACD",
-                display: { xs: "none", sm: "block" },
-              }}
-            >
-              COBRA Checklist
-            </Typography>
-          </Box>
-
-          {/* Center: Event Selector */}
-          <Box
+          <Typography
+            variant="h6"
+            noWrap
             sx={{
-              flexGrow: 1,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
+              fontWeight: "bold",
+              color: "#FFFACD",
+              mr: 3,
+              display: { xs: "none", sm: "block" },
             }}
           >
-            <EventSelector onCreateEventClick={() => setCreateEventOpen(true)} />
-          </Box>
+            COBRA POC
+          </Typography>
+
+          {/* Event Selector - Left aligned */}
+          <EventSelector onCreateEventClick={() => setCreateEventOpen(true)} />
+
+          {/* Spacer */}
+          <Box sx={{ flexGrow: 1 }} />
 
           {/* Right: Profile Menu */}
           <Box sx={{ display: "flex", alignItems: "center" }}>

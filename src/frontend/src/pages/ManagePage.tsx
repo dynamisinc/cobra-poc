@@ -5,6 +5,9 @@
  * Only accessible to users with Manage role.
  *
  * Implements C5 pattern of grouping admin functions under "Manage" section.
+ *
+ * Note: This component renders content only - AppLayout wrapper is provided
+ * by the parent route in App.tsx to avoid nested breadcrumbs.
  */
 
 import React, { useState, useEffect } from "react";
@@ -24,8 +27,6 @@ import {
   faBoxArchive,
   faGear,
 } from "@fortawesome/free-solid-svg-icons";
-import { AppLayout, BreadcrumbItem } from "../components/navigation";
-import { usePermissions } from "../hooks/usePermissions";
 import CobraStyles from "../theme/CobraStyles";
 
 // Import the content from existing pages (we'll refactor these to be embeddable)
@@ -61,19 +62,11 @@ const a11yProps = (index: number) => {
 
 export const ManagePage: React.FC = () => {
   const theme = useTheme();
-  const permissions = usePermissions();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Get initial tab from URL param or default to 0
   const initialTab = searchParams.get("tab") === "items" ? 1 : 0;
   const [activeTab, setActiveTab] = useState(initialTab);
-
-  // Breadcrumb items
-  const breadcrumbs: BreadcrumbItem[] = [
-    { label: "Home", path: "/" },
-    { label: "Checklist", path: "/checklists" },
-    { label: "Manage" },
-  ];
 
   // Update URL when tab changes
   useEffect(() => {
@@ -85,31 +78,10 @@ export const ManagePage: React.FC = () => {
     setActiveTab(newValue);
   };
 
-  // Permission check
-  if (!permissions.canViewTemplateLibrary) {
-    return (
-      <AppLayout breadcrumbs={breadcrumbs}>
-        <Container maxWidth="lg">
-          <Stack
-            spacing={3}
-            padding={CobraStyles.Padding.MainWindow}
-            sx={{ textAlign: "center", py: 8 }}
-          >
-            <Typography variant="h5" color="text.secondary">
-              Access Denied
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              You need the Manage role to access this page.
-            </Typography>
-          </Stack>
-        </Container>
-      </AppLayout>
-    );
-  }
+  // Note: Permission check is handled by ProtectedRoute in App.tsx
 
   return (
-    <AppLayout breadcrumbs={breadcrumbs}>
-      <Container maxWidth="xl">
+    <Container maxWidth="xl">
         <Stack spacing={0} padding={CobraStyles.Padding.MainWindow}>
           {/* Page Header */}
           <Box sx={{ mb: 2 }}>
@@ -169,7 +141,6 @@ export const ManagePage: React.FC = () => {
           </TabPanel>
         </Stack>
       </Container>
-    </AppLayout>
   );
 };
 

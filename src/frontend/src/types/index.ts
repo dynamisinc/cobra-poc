@@ -406,6 +406,8 @@ export interface EventCategory {
 export interface Event {
   id: string;
   name: string;
+  description?: string;
+  location?: string;
   eventType: EventType;
   primaryCategoryId: string;
   primaryCategory?: EventCategory;
