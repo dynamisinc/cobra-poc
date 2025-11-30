@@ -47,6 +47,7 @@ import { TemplateEditorPage } from "./pages/TemplateEditorPage";
 import { TemplatePreviewPage } from "./pages/TemplatePreviewPage";
 import { ItemLibraryPage } from "./pages/ItemLibraryPage";
 import { ManageChecklistsPage } from "./pages/ManageChecklistsPage";
+import { AdminPage } from "./pages/AdminPage";
 import { usePermissions } from "./hooks/usePermissions";
 
 // Styles
@@ -218,6 +219,22 @@ const ManageChecklistsWrapper: React.FC = () => {
 };
 
 /**
+ * Admin Page Wrapper
+ * Central administration hub - only for Manage role
+ */
+const AdminPageWrapper: React.FC = () => {
+  const permissions = usePermissions();
+
+  return (
+    <ProtectedRoute requirePermission={permissions.canViewTemplateLibrary}>
+      <AppLayout>
+        <AdminPage />
+      </AppLayout>
+    </ProtectedRoute>
+  );
+};
+
+/**
  * Analytics Page (Placeholder)
  */
 const AnalyticsPage: React.FC = () => {
@@ -302,6 +319,9 @@ function App() {
 
           {/* Item Library (standalone route) */}
           <Route path="/item-library" element={<ItemLibraryWrapper />} />
+
+          {/* Admin Page (central administration hub) */}
+          <Route path="/admin" element={<AdminPageWrapper />} />
 
           {/* Legacy routes - redirect to new structure */}
           <Route

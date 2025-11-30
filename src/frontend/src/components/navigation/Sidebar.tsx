@@ -148,7 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     id: "admin",
     label: "Admin",
     icon: faGear,
-    path: "/checklists/manage",
+    path: "/admin",
   };
 
   const handleNavClick = (item: NavItem) => {
