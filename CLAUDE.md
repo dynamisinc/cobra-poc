@@ -1368,29 +1368,54 @@ export default defineConfig({
 
 #### CRITICAL: Frontend .env Configuration
 
-**Common Error:** API requests fail with 404 or return HTML instead of JSON.
+**Common Error:** API requests fail with 404 or return HTML instead of JSON, or URLs show `/api/api/...`.
 
-**Root Cause:** The `VITE_API_URL` in `.env` should NOT include `/api` suffix because the API service files already include `/api/` in their paths.
+**Root Cause:** Service files already include `/api/` in their paths (e.g., `apiClient.get('/api/events')`). The `VITE_API_URL` must NOT add another `/api` prefix.
+
+**Environment Configuration:**
+
+| Environment | File | VITE_API_URL Value |
+|-------------|------|-------------------|
+| Local Dev | `.env` | `http://localhost:5000` |
+| Production | `.env.production` | `` (empty string) |
 
 ```bash
 # ❌ WRONG - causes double /api/api/ in URLs
+VITE_API_URL=/api
 VITE_API_URL=http://localhost:5000/api
 
-# ✅ CORRECT - base URL only
+# ✅ CORRECT - Local development
 VITE_API_URL=http://localhost:5000
+
+# ✅ CORRECT - Production (empty string, frontend served from same origin)
+VITE_API_URL=
 ```
 
 **How API URLs are constructed:**
+
+Local development:
 - `.env`: `VITE_API_URL=http://localhost:5000`
-- Service file: `apiClient.get('/api/eventcategories')`
-- Result: `http://localhost:5000/api/eventcategories` ✓
+- Service: `apiClient.get('/api/events')`
+- Result: `http://localhost:5000/api/events` ✓
 
-**If you see `/api/api/` in network requests, fix the `.env` file!**
+Production:
+- `.env.production`: `VITE_API_URL=` (empty)
+- Service: `apiClient.get('/api/events')`
+- Result: `/api/events` (relative URL) ✓
 
-The correct `.env` file for local development:
+**If you see `/api/api/` in network requests, check the env files!**
+
+**Local `.env` file:**
 ```bash
 VITE_API_URL=http://localhost:5000
 VITE_HUB_URL=http://localhost:5000/hubs/checklist
+VITE_ENABLE_MOCK_AUTH=true
+```
+
+**Production `.env.production` file:**
+```bash
+VITE_API_URL=
+VITE_HUB_URL=/hubs/checklist
 VITE_ENABLE_MOCK_AUTH=true
 ```
 
