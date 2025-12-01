@@ -18,6 +18,7 @@ public class ChecklistDbContext : DbContext
     public DbSet<ItemLibraryEntry> ItemLibraryEntries { get; set; }
     public DbSet<Event> Events { get; set; }
     public DbSet<EventCategory> EventCategories { get; set; }
+    public DbSet<FeatureFlagOverride> FeatureFlagOverrides { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -188,6 +189,14 @@ public class ChecklistDbContext : DbContext
             entity.HasIndex(e => e.IsActive);
             entity.HasIndex(e => e.IsArchived);
             entity.HasIndex(e => e.PrimaryCategoryId);
+        });
+
+        // FeatureFlagOverride configuration
+        modelBuilder.Entity<FeatureFlagOverride>(entity =>
+        {
+            entity.HasKey(e => e.FlagName);
+            entity.Property(e => e.FlagName).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.ModifiedBy).HasMaxLength(200);
         });
     }
 }

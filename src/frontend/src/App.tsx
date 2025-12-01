@@ -33,6 +33,9 @@ import { Box, Typography, Container, Stack } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChartLine } from "@fortawesome/free-solid-svg-icons";
 
+// Context providers
+import { FeatureFlagsProvider } from "./contexts/FeatureFlagsContext";
+
 // Navigation components
 import { AppLayout } from "./components/navigation";
 
@@ -269,8 +272,9 @@ const AnalyticsPage: React.FC = () => {
 function App() {
   return (
     <BrowserRouter>
-      <Box sx={{ minHeight: "100vh", backgroundColor: "#F5F5F5" }}>
-        <Routes>
+      <FeatureFlagsProvider>
+        <Box sx={{ minHeight: "100vh", backgroundColor: "#F5F5F5" }}>
+          <Routes>
           {/* Root - redirect to events */}
           <Route path="/" element={<Navigate to="/events" replace />} />
 
@@ -357,8 +361,9 @@ function App() {
 
           {/* Catch-all - redirect to events */}
           <Route path="*" element={<Navigate to="/events" replace />} />
-        </Routes>
-      </Box>
+          </Routes>
+        </Box>
+      </FeatureFlagsProvider>
     </BrowserRouter>
   );
 }

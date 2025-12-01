@@ -32,9 +32,11 @@ import {
   faUsers,
   faBrain,
   faFileAlt,
+  faToggleOn,
 } from "@fortawesome/free-solid-svg-icons";
 import { useTheme } from "@mui/material/styles";
 import CobraStyles from "../theme/CobraStyles";
+import { FeatureFlagsAdmin } from "../components/admin/FeatureFlagsAdmin";
 
 interface AdminCardProps {
   icon: typeof faGear;
@@ -200,6 +202,11 @@ export const AdminPage: React.FC = () => {
             Manage system settings, templates, and configurations
           </Typography>
         </Box>
+
+        {/* Feature Flags Section */}
+        <AdminSection title="Feature Flags" icon={faToggleOn}>
+          <FeatureFlagsAdmin />
+        </AdminSection>
 
         {/* Checklists Section */}
         <AdminSection title="Checklists" icon={faClipboardList}>

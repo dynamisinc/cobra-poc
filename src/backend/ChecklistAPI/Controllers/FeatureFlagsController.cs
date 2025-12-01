@@ -1,55 +1,49 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using System.Text.Json;
+using ChecklistAPI.Data;
 using ChecklistAPI.Models.Configuration;
+using ChecklistAPI.Models.Entities;
 
 namespace ChecklistAPI.Controllers;
 
 /// <summary>
 /// API controller for managing feature flags.
-/// Returns merged flags from appsettings.json defaults and server-side overrides.
-/// Admin can update overrides which persist in a JSON file for all users.
+/// Returns merged flags from appsettings.json defaults and database overrides.
+/// Admin can update overrides which persist in the database for all users.
 /// </summary>
 [ApiController]
 [Route("api/config/[controller]")]
 public class FeatureFlagsController : ControllerBase
 {
     private readonly FeatureFlagsConfig _defaultConfig;
-    private readonly IWebHostEnvironment _environment;
+    private readonly ChecklistDbContext _context;
     private readonly ILogger<FeatureFlagsController> _logger;
-    private readonly string _overrideFilePath;
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
 
     public FeatureFlagsController(
         IOptions<FeatureFlagsConfig> defaultConfig,
-        IWebHostEnvironment environment,
+        ChecklistDbContext context,
         ILogger<FeatureFlagsController> logger)
     {
         _defaultConfig = defaultConfig.Value;
-        _environment = environment;
+        _context = context;
         _logger = logger;
-        _overrideFilePath = Path.Combine(_environment.ContentRootPath, "Data", "featureflags.override.json");
     }
 
     /// <summary>
-    /// Get current feature flags (merged defaults + overrides)
+    /// Get current feature flags (merged defaults + database overrides)
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(FeatureFlagsDto), StatusCodes.Status200OK)]
-    public ActionResult<FeatureFlagsDto> GetFeatureFlags()
+    public async Task<ActionResult<FeatureFlagsDto>> GetFeatureFlags()
     {
-        var merged = GetMergedFlags();
+        var merged = await GetMergedFlagsAsync();
         _logger.LogDebug("Returning feature flags: {@Flags}", merged);
         return Ok(merged);
     }
 
     /// <summary>
-    /// Update feature flag overrides (admin only - persists to server file)
+    /// Update feature flag overrides (admin only - persists to database)
     /// </summary>
     [HttpPut]
     [ProducesResponseType(typeof(FeatureFlagsDto), StatusCodes.Status200OK)]
@@ -58,18 +52,51 @@ public class FeatureFlagsController : ControllerBase
     {
         try
         {
-            // Ensure Data directory exists
-            var dataDir = Path.GetDirectoryName(_overrideFilePath);
-            if (!string.IsNullOrEmpty(dataDir) && !Directory.Exists(dataDir))
+            var currentUser = HttpContext.Items["UserEmail"]?.ToString() ?? "system";
+            var now = DateTime.UtcNow;
+
+            // Convert DTO to dictionary for easier processing
+            var flagValues = new Dictionary<string, bool>
             {
-                Directory.CreateDirectory(dataDir);
+                { "Checklist", flags.Checklist },
+                { "Chat", flags.Chat },
+                { "Tasking", flags.Tasking },
+                { "CobraKai", flags.CobraKai },
+                { "EventSummary", flags.EventSummary },
+                { "StatusChart", flags.StatusChart },
+                { "EventTimeline", flags.EventTimeline },
+                { "CobraAi", flags.CobraAi }
+            };
+
+            // Get existing overrides
+            var existingOverrides = await _context.FeatureFlagOverrides.ToListAsync();
+            var existingDict = existingOverrides.ToDictionary(o => o.FlagName);
+
+            foreach (var kvp in flagValues)
+            {
+                if (existingDict.TryGetValue(kvp.Key, out var existing))
+                {
+                    // Update existing
+                    existing.IsEnabled = kvp.Value;
+                    existing.ModifiedAt = now;
+                    existing.ModifiedBy = currentUser;
+                }
+                else
+                {
+                    // Insert new
+                    _context.FeatureFlagOverrides.Add(new FeatureFlagOverride
+                    {
+                        FlagName = kvp.Key,
+                        IsEnabled = kvp.Value,
+                        ModifiedAt = now,
+                        ModifiedBy = currentUser
+                    });
+                }
             }
 
-            // Write overrides to file
-            var json = JsonSerializer.Serialize(flags, JsonOptions);
-            await System.IO.File.WriteAllTextAsync(_overrideFilePath, json);
+            await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Feature flags updated by admin: {@Flags}", flags);
+            _logger.LogInformation("Feature flags updated by {User}: {@Flags}", currentUser, flags);
 
             return Ok(flags);
         }
@@ -85,15 +112,15 @@ public class FeatureFlagsController : ControllerBase
     /// </summary>
     [HttpDelete]
     [ProducesResponseType(typeof(FeatureFlagsDto), StatusCodes.Status200OK)]
-    public ActionResult<FeatureFlagsDto> ResetToDefaults()
+    public async Task<ActionResult<FeatureFlagsDto>> ResetToDefaults()
     {
         try
         {
-            if (System.IO.File.Exists(_overrideFilePath))
-            {
-                System.IO.File.Delete(_overrideFilePath);
-                _logger.LogInformation("Feature flag overrides reset to defaults");
-            }
+            var overrides = await _context.FeatureFlagOverrides.ToListAsync();
+            _context.FeatureFlagOverrides.RemoveRange(overrides);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Feature flag overrides reset to defaults");
 
             return Ok(FeatureFlagsDto.FromConfig(_defaultConfig));
         }
@@ -114,29 +141,35 @@ public class FeatureFlagsController : ControllerBase
         return Ok(FeatureFlagsDto.FromConfig(_defaultConfig));
     }
 
-    private FeatureFlagsDto GetMergedFlags()
+    private async Task<FeatureFlagsDto> GetMergedFlagsAsync()
     {
         // Start with defaults from appsettings.json
         var result = FeatureFlagsDto.FromConfig(_defaultConfig);
 
-        // If override file exists, merge those values
-        if (System.IO.File.Exists(_overrideFilePath))
-        {
-            try
-            {
-                var json = System.IO.File.ReadAllText(_overrideFilePath);
-                var overrides = JsonSerializer.Deserialize<FeatureFlagsDto>(json, JsonOptions);
+        // Get overrides from database
+        var overrides = await _context.FeatureFlagOverrides.ToListAsync();
 
-                if (overrides != null)
-                {
-                    // Override file completely replaces defaults
-                    result = overrides;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to read feature flag overrides, using defaults");
-            }
+        if (overrides.Count > 0)
+        {
+            var overrideDict = overrides.ToDictionary(o => o.FlagName, o => o.IsEnabled);
+
+            // Apply overrides
+            if (overrideDict.TryGetValue("Checklist", out var checklist))
+                result.Checklist = checklist;
+            if (overrideDict.TryGetValue("Chat", out var chat))
+                result.Chat = chat;
+            if (overrideDict.TryGetValue("Tasking", out var tasking))
+                result.Tasking = tasking;
+            if (overrideDict.TryGetValue("CobraKai", out var cobraKai))
+                result.CobraKai = cobraKai;
+            if (overrideDict.TryGetValue("EventSummary", out var eventSummary))
+                result.EventSummary = eventSummary;
+            if (overrideDict.TryGetValue("StatusChart", out var statusChart))
+                result.StatusChart = statusChart;
+            if (overrideDict.TryGetValue("EventTimeline", out var eventTimeline))
+                result.EventTimeline = eventTimeline;
+            if (overrideDict.TryGetValue("CobraAi", out var cobraAi))
+                result.CobraAi = cobraAi;
         }
 
         return result;
