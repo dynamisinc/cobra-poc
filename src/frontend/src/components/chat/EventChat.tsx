@@ -37,7 +37,7 @@ import { toast } from 'react-toastify';
 import { CobraTextField } from '../../theme/styledComponents';
 import { ChatMessage } from './ChatMessage';
 import { chatService } from '../../services/chatService';
-import { useUserContext } from '../../contexts/UserContext';
+import { getCurrentUser } from '../../services/api';
 import type {
   ChatMessageDto,
   ChatThreadDto,
@@ -52,7 +52,7 @@ interface EventChatProps {
 
 export const EventChat: React.FC<EventChatProps> = ({ eventId, eventName }) => {
   const theme = useTheme();
-  const { userContext } = useUserContext();
+  const currentUser = getCurrentUser();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -348,7 +348,7 @@ export const EventChat: React.FC<EventChatProps> = ({ eventId, eventName }) => {
               <ChatMessage
                 key={message.id}
                 message={message}
-                isOwnMessage={message.senderId === userContext?.userId}
+                isOwnMessage={message.senderId === currentUser.email}
               />
             ))}
             <div ref={messagesEndRef} />
