@@ -24,6 +24,9 @@ public class ChecklistDbContext : DbContext
     public DbSet<ChatThread> ChatThreads { get; set; }
     public DbSet<ChatMessage> ChatMessages { get; set; }
     public DbSet<ExternalChannelMapping> ExternalChannelMappings { get; set; }
+
+    // System configuration
+    public DbSet<SystemSetting> SystemSettings { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -278,6 +281,23 @@ public class ChecklistDbContext : DbContext
             entity.HasIndex(e => e.EventId);
             entity.HasIndex(e => new { e.Platform, e.ExternalGroupId }).IsUnique();
             entity.HasIndex(e => e.IsActive).HasFilter("[IsActive] = 1");
+        });
+
+        // SystemSetting configuration
+        modelBuilder.Entity<SystemSetting>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Key).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Value).IsRequired();
+            entity.Property(e => e.Category).IsRequired().HasConversion<int>();
+            entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.ModifiedBy).IsRequired().HasMaxLength(200);
+
+            // Unique key for settings
+            entity.HasIndex(e => e.Key).IsUnique();
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => new { e.Category, e.SortOrder });
         });
     }
 }

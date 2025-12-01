@@ -39,10 +39,12 @@ import {
   faShieldHalved,
   faLock,
   faRightFromBracket,
+  faKey,
 } from "@fortawesome/free-solid-svg-icons";
 import { useTheme } from "@mui/material/styles";
 import CobraStyles from "../theme/CobraStyles";
 import { FeatureFlagsAdmin } from "../components/admin/FeatureFlagsAdmin";
+import { SystemSettingsAdmin } from "../components/admin/SystemSettingsAdmin";
 import { SysAdminLoginDialog } from "../components/admin/SysAdminLoginDialog";
 import { useSysAdmin } from "../contexts/SysAdminContext";
 import { CobraLinkButton, CobraPrimaryButton } from "../theme/styledComponents";
@@ -318,8 +320,7 @@ export const AdminPage: React.FC = () => {
                 System Administrator Access Required
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Feature flag management requires system administrator credentials.
-                This controls customer-level tool visibility settings.
+                System-level configuration requires system administrator credentials.
               </Typography>
               <CobraPrimaryButton
                 onClick={() => setShowLoginDialog(true)}
@@ -330,6 +331,26 @@ export const AdminPage: React.FC = () => {
             </Card>
           )}
         </Box>
+
+        {/* System Settings Section - Integration & API Keys (SysAdmin required) */}
+        {isSysAdmin && (
+          <Box sx={{ mt: 4, pt: 4, borderTop: 1, borderColor: "divider" }}>
+            <Typography
+              variant="h6"
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                mb: 2,
+                color: theme.palette.text.primary,
+              }}
+            >
+              <FontAwesomeIcon icon={faKey} />
+              System Settings (Integration & API Keys)
+            </Typography>
+            <SystemSettingsAdmin />
+          </Box>
+        )}
 
         {/* SysAdmin Login Dialog */}
         <SysAdminLoginDialog

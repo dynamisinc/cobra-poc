@@ -1,6 +1,8 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
+using ChecklistAPI.Models.DTOs;
+using ChecklistAPI.Services;
 
 namespace ChecklistAPI.ExternalMessaging;
 
@@ -8,24 +10,75 @@ namespace ChecklistAPI.ExternalMessaging;
 /// Client service for interacting with the GroupMe REST API.
 /// Handles group creation, bot registration, and message sending.
 ///
+/// Configuration priority:
+/// 1. Database settings (SystemSettings table) - for customer-level overrides
+/// 2. appsettings.json - fallback for development
+///
 /// API Documentation: https://dev.groupme.com/docs/v3
 /// </summary>
 public class GroupMeApiClient : IGroupMeApiClient
 {
     private readonly HttpClient _httpClient;
     private readonly GroupMeSettings _settings;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<GroupMeApiClient> _logger;
 
     public GroupMeApiClient(
         HttpClient httpClient,
         IOptions<GroupMeSettings> settings,
+        IServiceProvider serviceProvider,
         ILogger<GroupMeApiClient> logger)
     {
         _httpClient = httpClient;
         _settings = settings.Value;
+        _serviceProvider = serviceProvider;
         _logger = logger;
 
         _httpClient.BaseAddress = new Uri(_settings.BaseUrl);
+    }
+
+    /// <summary>
+    /// Gets the access token from database settings (if available) or falls back to appsettings
+    /// </summary>
+    private async Task<string> GetAccessTokenAsync()
+    {
+        // Try database settings first
+        using var scope = _serviceProvider.CreateScope();
+        var settingsService = scope.ServiceProvider.GetService<ISystemSettingsService>();
+
+        if (settingsService != null)
+        {
+            var dbToken = await settingsService.GetSettingValueAsync(SystemSettingKeys.GroupMeAccessToken);
+            if (!string.IsNullOrEmpty(dbToken))
+            {
+                _logger.LogDebug("Using GroupMe access token from database settings");
+                return dbToken;
+            }
+        }
+
+        // Fall back to appsettings
+        _logger.LogDebug("Using GroupMe access token from appsettings");
+        return _settings.AccessToken;
+    }
+
+    /// <summary>
+    /// Gets the webhook base URL from database settings or falls back to appsettings
+    /// </summary>
+    private async Task<string> GetWebhookBaseUrlAsync()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var settingsService = scope.ServiceProvider.GetService<ISystemSettingsService>();
+
+        if (settingsService != null)
+        {
+            var dbUrl = await settingsService.GetSettingValueAsync(SystemSettingKeys.GroupMeWebhookBaseUrl);
+            if (!string.IsNullOrEmpty(dbUrl))
+            {
+                return dbUrl;
+            }
+        }
+
+        return _settings.WebhookBaseUrl;
     }
 
     #region Group Operations
@@ -41,6 +94,7 @@ public class GroupMeApiClient : IGroupMeApiClient
     {
         _logger.LogInformation("Creating GroupMe group: {GroupName}", name);
 
+        var accessToken = await GetAccessTokenAsync();
         var request = new
         {
             name = name,
@@ -49,7 +103,7 @@ public class GroupMeApiClient : IGroupMeApiClient
         };
 
         var response = await _httpClient.PostAsJsonAsync(
-            $"/groups?token={_settings.AccessToken}",
+            $"/groups?token={accessToken}",
             request);
 
         response.EnsureSuccessStatusCode();
@@ -69,7 +123,8 @@ public class GroupMeApiClient : IGroupMeApiClient
     /// <returns>Group details</returns>
     public async Task<GroupMeGroup> GetGroupAsync(string groupId)
     {
-        var response = await _httpClient.GetAsync($"/groups/{groupId}?token={_settings.AccessToken}");
+        var accessToken = await GetAccessTokenAsync();
+        var response = await _httpClient.GetAsync($"/groups/{groupId}?token={accessToken}");
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<GroupMeApiResponse<GroupMeGroup>>();
@@ -85,8 +140,9 @@ public class GroupMeApiClient : IGroupMeApiClient
     {
         _logger.LogInformation("Archiving GroupMe group: {GroupId}", groupId);
 
+        var accessToken = await GetAccessTokenAsync();
         var response = await _httpClient.PostAsync(
-            $"/groups/{groupId}/destroy?token={_settings.AccessToken}",
+            $"/groups/{groupId}/destroy?token={accessToken}",
             null);
 
         response.EnsureSuccessStatusCode();
@@ -110,7 +166,9 @@ public class GroupMeApiClient : IGroupMeApiClient
     {
         _logger.LogInformation("Creating GroupMe bot for group {GroupId}", groupId);
 
-        var callbackUrl = $"{_settings.WebhookBaseUrl}/api/webhooks/groupme/{channelMappingId}";
+        var accessToken = await GetAccessTokenAsync();
+        var webhookBaseUrl = await GetWebhookBaseUrlAsync();
+        var callbackUrl = $"{webhookBaseUrl}/api/webhooks/groupme/{channelMappingId}";
 
         var request = new
         {
@@ -124,7 +182,7 @@ public class GroupMeApiClient : IGroupMeApiClient
         };
 
         var response = await _httpClient.PostAsJsonAsync(
-            $"/bots?token={_settings.AccessToken}",
+            $"/bots?token={accessToken}",
             request);
 
         response.EnsureSuccessStatusCode();
@@ -176,9 +234,10 @@ public class GroupMeApiClient : IGroupMeApiClient
     {
         _logger.LogInformation("Destroying GroupMe bot: {BotId}", botId);
 
+        var accessToken = await GetAccessTokenAsync();
         var request = new { bot_id = botId };
         var response = await _httpClient.PostAsJsonAsync(
-            $"/bots/destroy?token={_settings.AccessToken}",
+            $"/bots/destroy?token={accessToken}",
             request);
 
         response.EnsureSuccessStatusCode();

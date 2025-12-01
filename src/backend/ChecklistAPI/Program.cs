@@ -48,6 +48,9 @@ builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<ChatService>(); // Concrete type for internal use
 builder.Services.AddScoped<IExternalMessagingService, ExternalMessagingService>();
 
+// Register system settings service
+builder.Services.AddScoped<ISystemSettingsService, SystemSettingsService>();
+
 // Add HTTP context accessor for service to access current user
 builder.Services.AddHttpContextAccessor();
 
