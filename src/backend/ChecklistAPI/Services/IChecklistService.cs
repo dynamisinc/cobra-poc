@@ -116,11 +116,13 @@ public interface IChecklistService
     /// Soft delete a checklist (set IsArchived = true)
     /// Archived checklists are hidden from all lists
     /// Used when incident is closed or checklist is no longer needed
+    /// - Manage role: can archive any checklist
+    /// - Contributor role: can only archive checklists they created
     /// </summary>
     /// <param name="id">Checklist ID to archive</param>
-    /// <param name="userContext">Current user context for audit trail</param>
-    /// <returns>True if archived, false if not found</returns>
-    Task<bool> ArchiveChecklistAsync(Guid id, UserContext userContext);
+    /// <param name="userContext">Current user context for audit trail and ownership check</param>
+    /// <returns>True if archived, false if not authorized (contributor not owner), null if not found</returns>
+    Task<bool?> ArchiveChecklistAsync(Guid id, UserContext userContext);
 
     /// <summary>
     /// Restore an archived checklist (set IsArchived = false)

@@ -528,8 +528,8 @@
 ---
 
 ### Story 2.6: Archive Checklist Instance
-**As a** COBRA operational user  
-**I want to** archive completed checklist instances  
+**As a** COBRA operational user
+**I want to** archive completed checklist instances
 **So that** my active checklist view stays focused on current work
 
 **Acceptance Criteria:**
@@ -537,19 +537,27 @@
 - Confirmation dialog if instance is not 100% complete: "This checklist is not fully complete. Archive anyway?"
 - Archived instances removed from "My Checklists" default view
 - Toggle "Show Archived" displays archived instances
-- Can restore archived instances
+- Can restore archived instances (Manage role only)
 - Archive action recorded in instance history with user attribution
+- **Permission-based archiving:**
+  - **Contributor role:** Can only archive checklists they created (ownership check)
+  - **Manage role:** Can archive any checklist
+  - **Readonly role:** Cannot archive any checklists
+- Archive button visibility adapts based on user's role and checklist ownership
 
 **Technical Notes:**
-- API Endpoint: `POST /api/checklists/instances/{instanceId}/archive`
+- API Endpoint: `DELETE /api/checklists/{id}` (soft delete)
 - Soft delete using IsArchived flag
+- Service layer checks `CreatedBy` field against `UserContext.Email` for Contributors
+- Controller returns 403 Forbidden if Contributor attempts to archive another user's checklist
+- Return values: `null` = not found, `false` = not authorized, `true` = success
 
 **Story Points:** 2
 
 **Implementation Status:** ✅ Complete
-- Frontend: MyChecklistsPage.tsx with archive toggle
+- Frontend: MyChecklistsPage.tsx with archive toggle, ChecklistDetailPage.tsx with ownership-aware archive button
 - Backend: DELETE /api/checklists/{id}, POST /api/checklists/{id}/restore, GET /api/checklists/archived
-- All acceptance criteria met with soft delete pattern
+- All acceptance criteria met with soft delete pattern and role-based permissions
 
 ---
 

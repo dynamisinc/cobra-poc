@@ -23,7 +23,7 @@ namespace ChecklistAPI.Controllers;
 ///   GET    /api/checklists/event/{eventId}/archived   - Get archived checklists for event (Manage role)
 ///   POST   /api/checklists                            - Create checklist from template
 ///   PUT    /api/checklists/{id}                       - Update checklist metadata
-///   DELETE /api/checklists/{id}                       - Archive checklist (Manage role)
+///   DELETE /api/checklists/{id}                       - Archive checklist (Contributor=own only, Manage=any)
 ///   POST   /api/checklists/{id}/restore               - Restore archived checklist (Manage role)
 ///   DELETE /api/checklists/{id}/permanent             - Permanently delete checklist (Manage role)
 ///   POST   /api/checklists/{id}/clone                 - Clone checklist
@@ -239,7 +239,9 @@ public class ChecklistsController : ControllerBase
 
     /// <summary>
     /// Archive a checklist (soft delete)
-    /// Requires Manage role
+    /// - Manage role: can archive any checklist
+    /// - Contributor role: can only archive checklists they created
+    /// - Readonly role: cannot archive
     /// </summary>
     /// <param name="id">Checklist ID to archive</param>
     /// <returns>No content on success</returns>
@@ -251,8 +253,8 @@ public class ChecklistsController : ControllerBase
     {
         var userContext = GetUserContext();
 
-        // Only Manage role can archive checklists
-        if (!userContext.CanManage)
+        // Readonly users cannot archive any checklists
+        if (userContext.Role == PermissionRole.Readonly || userContext.Role == PermissionRole.None)
         {
             _logger.LogWarning(
                 "User {User} with role {Role} attempted to archive checklist {ChecklistId}",
@@ -261,16 +263,29 @@ public class ChecklistsController : ControllerBase
                 id);
             return StatusCode(StatusCodes.Status403Forbidden, new
             {
-                message = "Only users with Manage role can archive checklists"
+                message = "Readonly users cannot archive checklists"
             });
         }
 
-        var success = await _checklistService.ArchiveChecklistAsync(id, userContext);
+        // For Contributors, verify ownership in service layer
+        var result = await _checklistService.ArchiveChecklistAsync(id, userContext);
 
-        if (!success)
+        if (result == null)
         {
             _logger.LogWarning("Checklist {ChecklistId} not found for archiving", id);
             return NotFound(new { message = $"Checklist {id} not found" });
+        }
+
+        if (!result.Value)
+        {
+            _logger.LogWarning(
+                "User {User} (Contributor) attempted to archive checklist {ChecklistId} they did not create",
+                userContext.Email,
+                id);
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Contributors can only archive checklists they created"
+            });
         }
 
         _logger.LogInformation(

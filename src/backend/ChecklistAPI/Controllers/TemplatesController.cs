@@ -24,7 +24,7 @@ namespace ChecklistAPI.Controllers;
 ///   DELETE /api/templates/{id}         - Soft delete (archive) template
 ///   POST   /api/templates/{id}/restore - Restore archived template (Admin only)
 ///   POST   /api/templates/{id}/duplicate - Duplicate template
-///   DELETE /api/templates/{id}/permanent - PERMANENTLY delete template (Admin only)
+///   DELETE /api/templates/{id}/permanent - PERMANENTLY delete template (Manage role)
 ///
 /// User Context:
 ///   Automatically injected by MockUserMiddleware (POC)
@@ -306,7 +306,7 @@ public class TemplatesController : ControllerBase
     }
 
     /// <summary>
-    /// Permanently delete a template (Admin only - CANNOT BE UNDONE)
+    /// Permanently delete a template (Manage role - CANNOT BE UNDONE)
     /// </summary>
     /// <param name="id">Template ID to permanently delete</param>
     /// <returns>No content on success</returns>
@@ -318,11 +318,12 @@ public class TemplatesController : ControllerBase
     {
         var userContext = GetUserContext();
 
-        if (!userContext.IsAdmin)
+        if (!userContext.CanManage)
         {
             _logger.LogError(
-                "Non-admin user {User} attempted permanent delete of template {TemplateId}",
+                "User {User} with role {Role} attempted permanent delete of template {TemplateId}",
                 userContext.Email,
+                userContext.Role,
                 id);
             return Forbid();
         }
@@ -338,7 +339,7 @@ public class TemplatesController : ControllerBase
             }
 
             _logger.LogWarning(
-                "Template {TemplateId} PERMANENTLY DELETED by admin {User}",
+                "Template {TemplateId} PERMANENTLY DELETED by {User}",
                 id,
                 userContext.Email);
 

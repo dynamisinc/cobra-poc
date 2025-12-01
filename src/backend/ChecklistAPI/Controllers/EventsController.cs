@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using ChecklistAPI.Models;
 using ChecklistAPI.Models.DTOs;
 using ChecklistAPI.Services;
 
@@ -202,7 +203,7 @@ public class EventsController : ControllerBase
     }
 
     /// <summary>
-    /// Permanently delete an event (admin only)
+    /// Permanently delete an event (Manage role)
     /// Will fail if event has associated checklists.
     /// </summary>
     /// <param name="id">The event ID</param>
@@ -213,6 +214,18 @@ public class EventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteEventPermanently(Guid id)
     {
+        var userContext = GetUserContext();
+
+        if (!userContext.CanManage)
+        {
+            _logger.LogWarning(
+                "User {User} with role {Role} attempted to permanently delete event {EventId}",
+                userContext.Email,
+                userContext.Role,
+                id);
+            return Forbid();
+        }
+
         _logger.LogInformation("DELETE /api/events/{Id}/permanent - Permanently deleting", id);
 
         try
@@ -262,5 +275,14 @@ public class EventsController : ControllerBase
             _logger.LogError(ex, "Error setting event {Id} active status", id);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Extract user context from HttpContext (set by MockUserMiddleware)
+    /// </summary>
+    private UserContext GetUserContext()
+    {
+        return HttpContext.Items["UserContext"] as UserContext
+            ?? throw new InvalidOperationException("User context not found - is MockUserMiddleware configured?");
     }
 }

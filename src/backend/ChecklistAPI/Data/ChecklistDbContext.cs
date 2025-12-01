@@ -246,7 +246,7 @@ public class ChecklistDbContext : DbContext
             entity.HasOne(e => e.ExternalChannelMapping)
                 .WithMany()
                 .HasForeignKey(e => e.ExternalChannelMappingId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.NoAction);
 
             // Indexes
             entity.HasIndex(e => e.ChatThreadId);

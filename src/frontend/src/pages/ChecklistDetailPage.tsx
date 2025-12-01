@@ -38,6 +38,7 @@ import { useChecklistHub } from '../hooks/useChecklistHub';
 import { useChecklistVariant } from '../experiments';
 import { useEvents } from '../hooks/useEvents';
 import { usePermissions } from '../hooks/usePermissions';
+import { getCurrentUser } from '../services/api';
 import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import { CobraDeleteButton, CobraLinkButton } from '../theme/styledComponents';
 import { c5Colors } from '../theme/c5Theme';
@@ -94,7 +95,7 @@ export const ChecklistDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { variant } = useChecklistVariant();
   const { currentEvent } = useEvents();
-  const { canInteractWithItems, isReadonly, canArchiveChecklists } = usePermissions();
+  const { canInteractWithItems, isReadonly, canArchiveOwnChecklists, canArchiveAnyChecklist } = usePermissions();
   const {
     checklist,
     loading,
@@ -578,8 +579,10 @@ export const ChecklistDetailPage: React.FC = () => {
               </>
             )}
 
-            {/* Archive Button - only show for Manage role */}
-            {canArchiveChecklists && (
+            {/* Archive Button - Manage can archive any, Contributors can archive own */}
+            {(canArchiveAnyChecklist ||
+              (canArchiveOwnChecklists &&
+                checklist.createdBy.toLowerCase() === getCurrentUser().email.toLowerCase())) && (
               <Button
                 variant="outlined"
                 size="small"

@@ -79,7 +79,11 @@
       "Bash(git rm:*)",
       "Bash(timeout /t 10 /nobreak)",
       "Bash(az account get-access-token:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git branch:*)",
+      "Bash(git stash:*)",
+      "Bash(dotnet ef dbcontext:*)"
     ],
     "deny": [],
     "ask": []

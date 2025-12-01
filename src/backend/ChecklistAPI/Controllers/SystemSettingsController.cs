@@ -188,6 +188,6 @@ public class SystemSettingsController : ControllerBase
     {
         // Get user from context (set by MockUserMiddleware)
         var userContext = HttpContext.Items["UserContext"] as Models.UserContext;
-        return userContext?.UserId ?? "system";
+        return userContext?.Email ?? "system";
     }
 }

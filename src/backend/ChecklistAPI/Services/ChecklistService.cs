@@ -366,7 +366,7 @@ public class ChecklistService : IChecklistService
         return updated == null ? null : ChecklistMapper.MapToDto(updated);
     }
 
-    public async Task<bool> ArchiveChecklistAsync(Guid id, UserContext userContext)
+    public async Task<bool?> ArchiveChecklistAsync(Guid id, UserContext userContext)
     {
         _logger.LogInformation("Archiving checklist {ChecklistId} by {User}", id, userContext.Email);
 
@@ -375,7 +375,21 @@ public class ChecklistService : IChecklistService
         if (checklist == null)
         {
             _logger.LogWarning("Checklist {ChecklistId} not found for archiving", id);
-            return false;
+            return null; // Not found
+        }
+
+        // Contributors can only archive checklists they created
+        // Manage role can archive any checklist
+        if (!userContext.CanManage)
+        {
+            // Check if the user is the creator
+            if (!string.Equals(checklist.CreatedBy, userContext.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning(
+                    "User {User} (Contributor) attempted to archive checklist {ChecklistId} created by {Creator}",
+                    userContext.Email, id, checklist.CreatedBy);
+                return false; // Not authorized
+            }
         }
 
         checklist.IsArchived = true;
@@ -385,7 +399,7 @@ public class ChecklistService : IChecklistService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Archived checklist {ChecklistId}", id);
-        return true;
+        return true; // Success
     }
 
     public async Task<bool> RestoreChecklistAsync(Guid id, UserContext userContext)
