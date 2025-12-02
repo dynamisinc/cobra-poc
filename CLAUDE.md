@@ -1279,6 +1279,23 @@ public class ChecklistsControllerIntegrationTests : IClassFixture<WebApplication
 
 ### Frontend Testing
 
+#### Running Tests
+```bash
+cd src/frontend
+
+# Run all tests
+npm test
+
+# Run tests once (no watch)
+npm test -- --run
+
+# Run specific test file
+npm test -- ChecklistProgressBar
+
+# Run with coverage
+npm run test:coverage
+```
+
 #### Test File Naming
 Place test files next to source files with `.test.ts` or `.test.tsx` extension:
 ```
@@ -1286,7 +1303,7 @@ ComponentName.tsx      ->  ComponentName.test.tsx
 utilityFunction.ts     ->  utilityFunction.test.ts
 ```
 
-#### Utility Tests
+#### Utility Tests (Pure Functions)
 ```typescript
 // src/shared/events/utils/iconMapping.test.ts
 import { describe, it, expect } from 'vitest';
@@ -1299,20 +1316,76 @@ describe('getEventTypeColor', () => {
 });
 ```
 
-#### Component Tests
+#### Component Tests with Providers
+Components often need Router and Theme providers:
 ```typescript
-// src/tools/checklist/components/ChecklistCard.test.tsx
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+// src/tools/checklist/components/MyComponent.test.tsx
 import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
+import { cobraTheme } from '../../../theme/cobraTheme';
+import { MyComponent } from './MyComponent';
 
-describe('ChecklistCard', () => {
-  it('displays progress bar with correct color', () => {
-    const checklist = { progressPercentage: 75, /* ... */ };
-    render(<ChecklistCard checklist={checklist} />);
+// Helper to render with providers
+const renderWithProviders = (ui: React.ReactElement) => {
+  return render(
+    <ThemeProvider theme={cobraTheme}>
+      <BrowserRouter>{ui}</BrowserRouter>
+    </ThemeProvider>
+  );
+};
 
-    const progress = screen.getByRole('progressbar');
-    expect(progress).toHaveAttribute('aria-valuenow', '75');
+describe('MyComponent', () => {
+  it('renders correctly', () => {
+    renderWithProviders(<MyComponent />);
+    expect(screen.getByText('Expected Text')).toBeInTheDocument();
   });
+});
+```
+
+#### Mocking Hooks and Dependencies
+```typescript
+// Mock a custom hook
+vi.mock('../../../shared/hooks/usePermissions', () => ({
+  usePermissions: () => ({
+    canInteractWithItems: true,
+    isReadonly: false,
+  }),
+}));
+
+// Mock useNavigate
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
+// Clear mocks between tests
+beforeEach(() => {
+  mockNavigate.mockClear();
+});
+```
+
+#### Testing Styles
+```typescript
+it('has sticky positioning when sticky prop is true', () => {
+  render(<ChecklistProgressBar value={50} sticky />);
+
+  const container = screen.getByTestId('progress-bar-container');
+
+  // Using toHaveStyle matcher (from @testing-library/jest-dom)
+  expect(container).toHaveStyle({
+    position: 'sticky',
+    top: '0px',
+  });
+
+  // Or using getComputedStyle for dynamic checks
+  const styles = window.getComputedStyle(container);
+  expect(styles.backgroundColor).not.toBe('transparent');
 });
 ```
 
