@@ -28,6 +28,8 @@ interface ChecklistProgressBarProps {
   completedItems?: number;
   /** Total items count */
   totalItems?: number;
+  /** Whether the progress bar should stick to the top when scrolling */
+  sticky?: boolean;
 }
 
 /**
@@ -60,13 +62,26 @@ export const ChecklistProgressBar: React.FC<ChecklistProgressBarProps> = ({
   showCount = false,
   completedItems,
   totalItems,
+  sticky = false,
 }) => {
   // Clamp value between 0 and 100
   const percentage = Math.min(100, Math.max(0, value));
   const fillColor = getProgressColor(percentage);
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box
+      data-testid="progress-bar-container"
+      sx={{
+        width: '100%',
+        ...(sticky && {
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          backgroundColor: '#FFFFFF',
+          padding: '8px 0',
+        }),
+      }}
+    >
       {/* Progress bar container */}
       <Box
         sx={{

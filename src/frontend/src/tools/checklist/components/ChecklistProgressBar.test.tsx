@@ -72,3 +72,48 @@ describe('ChecklistProgressBarCompact', () => {
     expect(screen.getByText('100%')).toBeInTheDocument();
   });
 });
+
+describe('StickyProgressBar', () => {
+  it('has position sticky styling when sticky prop is true', () => {
+    render(<ChecklistProgressBar value={50} sticky />);
+
+    // Find the container element (the outermost Box)
+    const progressContainer = screen.getByTestId('progress-bar-container');
+
+    expect(progressContainer).toHaveStyle({
+      position: 'sticky',
+      top: '0px',
+    });
+  });
+
+  it('has elevated z-index when sticky', () => {
+    render(<ChecklistProgressBar value={50} sticky />);
+
+    const progressContainer = screen.getByTestId('progress-bar-container');
+
+    // Should have z-index to stay above scrolling content
+    expect(progressContainer).toHaveStyle({
+      zIndex: '10',
+    });
+  });
+
+  it('has background color when sticky to prevent content showing through', () => {
+    render(<ChecklistProgressBar value={50} sticky />);
+
+    const progressContainer = screen.getByTestId('progress-bar-container');
+
+    // Should have solid background so content doesn't show through when scrolling
+    const styles = window.getComputedStyle(progressContainer);
+    expect(styles.backgroundColor).not.toBe('transparent');
+    expect(styles.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+  });
+
+  it('is not sticky by default', () => {
+    render(<ChecklistProgressBar value={50} />);
+
+    const progressContainer = screen.getByTestId('progress-bar-container');
+
+    const styles = window.getComputedStyle(progressContainer);
+    expect(styles.position).not.toBe('sticky');
+  });
+});
