@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide
 
-> **Last Updated:** 2025-11-29
+> **Last Updated:** 2025-12-02
 > **Project Version:** 1.0.0-POC
 > **Status:** Early Development - Backend Foundation Complete, COBRA Styling Integrated
 
@@ -70,20 +70,57 @@ A **standalone proof of concept (POC)** for the COBRA Checklist Tool - enabling 
 checklist-poc/
 ├── src/
 │   ├── backend/
-│   │   └── ChecklistAPI/
-│   │       ├── Controllers/        # API endpoints
-│   │       ├── Hubs/              # SignalR hubs
-│   │       ├── Models/
-│   │       │   ├── Entities/      # EF Core entities
-│   │       │   └── DTOs/          # Data transfer objects
-│   │       ├── Services/          # Business logic layer
-│   │       ├── Data/
-│   │       │   ├── ChecklistDbContext.cs
-│   │       │   └── Migrations/
-│   │       ├── Middleware/        # User context, exception handling
-│   │       ├── Extensions/        # DI registration helpers
-│   │       ├── Program.cs         # App configuration
-│   │       └── appsettings.json
+│   │   ├── CobraAPI/                    # Main API project
+│   │   │   ├── Core/                    # Shared infrastructure
+│   │   │   │   ├── Data/
+│   │   │   │   │   └── CobraDbContext.cs
+│   │   │   │   ├── Models/
+│   │   │   │   │   ├── UserContext.cs
+│   │   │   │   │   └── Configuration/
+│   │   │   │   ├── Middleware/
+│   │   │   │   ├── Extensions/
+│   │   │   │   └── Services/
+│   │   │   │
+│   │   │   ├── Shared/                  # Shared across tools
+│   │   │   │   └── Events/              # Event management (COBRA core)
+│   │   │   │       ├── Controllers/
+│   │   │   │       ├── Models/
+│   │   │   │       └── Services/
+│   │   │   │
+│   │   │   ├── Tools/                   # Tool-specific modules
+│   │   │   │   ├── Checklist/           # Checklist tool (lift as unit)
+│   │   │   │   │   ├── Controllers/
+│   │   │   │   │   ├── Models/Entities/
+│   │   │   │   │   ├── Models/DTOs/
+│   │   │   │   │   ├── Services/
+│   │   │   │   │   ├── Hubs/
+│   │   │   │   │   └── Mappers/
+│   │   │   │   │
+│   │   │   │   ├── Chat/                # Chat tool (lift as unit)
+│   │   │   │   │   ├── Controllers/
+│   │   │   │   │   ├── Models/
+│   │   │   │   │   ├── Services/
+│   │   │   │   │   ├── Hubs/
+│   │   │   │   │   └── ExternalPlatforms/
+│   │   │   │   │
+│   │   │   │   └── Analytics/           # Analytics tool
+│   │   │   │       ├── Controllers/
+│   │   │   │       ├── Models/
+│   │   │   │       └── Services/
+│   │   │   │
+│   │   │   ├── Admin/                   # Admin features
+│   │   │   │   ├── Controllers/
+│   │   │   │   └── Models/
+│   │   │   │
+│   │   │   ├── Migrations/
+│   │   │   ├── GlobalUsings.cs          # C# 10+ global imports
+│   │   │   └── Program.cs
+│   │   │
+│   │   └── CobraAPI.Tests/              # Test project
+│   │       ├── Services/
+│   │       ├── Controllers/
+│   │       ├── Helpers/
+│   │       └── GlobalUsings.cs
 │   │
 │   └── frontend/
 │       ├── src/
@@ -138,6 +175,7 @@ checklist-poc/
 ├── database/
 │   └── schema.sql                 # SQL Server schema with seed data
 ├── docs/
+│   ├── BACKEND_ARCHITECTURE.md    # Backend module structure & adding tools
 │   ├── COBRA_STYLING_INTEGRATION.md  # COBRA styling guide
 │   ├── CODING_STANDARDS.md        # Code conventions
 │   ├── FRONTEND_ARCHITECTURE.md   # Frontend module structure
@@ -205,17 +243,17 @@ sqllocaldb create MSSQLLocalDB
 sqllocaldb start MSSQLLocalDB
 
 # Using SQL Server (any platform)
-# Update connection string in src/backend/ChecklistAPI/appsettings.json
+# Update connection string in src/backend/CobraAPI/appsettings.json
 # Default: "Server=localhost;Database=ChecklistPOC;Trusted_Connection=True;"
 
 # Apply EF Core migrations
-cd src/backend/ChecklistAPI
+cd src/backend/CobraAPI
 dotnet ef database update
 ```
 
 #### 2. Backend Setup
 ```bash
-cd src/backend/ChecklistAPI
+cd src/backend/CobraAPI
 
 # Restore NuGet packages
 dotnet restore
@@ -325,7 +363,7 @@ public string Name { get; set; }
 public async Task<List<Template>> GetTemplatesAsync() { }
 
 // Private fields: _camelCase
-private readonly ChecklistDbContext _context;
+private readonly CobraDbContext _context;
 
 // Parameters/locals: camelCase
 public void ProcessChecklist(string checklistId, bool isActive) { }
@@ -803,8 +841,8 @@ backgroundColor: c5Colors.successGreen
 
 #### 1. Create Entity Model
 ```csharp
-// src/backend/ChecklistAPI/Models/Entities/ItemNote.cs
-namespace ChecklistAPI.Models.Entities;
+// src/backend/CobraAPI/Tools/MyTool/Models/Entities/ItemNote.cs
+namespace CobraAPI.Tools.MyTool.Models.Entities;
 
 public class ItemNote
 {
@@ -821,7 +859,7 @@ public class ItemNote
 
 #### 2. Update DbContext
 ```csharp
-// src/backend/ChecklistAPI/Data/ChecklistDbContext.cs
+// src/backend/CobraAPI/Core/Data/CobraDbContext.cs
 public DbSet<ItemNote> ItemNotes { get; set; }
 
 protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -839,15 +877,15 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
 
 #### 3. Create Migration
 ```bash
-cd src/backend/ChecklistAPI
+cd src/backend/CobraAPI
 dotnet ef migrations add AddItemNotes
 dotnet ef database update
 ```
 
 #### 4. Create DTO (if needed)
 ```csharp
-// src/backend/ChecklistAPI/Models/DTOs/ItemNoteDto.cs
-namespace ChecklistAPI.Models.DTOs;
+// src/backend/CobraAPI/Tools/MyTool/Models/DTOs/ItemNoteDto.cs
+namespace CobraAPI.Tools.MyTool.Models.DTOs;
 
 public record ItemNoteDto(
     Guid Id,
@@ -862,7 +900,7 @@ public record ItemNoteDto(
 
 #### 1. Create/Update Controller
 ```csharp
-// src/backend/ChecklistAPI/Controllers/ChecklistsController.cs
+// src/backend/CobraAPI/Tools/Checklist/Controllers/ChecklistsController.cs
 [ApiController]
 [Route("api/[controller]")]
 public class ChecklistsController : ControllerBase
@@ -909,7 +947,7 @@ public class ChecklistsController : ControllerBase
 
 #### 2. Register Service (if new)
 ```csharp
-// src/backend/ChecklistAPI/Program.cs
+// src/backend/CobraAPI/Program.cs
 builder.Services.AddScoped<IChecklistService, ChecklistService>();
 ```
 
@@ -1065,7 +1103,7 @@ export const useChecklists = () => {
 
 ### 1. Reset Database
 ```bash
-cd src/backend/ChecklistAPI
+cd src/backend/CobraAPI
 
 # Drop and recreate database
 dotnet ef database drop --force
@@ -1102,7 +1140,7 @@ export interface ChecklistDto {
 
 #### Backend Hub
 ```csharp
-// src/backend/ChecklistAPI/Hubs/ChecklistHub.cs
+// src/backend/CobraAPI/Tools/Checklist/Hubs/ChecklistHub.cs
 using Microsoft.AspNetCore.SignalR;
 
 public class ChecklistHub : Hub
@@ -1160,11 +1198,9 @@ export const useChecklistHub = (checklistId: string) => {
 
 #### Unit Tests (Services)
 ```csharp
-// src/backend/ChecklistAPI.Tests/Services/ChecklistServiceTests.cs
+// src/backend/CobraAPI.Tests/Services/ChecklistServiceTests.cs
 using Xunit;
 using Moq;
-using ChecklistAPI.Services;
-using ChecklistAPI.Data;
 
 public class ChecklistServiceTests
 {
@@ -1172,7 +1208,7 @@ public class ChecklistServiceTests
     public async Task GetMyChecklists_ReturnsChecklistsForPosition()
     {
         // Arrange
-        var mockContext = new Mock<ChecklistDbContext>();
+        var mockContext = new Mock<CobraDbContext>();
         var service = new ChecklistService(mockContext.Object);
 
         // Act
@@ -1286,7 +1322,7 @@ cd deploy/scripts
 1. Verifies `azure` git remote is configured
 2. Runs backend tests (optional)
 3. Builds frontend (`npm run build`)
-4. Copies build output to `src/backend/ChecklistAPI/wwwroot/`
+4. Copies build output to `src/backend/CobraAPI/wwwroot/`
 5. Commits changes
 6. Pushes to Azure via `git push azure HEAD:master`
 7. Syncs frontend assets via Kudu API (handles dual wwwroot issue)
@@ -1490,7 +1526,7 @@ VITE_ENABLE_MOCK_AUTH=true
 | File | Purpose |
 |------|---------|
 | `Program.cs` | App configuration, DI, middleware pipeline |
-| `ChecklistDbContext.cs` | EF Core DbContext with entity configurations |
+| `Core/Data/CobraDbContext.cs` | EF Core DbContext with entity configurations |
 | `appsettings.json` | Connection strings, logging, app settings |
 | `Models/Entities/*.cs` | Database entity models |
 | `Controllers/*.cs` | API endpoints |
