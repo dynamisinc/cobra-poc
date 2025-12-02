@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- =============================================================================
+     CobraAPI.Tests.Chat - Chat Tool Tests
+     =============================================================================
+
+     PURPOSE:
+     Contains all unit and integration tests for the Chat tool.
+     This project is designed to be lifted and shifted with CobraAPI/Tools/Chat.
+
+     LIFT-AND-SHIFT:
+     When moving the Chat tool to production:
+     1. Copy CobraAPI/Tools/Chat/ to production codebase
+     2. Copy this test project alongside it
+     3. Update project references as needed
+     4. All tests should continue to pass
+
+     DEPENDENCIES:
+     - CobraAPI: Main API project (for types and services)
+     - CobraAPI.Tests.Core: Shared test infrastructure (TestDbContextFactory, etc.)
+
+     ============================================================================= -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CobraAPI\CobraAPI.csproj" />
+    <ProjectReference Include="..\CobraAPI.Tests.Core\CobraAPI.Tests.Core.csproj" />
+  </ItemGroup>
+
+</Project>

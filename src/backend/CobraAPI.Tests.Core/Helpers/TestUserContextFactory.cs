@@ -1,13 +1,22 @@
-
-namespace CobraAPI.Tests.Helpers;
+namespace CobraAPI.Tests.Core.Helpers;
 
 /// <summary>
-/// Factory for creating UserContext objects for testing
+/// Factory for creating UserContext objects for testing.
+///
+/// USAGE:
+/// var user = TestUserContextFactory.CreateTestUser();
+/// var admin = TestUserContextFactory.CreateAdminUser();
+///
+/// Provides common user configurations for different test scenarios:
+/// - Standard contributor user
+/// - Admin user with full permissions
+/// - Readonly user for view-only scenarios
+/// - Manager user (non-admin with Manage role)
 /// </summary>
 public static class TestUserContextFactory
 {
     /// <summary>
-    /// Creates a standard test user context
+    /// Creates a standard test user context (Contributor role).
     /// </summary>
     public static UserContext CreateTestUser(
         string email = "test@example.com",
@@ -27,7 +36,7 @@ public static class TestUserContextFactory
     }
 
     /// <summary>
-    /// Creates an admin user context
+    /// Creates an admin user context with full permissions.
     /// </summary>
     public static UserContext CreateAdminUser()
     {
@@ -42,7 +51,7 @@ public static class TestUserContextFactory
     }
 
     /// <summary>
-    /// Creates a readonly user context
+    /// Creates a readonly user context for view-only scenarios.
     /// </summary>
     public static UserContext CreateReadonlyUser(
         string email = "readonly@example.com",
@@ -60,7 +69,7 @@ public static class TestUserContextFactory
     }
 
     /// <summary>
-    /// Creates a manage role user context (non-admin but can manage)
+    /// Creates a manage role user context (non-admin but can manage).
     /// </summary>
     public static UserContext CreateManagerUser(
         string email = "manager@example.com",

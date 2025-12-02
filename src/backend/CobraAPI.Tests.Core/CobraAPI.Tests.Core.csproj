@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- =============================================================================
+     CobraAPI.Tests.Core - Shared Test Infrastructure
+     =============================================================================
+
+     PURPOSE:
+     Contains shared test utilities, factories, and helpers used by all tool-specific
+     test projects. This project should be referenced by CobraAPI.Tests.Checklist,
+     CobraAPI.Tests.Chat, and any future tool test projects.
+
+     CONTENTS:
+     - TestDbContextFactory: Creates in-memory database contexts for test isolation
+     - TestUserContextFactory: Creates mock user contexts for different roles
+     - Any other shared test infrastructure
+
+     LIFT-AND-SHIFT:
+     When moving tools to production, this project contains shared infrastructure
+     that may need to be duplicated or referenced from a common test library.
+
+     ============================================================================= -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CobraAPI\CobraAPI.csproj" />
+  </ItemGroup>
+
+</Project>

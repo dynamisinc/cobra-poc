@@ -4,11 +4,15 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
-namespace CobraAPI.Tests.Services;
+namespace CobraAPI.Tests.Checklist.Services;
 
 /// <summary>
 /// Unit tests for ChecklistService
 /// Tests all CRUD operations, progress tracking, filtering, and business logic
+///
+/// LIFT-AND-SHIFT:
+/// This test file moves with CobraAPI/Tools/Checklist to production.
+/// Update namespace and project references as needed after migration.
 /// </summary>
 public class ChecklistServiceTests : IDisposable
 {

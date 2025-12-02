@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
-namespace CobraAPI.Tests.Services;
+namespace CobraAPI.Tests.Checklist.Services;
 
 /// <summary>
 /// Unit tests for TemplateService

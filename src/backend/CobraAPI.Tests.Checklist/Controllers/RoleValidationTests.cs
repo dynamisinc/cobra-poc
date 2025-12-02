@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
-namespace CobraAPI.Tests.Controllers;
+namespace CobraAPI.Tests.Checklist.Controllers;
 
 /// <summary>
 /// Tests for role-based access control in controllers

@@ -5,7 +5,7 @@ using Moq;
 using Xunit;
 using CobraAPI.Tools.Chat.ExternalPlatforms;
 
-namespace CobraAPI.Tests.Services;
+namespace CobraAPI.Tests.Chat.Services;
 
 /// <summary>
 /// Unit tests for ExternalMessagingService
