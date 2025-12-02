@@ -39,6 +39,9 @@ import { FeatureFlagsProvider, SysAdminProvider } from "./admin";
 // Navigation components - from core module
 import { AppLayout } from "./core";
 
+// Chat sidebar context
+import { ChatSidebarProvider } from "./tools/chat";
+
 // Pages - from shared/tools modules
 import { EventsListPage, EventLandingPage } from "./shared/events";
 import { ChatPage } from "./tools/chat";
@@ -290,8 +293,9 @@ function App() {
     <BrowserRouter>
       <SysAdminProvider>
         <FeatureFlagsProvider>
-          <Box sx={{ minHeight: "100vh", backgroundColor: "#F5F5F5" }}>
-            <Routes>
+          <ChatSidebarProvider>
+            <Box sx={{ minHeight: "100vh", backgroundColor: "#F5F5F5" }}>
+              <Routes>
           {/* Root - redirect to events */}
           <Route path="/" element={<Navigate to="/events" replace />} />
 
@@ -379,10 +383,11 @@ function App() {
             }
           />
 
-            {/* Catch-all - redirect to events */}
-            <Route path="*" element={<Navigate to="/events" replace />} />
-            </Routes>
-          </Box>
+              {/* Catch-all - redirect to events */}
+              <Route path="*" element={<Navigate to="/events" replace />} />
+              </Routes>
+            </Box>
+          </ChatSidebarProvider>
         </FeatureFlagsProvider>
       </SysAdminProvider>
     </BrowserRouter>

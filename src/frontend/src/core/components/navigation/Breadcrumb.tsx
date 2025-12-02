@@ -163,6 +163,12 @@ const useAutoBreadcrumbs = (customLabel?: string): BreadcrumbItem[] => {
     return items;
   }
 
+  // Admin page
+  if (pathParts[0] === "admin") {
+    items.push({ label: "Admin" });
+    return items;
+  }
+
   return items;
 };
 

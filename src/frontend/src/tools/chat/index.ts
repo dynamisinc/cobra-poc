@@ -8,6 +8,10 @@
 // Components
 export { EventChat } from './components/EventChat';
 export { ChatMessage } from './components/ChatMessage';
+export { ChatSidebar } from './components/ChatSidebar';
+
+// Contexts
+export { ChatSidebarProvider, useChatSidebar } from './contexts/ChatSidebarContext';
 
 // Pages
 export { ChatPage } from './pages/ChatPage';

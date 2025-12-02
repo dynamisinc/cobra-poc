@@ -643,6 +643,76 @@
 
 ---
 
+## Implementation Status
+
+*Last Updated: 2025-12-02*
+
+### Completed
+
+| Story | Title | Notes |
+|-------|-------|-------|
+| UC-005 | Create GroupMe Channel | Create new GroupMe group for event. Includes duplicate prevention and reconnect support. |
+| UC-007 | Disconnect External Channel | Deactivate channel (soft delete). Reconnecting reactivates the same GroupMe group. |
+| UC-009 | Receive External Messages | Webhook receives GroupMe messages and displays in COBRA via SignalR real-time. |
+| UC-010 | Send Messages to External | COBRA messages in event chat are forwarded to linked GroupMe groups via bot. |
+| UC-011 | Real-Time Updates | SignalR ChatHub provides real-time message delivery for both COBRA and external messages. |
+| UC-012 | Channel Accordion Sidebar | **Partial** - Sidebar infrastructure complete (toggle, resize, persist). Full accordion channel list pending UC-001. |
+| UC-014 | Full-Page Chat View | **Partial** - Resizable sidebar with EventChat. Tabbed channels pending UC-001. |
+| UC-022 | Configure API Credentials | GroupMe Access Token configurable via Admin Settings UI and database. |
+| UC-023 | Webhook Health Check | GET /api/webhooks/health returns 200 OK with timestamp. |
+| UC-024 | Webhook Performance | Webhook returns 200 immediately; processes asynchronously in background task with proper DI scoping. |
+
+### In Progress
+
+| Story | Title | Notes |
+|-------|-------|-------|
+| - | - | - |
+
+### Implementation Details
+
+#### GroupMe Integration (UC-005, UC-007, UC-009, UC-010, UC-022, UC-023, UC-024)
+
+**Backend Files Created:**
+- `src/backend/CobraAPI/Tools/Chat/Controllers/WebhooksController.cs` - Receives GroupMe webhooks
+- `src/backend/CobraAPI/Tools/Chat/Controllers/ExternalChannelsController.cs` - Channel management API
+- `src/backend/CobraAPI/Tools/Chat/Services/ExternalMessagingService.cs` - Channel lifecycle and message routing
+- `src/backend/CobraAPI/Tools/Chat/Services/ChatHubService.cs` - SignalR broadcast service
+- `src/backend/CobraAPI/Tools/Chat/ExternalPlatforms/GroupMeApiClient.cs` - GroupMe API client
+- `src/backend/CobraAPI/Tools/Chat/Hubs/ChatHub.cs` - SignalR hub for real-time chat
+
+**Frontend Files Created:**
+- `src/frontend/src/tools/chat/hooks/useChatHub.ts` - SignalR connection hook for real-time updates
+- `src/frontend/src/tools/chat/components/EventChat.tsx` - Main chat UI with external channel support
+- `src/frontend/src/tools/chat/components/ChatMessage.tsx` - Message rendering with external indicators
+
+**Key Implementation Notes:**
+- Webhook endpoint returns 200 immediately, processes message in background `Task.Run()` with new DI scope
+- Outbound messages to GroupMe also use `Task.Run()` with new DI scope to avoid DbContext disposal issues
+- Duplicate channel prevention: Returns existing active channel or reactivates deactivated channel
+- SignalR uses event-specific groups (`event-{eventId}`) for scoped real-time updates
+- React Strict Mode handling: Reset connection refs on cleanup for proper remount behavior
+
+#### Chat Sidebar (UC-012, UC-014)
+
+**Files Created:**
+- `src/frontend/src/tools/chat/contexts/ChatSidebarContext.tsx` - State management
+- `src/frontend/src/tools/chat/components/ChatSidebar.tsx` - Resizable sidebar component
+
+**Files Modified:**
+- `src/frontend/src/core/components/navigation/AppHeader.tsx` - Chat toggle button with feature flag support
+- `src/frontend/src/core/components/navigation/AppLayout.tsx` - Sidebar integration
+- `src/frontend/src/App.tsx` - ChatSidebarProvider wrapper
+- `src/frontend/src/tools/chat/components/EventChat.tsx` - Compact mode prop
+
+**Features Implemented:**
+- Toggle button in header (respects `chat` feature flag: Hidden/ComingSoon/Active)
+- Resizable sidebar width (280px-600px) with drag handle
+- State persistence to localStorage (open/closed state and width)
+- Sidebar header aligned with Breadcrumb height
+- Expand to full-page button
+
+---
+
 ## Summary
 
 | Category | Stories |

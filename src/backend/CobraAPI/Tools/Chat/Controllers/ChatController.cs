@@ -95,17 +95,25 @@ public class ChatController : ControllerBase
         Guid eventId,
         [FromBody] CreateExternalChannelApiRequest request)
     {
-        var mapping = await _externalMessagingService.CreateExternalChannelAsync(new CreateExternalChannelRequest
+        try
         {
-            EventId = eventId,
-            Platform = request.Platform,
-            CustomGroupName = request.CustomGroupName
-        });
+            var mapping = await _externalMessagingService.CreateExternalChannelAsync(new CreateExternalChannelRequest
+            {
+                EventId = eventId,
+                Platform = request.Platform,
+                CustomGroupName = request.CustomGroupName
+            });
 
-        return CreatedAtAction(
-            nameof(GetExternalChannels),
-            new { eventId },
-            mapping);
+            return CreatedAtAction(
+                nameof(GetExternalChannels),
+                new { eventId },
+                mapping);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Failed to create external channel for event {EventId}", eventId);
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     /// <summary>

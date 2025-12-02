@@ -6,3 +6,4 @@
 
 export { ChatMessage } from './ChatMessage';
 export { EventChat } from './EventChat';
+export { ChatSidebar } from './ChatSidebar';
