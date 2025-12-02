@@ -85,6 +85,7 @@ checklist-poc/
 ├── docs/
 │   ├── CODING_STANDARDS.md           # Code conventions
 │   ├── FRONTEND_ARCHITECTURE.md      # Frontend module structure
+│   ├── BACKEND_ARCHITECTURE.md       # Backend structure, adding tools
 │   ├── COBRA_STYLING_INTEGRATION.md  # COBRA styling guide
 │   ├── UI_PATTERNS.md                # UX patterns and guidelines
 │   └── USER-STORIES.md               # Requirements

@@ -396,6 +396,7 @@ src/
 
 **Questions?** Refer to:
 - `CODING_STANDARDS.md` for code conventions
+- `BACKEND_ARCHITECTURE.md` for backend structure
 - `CLAUDE.md` for overall project guide
 - `COBRA_STYLING_INTEGRATION.md` for styling
 

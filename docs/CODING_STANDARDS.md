@@ -836,4 +836,4 @@ These coding standards ensure:
 ---
 
 **Last Updated:** 2025-12-01
-**Questions?** Refer to CLAUDE.md or FRONTEND_ARCHITECTURE.md
+**Questions?** Refer to CLAUDE.md, FRONTEND_ARCHITECTURE.md, or BACKEND_ARCHITECTURE.md

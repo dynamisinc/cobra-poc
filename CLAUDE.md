@@ -1521,6 +1521,7 @@ VITE_ENABLE_MOCK_AUTH=true
 | `CLAUDE.md` | **This file** - AI assistant guide |
 | `docs/CODING_STANDARDS.md` | **Code conventions and patterns** |
 | `docs/FRONTEND_ARCHITECTURE.md` | **Frontend module structure guide** |
+| `docs/BACKEND_ARCHITECTURE.md` | **Backend structure and adding new tools** |
 | `docs/COBRA_STYLING_INTEGRATION.md` | **COBRA styling system reference** |
 | `docs/UI_PATTERNS.md` | UX patterns and design guidelines |
 | `docs/USER-STORIES.md` | User stories and requirements |
