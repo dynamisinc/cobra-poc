@@ -1204,6 +1204,32 @@ export const useChecklistHub = (checklistId: string) => {
 
 ## Testing Guidelines
 
+### Test Organization
+
+**Backend:** Separate test projects per tool for lift-and-shift isolation
+```
+src/backend/
+├── CobraAPI.Tests.Core/         # Shared test helpers
+├── CobraAPI.Tests.Checklist/    # Checklist tool tests
+└── CobraAPI.Tests.Chat/         # Chat tool tests
+```
+
+**Frontend:** Colocated tests (test files next to source files)
+```
+src/shared/events/utils/
+├── iconMapping.ts
+└── iconMapping.test.ts          # Test file next to source
+```
+
+**Why colocated for frontend:**
+- Lift-and-shift ready: tests move with the code
+- Discoverability: missing tests are obvious
+- Refactoring: rename/move keeps test with source
+
+**What stays centralized:**
+- `src/test/setup.ts` - Global test configuration
+- `vitest.config.ts` - Test runner config
+
 ### Backend Testing
 
 #### Unit Tests (Services)
@@ -1253,9 +1279,29 @@ public class ChecklistsControllerIntegrationTests : IClassFixture<WebApplication
 
 ### Frontend Testing
 
+#### Test File Naming
+Place test files next to source files with `.test.ts` or `.test.tsx` extension:
+```
+ComponentName.tsx      ->  ComponentName.test.tsx
+utilityFunction.ts     ->  utilityFunction.test.ts
+```
+
+#### Utility Tests
+```typescript
+// src/shared/events/utils/iconMapping.test.ts
+import { describe, it, expect } from 'vitest';
+import { getEventTypeColor } from './iconMapping';
+
+describe('getEventTypeColor', () => {
+  it('returns green for planned events', () => {
+    expect(getEventTypeColor('planned')).toBe('#4caf50');
+  });
+});
+```
+
 #### Component Tests
 ```typescript
-// Use @testing-library/react
+// src/tools/checklist/components/ChecklistCard.test.tsx
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 
