@@ -94,7 +94,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         onMobileClose={handleMobileClose}
       />
 
-      {/* Main Content Area */}
+      {/* Main Content Area - contains breadcrumb + workspace */}
       <Box
         component="main"
         sx={{
@@ -112,28 +112,20 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
           }),
-          // Make this the scroll container for sticky elements
-          overflow: "auto",
           height: "100vh",
+          overflow: "hidden", // Prevent double scrollbars
         }}
       >
-        {/* Breadcrumb Navigation - sticky at top of scroll area */}
+        {/* Breadcrumb Navigation - fixed outside scroll area */}
         {!hideBreadcrumb && (
-          <Box
-            sx={{
-              position: "sticky",
-              top: 0,
-              zIndex: 20,
-            }}
-          >
-            <Breadcrumb items={breadcrumbs.length > 0 ? breadcrumbs : undefined} />
-          </Box>
+          <Breadcrumb items={breadcrumbs.length > 0 ? breadcrumbs : undefined} />
         )}
 
-        {/* Page Content */}
+        {/* Workspace - scrollable content area */}
         <Box
           sx={{
             flexGrow: 1,
+            overflow: "auto",
           }}
         >
           {children}
