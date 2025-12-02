@@ -67,3 +67,6 @@ export {
   getLandingVariantInfo,
   useLandingVariant,
 } from './experiments';
+
+// Types - re-export all checklist-specific types
+export * from './types';
