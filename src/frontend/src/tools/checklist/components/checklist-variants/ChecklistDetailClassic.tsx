@@ -137,39 +137,16 @@ export const ChecklistDetailClassic: React.FC<ChecklistDetailClassicProps> = ({
         </Typography>
       </Box>
 
-      {/* Inline Progress Bar */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-          mb: 2,
-          py: 1,
-          px: 2,
-          backgroundColor: 'background.paper',
-          borderRadius: 1,
-          border: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
-        <Box sx={{ flex: 1 }}>
-          <ChecklistProgressBar
-            value={progressPercentage}
-            height={20}
-            showPercentage={true}
-          />
-        </Box>
-        <Typography
-          variant="body2"
-          sx={{
-            fontWeight: 600,
-            minWidth: 80,
-            textAlign: 'right',
-          }}
-        >
-          {checklist.completedItems}/{checklist.totalItems}
-        </Typography>
-      </Box>
+      {/* Sticky Progress Bar */}
+      <ChecklistProgressBar
+        value={progressPercentage}
+        height={20}
+        showPercentage={true}
+        showCount={true}
+        completedItems={checklist.completedItems}
+        totalItems={checklist.totalItems}
+        sticky
+      />
 
       {/* Required items indicator */}
       {checklist.requiredItems > 0 && (
