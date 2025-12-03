@@ -28,6 +28,11 @@ public interface IExternalMessagingService
     Task ProcessGroupMeWebhookAsync(Guid mappingId, GroupMeWebhookPayload payload);
 
     /// <summary>
+    /// Processes an incoming webhook message from Teams.
+    /// </summary>
+    Task ProcessTeamsWebhookAsync(Guid mappingId, TeamsWebhookPayload payload);
+
+    /// <summary>
     /// Broadcasts a message to all active external channels for an event.
     /// </summary>
     Task BroadcastToExternalChannelsAsync(Guid eventId, string senderName, string message);

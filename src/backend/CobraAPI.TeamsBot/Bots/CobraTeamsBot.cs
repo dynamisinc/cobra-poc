@@ -1,3 +1,4 @@
+using CobraAPI.TeamsBot.Models;
 using CobraAPI.TeamsBot.Services;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Teams;
@@ -22,6 +23,7 @@ public class CobraTeamsBot : TeamsActivityHandler
 {
     private readonly ILogger<CobraTeamsBot> _logger;
     private readonly IConversationReferenceService _conversationReferenceService;
+    private readonly ICobraApiClient _cobraApiClient;
     private readonly ConversationState _conversationState;
     private readonly UserState _userState;
 
@@ -31,11 +33,13 @@ public class CobraTeamsBot : TeamsActivityHandler
     public CobraTeamsBot(
         ILogger<CobraTeamsBot> logger,
         IConversationReferenceService conversationReferenceService,
+        ICobraApiClient cobraApiClient,
         ConversationState conversationState,
         UserState userState)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _conversationReferenceService = conversationReferenceService ?? throw new ArgumentNullException(nameof(conversationReferenceService));
+        _cobraApiClient = cobraApiClient ?? throw new ArgumentNullException(nameof(cobraApiClient));
         _conversationState = conversationState ?? throw new ArgumentNullException(nameof(conversationState));
         _userState = userState ?? throw new ArgumentNullException(nameof(userState));
     }
@@ -81,12 +85,82 @@ public class CobraTeamsBot : TeamsActivityHandler
             return;
         }
 
-        // For POC: Echo the message back to confirm receipt
-        // TODO: In Phase 2 (UC-TI-009), this will forward to COBRA via IChatService
-        var echoMessage = $"🔄 **COBRA received:** \"{messageText}\" from {senderName}";
-        await turnContext.SendActivityAsync(MessageFactory.Text(echoMessage), cancellationToken);
+        // Build webhook payload for CobraAPI
+        var payload = BuildWebhookPayload(activity, "message");
+
+        // Try to get the channel mapping ID from stored conversation reference metadata
+        // For POC: We'll use the conversationId to look up the mapping
+        // In production, this would be stored in the ConversationReferenceService with mapping info
+        var mappingId = await GetChannelMappingIdAsync(conversationId);
+
+        if (mappingId.HasValue)
+        {
+            // Forward to CobraAPI webhook
+            var success = await _cobraApiClient.SendWebhookAsync(mappingId.Value, payload);
+            if (success)
+            {
+                _logger.LogDebug("Message forwarded to CobraAPI successfully");
+            }
+            else
+            {
+                _logger.LogWarning("Failed to forward message to CobraAPI");
+                // Still echo back for debugging in POC
+                var errorMessage = "⚠️ Message received but failed to forward to COBRA. Check logs.";
+                await turnContext.SendActivityAsync(MessageFactory.Text(errorMessage), cancellationToken);
+            }
+        }
+        else
+        {
+            // No mapping found - channel not linked to COBRA event yet
+            _logger.LogDebug("No channel mapping found for conversation {ConversationId}", conversationId);
+
+            // For POC: Echo back to show the bot is working
+            var echoMessage = $"🔄 **COBRA received:** \"{messageText}\" from {senderName}\n\n" +
+                              "_Note: This channel is not linked to a COBRA event yet. Messages are not being stored._";
+            await turnContext.SendActivityAsync(MessageFactory.Text(echoMessage), cancellationToken);
+        }
 
         _logger.LogDebug("Message processed successfully");
+    }
+
+    /// <summary>
+    /// Builds a webhook payload from a Teams activity.
+    /// </summary>
+    private static TeamsWebhookPayload BuildWebhookPayload(IActivity activity, string activityType)
+    {
+        // Extract image attachment URL if present
+        string? imageUrl = null;
+        if (activity is IMessageActivity messageActivity && messageActivity.Attachments != null)
+        {
+            var imageAttachment = messageActivity.Attachments
+                .FirstOrDefault(a => a.ContentType?.StartsWith("image/") == true);
+            imageUrl = imageAttachment?.ContentUrl;
+        }
+
+        return new TeamsWebhookPayload
+        {
+            MessageId = activity.Id ?? Guid.NewGuid().ToString(),
+            ConversationId = activity.Conversation?.Id ?? string.Empty,
+            ChannelId = activity.ChannelId ?? string.Empty,
+            SenderId = activity.From?.Id ?? string.Empty,
+            SenderName = activity.From?.Name ?? "Unknown",
+            Text = (activity as IMessageActivity)?.Text,
+            Timestamp = activity.Timestamp?.UtcDateTime ?? DateTime.UtcNow,
+            ActivityType = activityType,
+            ImageUrl = imageUrl,
+            ServiceUrl = activity.ServiceUrl
+        };
+    }
+
+    /// <summary>
+    /// Gets the COBRA channel mapping ID for a Teams conversation.
+    /// Calls CobraAPI to lookup the mapping in the database.
+    /// </summary>
+    private async Task<Guid?> GetChannelMappingIdAsync(string conversationId)
+    {
+        // Call CobraAPI to lookup the mapping by conversation ID
+        // This queries the ExternalChannelMappings table
+        return await _cobraApiClient.GetMappingIdForConversationAsync(conversationId);
     }
 
     /// <summary>

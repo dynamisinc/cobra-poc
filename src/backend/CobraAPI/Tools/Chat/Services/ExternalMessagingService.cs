@@ -297,6 +297,75 @@ public class ExternalMessagingService : IExternalMessagingService
             payload.MessageId, mapping.EventId);
     }
 
+    /// <summary>
+    /// Processes an incoming webhook message from Teams.
+    /// Creates a ChatMessage record and broadcasts via SignalR.
+    /// </summary>
+    public async Task ProcessTeamsWebhookAsync(Guid mappingId, TeamsWebhookPayload payload)
+    {
+        // Ignore bot messages to prevent loops (handled by TeamsBot, but double-check)
+        if (string.IsNullOrEmpty(payload.Text) && payload.ActivityType == "message")
+        {
+            _logger.LogDebug("Ignoring empty Teams message");
+            return;
+        }
+
+        _logger.LogInformation("Processing Teams webhook for mapping {MappingId}, message {MessageId}",
+            mappingId, payload.MessageId);
+
+        // Get the channel mapping
+        var mapping = await _dbContext.ExternalChannelMappings
+            .Where(m => m.Id == mappingId && m.IsActive)
+            .Select(m => new { m.EventId, m.ExternalGroupId })
+            .FirstOrDefaultAsync();
+
+        if (mapping == null)
+        {
+            _logger.LogWarning("No active channel mapping found for {MappingId}", mappingId);
+            return;
+        }
+
+        // Check for duplicate message (webhook retry)
+        var isDuplicate = await _dbContext.ChatMessages
+            .AnyAsync(m => m.ExternalMessageId == payload.MessageId);
+
+        if (isDuplicate)
+        {
+            _logger.LogDebug("Ignoring duplicate Teams message {MessageId}", payload.MessageId);
+            return;
+        }
+
+        // Get the event's default chat thread
+        var chatThread = await _dbContext.ChatThreads
+            .Where(ct => ct.EventId == mapping.EventId && ct.IsDefaultEventThread && ct.IsActive)
+            .FirstOrDefaultAsync();
+
+        if (chatThread == null)
+        {
+            _logger.LogWarning("No default chat thread found for event {EventId}", mapping.EventId);
+            return;
+        }
+
+        // Create a scope for the ChatService to avoid circular dependency
+        using var scope = _serviceProvider.CreateScope();
+        var chatService = scope.ServiceProvider.GetRequiredService<ChatService>();
+
+        await chatService.CreateExternalMessageAsync(
+            chatThread.Id,
+            mapping.EventId,
+            ExternalPlatform.Teams,
+            payload.MessageId,
+            payload.SenderName,
+            payload.SenderId,
+            payload.Text ?? "[Attachment]",
+            payload.ImageUrl,
+            payload.Timestamp,
+            mappingId);
+
+        _logger.LogInformation("Processed Teams message {MessageId} for event {EventId}",
+            payload.MessageId, mapping.EventId);
+    }
+
     #endregion
 
     #region Outbound Message Sending

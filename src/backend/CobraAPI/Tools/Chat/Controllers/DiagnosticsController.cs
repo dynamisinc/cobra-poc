@@ -1,0 +1,288 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using CobraAPI.Core.Data;
+using CobraAPI.Tools.Chat.Models.Entities;
+
+namespace CobraAPI.Tools.Chat.Controllers;
+
+/// <summary>
+/// Diagnostic endpoints for testing external messaging integrations.
+/// WARNING: These endpoints are for development/testing only.
+/// Remove or secure before production deployment.
+/// </summary>
+[ApiController]
+[Route("api/chat/[controller]")]
+public class DiagnosticsController : ControllerBase
+{
+    private readonly CobraDbContext _dbContext;
+    private readonly ILogger<DiagnosticsController> _logger;
+
+    public DiagnosticsController(
+        CobraDbContext dbContext,
+        ILogger<DiagnosticsController> logger)
+    {
+        _dbContext = dbContext;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Creates a test Teams channel mapping for local testing.
+    /// Links a Teams conversation ID to a COBRA event.
+    /// </summary>
+    /// <param name="request">The mapping details</param>
+    /// <returns>The created mapping ID</returns>
+    [HttpPost("teams-mapping")]
+    [AllowAnonymous]
+    public async Task<IActionResult> CreateTeamsMapping([FromBody] CreateTeamsMappingRequest request)
+    {
+        _logger.LogInformation(
+            "Creating test Teams mapping for conversation {ConversationId} to event {EventId}",
+            request.TeamsConversationId, request.EventId);
+
+        // Verify the event exists
+        var eventExists = await _dbContext.Events.AnyAsync(e => e.Id == request.EventId);
+        if (!eventExists)
+        {
+            // List available events for convenience
+            var events = await _dbContext.Events
+                .Select(e => new { e.Id, e.Name })
+                .Take(10)
+                .ToListAsync();
+
+            return NotFound(new
+            {
+                error = $"Event {request.EventId} not found",
+                availableEvents = events
+            });
+        }
+
+        // Check for existing mapping with same conversation ID
+        var existingMapping = await _dbContext.ExternalChannelMappings
+            .FirstOrDefaultAsync(m =>
+                m.Platform == ExternalPlatform.Teams &&
+                m.ExternalGroupId == request.TeamsConversationId &&
+                m.IsActive);
+
+        if (existingMapping != null)
+        {
+            _logger.LogInformation(
+                "Existing Teams mapping found for conversation {ConversationId}: {MappingId}",
+                request.TeamsConversationId, existingMapping.Id);
+
+            return Ok(new CreateTeamsMappingResponse
+            {
+                MappingId = existingMapping.Id,
+                EventId = existingMapping.EventId,
+                TeamsConversationId = existingMapping.ExternalGroupId,
+                WebhookUrl = $"/api/webhooks/teams/{existingMapping.Id}",
+                IsExisting = true
+            });
+        }
+
+        // Create new mapping
+        var mapping = new ExternalChannelMapping
+        {
+            Id = Guid.NewGuid(),
+            EventId = request.EventId,
+            Platform = ExternalPlatform.Teams,
+            ExternalGroupId = request.TeamsConversationId,
+            ExternalGroupName = request.ChannelName ?? "Teams Test Channel",
+            BotId = "teams-bot", // Not used for Teams in the same way as GroupMe
+            WebhookSecret = Guid.NewGuid().ToString("N"),
+            IsActive = true,
+            CreatedBy = "diagnostics",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.ExternalChannelMappings.Add(mapping);
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Created Teams mapping {MappingId} for conversation {ConversationId} to event {EventId}",
+            mapping.Id, request.TeamsConversationId, request.EventId);
+
+        return Ok(new CreateTeamsMappingResponse
+        {
+            MappingId = mapping.Id,
+            EventId = mapping.EventId,
+            TeamsConversationId = mapping.ExternalGroupId,
+            WebhookUrl = $"/api/webhooks/teams/{mapping.Id}",
+            IsExisting = false
+        });
+    }
+
+    /// <summary>
+    /// Lists all Teams channel mappings.
+    /// </summary>
+    [HttpGet("teams-mappings")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetTeamsMappings()
+    {
+        var mappings = await _dbContext.ExternalChannelMappings
+            .Where(m => m.Platform == ExternalPlatform.Teams)
+            .Select(m => new
+            {
+                mappingId = m.Id,
+                eventId = m.EventId,
+                teamsConversationId = m.ExternalGroupId,
+                channelName = m.ExternalGroupName,
+                webhookUrl = $"/api/webhooks/teams/{m.Id}",
+                isActive = m.IsActive,
+                createdAt = m.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            count = mappings.Count,
+            mappings
+        });
+    }
+
+    /// <summary>
+    /// Lists all available events for mapping.
+    /// </summary>
+    [HttpGet("events")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetEvents()
+    {
+        var events = await _dbContext.Events
+            .Where(e => !e.IsArchived)
+            .Select(e => new
+            {
+                id = e.Id,
+                name = e.Name,
+                eventType = e.EventType,
+                isActive = e.IsActive,
+                hasDefaultChatThread = _dbContext.ChatThreads
+                    .Any(ct => ct.EventId == e.Id && ct.IsDefaultEventThread && ct.IsActive)
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            count = events.Count,
+            events
+        });
+    }
+
+    /// <summary>
+    /// Gets the mapping ID for a Teams conversation ID.
+    /// Used by TeamsBot to look up mappings.
+    /// </summary>
+    [HttpGet("teams-mapping/{conversationId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetTeamsMappingByConversation(string conversationId)
+    {
+        // URL decode the conversation ID (Teams IDs can contain special characters)
+        var decodedId = Uri.UnescapeDataString(conversationId);
+
+        var mapping = await _dbContext.ExternalChannelMappings
+            .Where(m => m.Platform == ExternalPlatform.Teams &&
+                       m.ExternalGroupId == decodedId &&
+                       m.IsActive)
+            .Select(m => new
+            {
+                mappingId = m.Id,
+                eventId = m.EventId,
+                teamsConversationId = m.ExternalGroupId,
+                webhookUrl = $"/api/webhooks/teams/{m.Id}"
+            })
+            .FirstOrDefaultAsync();
+
+        if (mapping == null)
+        {
+            return NotFound(new { error = "No mapping found for this conversation" });
+        }
+
+        return Ok(mapping);
+    }
+
+    /// <summary>
+    /// Deletes a Teams channel mapping.
+    /// </summary>
+    [HttpDelete("teams-mapping/{mappingId:guid}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> DeleteTeamsMapping(Guid mappingId)
+    {
+        var mapping = await _dbContext.ExternalChannelMappings
+            .FirstOrDefaultAsync(m => m.Id == mappingId);
+
+        if (mapping == null)
+        {
+            return NotFound(new { error = $"Mapping {mappingId} not found" });
+        }
+
+        _dbContext.ExternalChannelMappings.Remove(mapping);
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Deleted Teams mapping {MappingId}", mappingId);
+
+        return Ok(new { message = "Mapping deleted", mappingId });
+    }
+
+    /// <summary>
+    /// Gets recent chat messages for an event.
+    /// Used for testing/debugging the message flow.
+    /// </summary>
+    [HttpGet("messages/{eventId:guid}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetRecentMessages(Guid eventId, [FromQuery] int take = 20)
+    {
+        var messages = await _dbContext.ChatMessages
+            .Where(m => m.EventId == eventId)
+            .OrderByDescending(m => m.CreatedAt)
+            .Take(take)
+            .Select(m => new
+            {
+                id = m.Id,
+                content = m.Content,
+                senderName = m.SenderName,
+                sourcePlatform = m.SourcePlatform.ToString(),
+                externalMessageId = m.ExternalMessageId,
+                createdAt = m.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            eventId,
+            count = messages.Count,
+            messages
+        });
+    }
+}
+
+/// <summary>
+/// Request model for creating a test Teams channel mapping.
+/// </summary>
+public class CreateTeamsMappingRequest
+{
+    /// <summary>
+    /// The COBRA event ID to link the Teams channel to.
+    /// </summary>
+    public Guid EventId { get; set; }
+
+    /// <summary>
+    /// The Teams conversation ID (from the bot's activity.Conversation.Id).
+    /// </summary>
+    public string TeamsConversationId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional: Display name for the channel.
+    /// </summary>
+    public string? ChannelName { get; set; }
+}
+
+/// <summary>
+/// Response model for creating a Teams channel mapping.
+/// </summary>
+public class CreateTeamsMappingResponse
+{
+    public Guid MappingId { get; set; }
+    public Guid EventId { get; set; }
+    public string TeamsConversationId { get; set; } = string.Empty;
+    public string WebhookUrl { get; set; } = string.Empty;
+    public bool IsExisting { get; set; }
+}

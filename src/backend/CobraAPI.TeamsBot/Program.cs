@@ -41,6 +41,10 @@ builder.Services.AddSingleton<UserState>();
 // Register the conversation reference service
 builder.Services.AddSingleton<IConversationReferenceService, ConversationReferenceService>();
 
+// Configure CobraAPI client for forwarding messages
+builder.Services.Configure<CobraApiSettings>(builder.Configuration.GetSection("CobraApi"));
+builder.Services.AddHttpClient<ICobraApiClient, CobraApiClient>();
+
 // Register the main bot
 builder.Services.AddTransient<IBot, CobraTeamsBot>();
 
@@ -73,8 +77,10 @@ app.MapControllers();
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 var configuration = app.Services.GetRequiredService<IConfiguration>();
 var appId = configuration["MicrosoftAppId"];
+var cobraApiUrl = configuration["CobraApi:BaseUrl"];
 logger.LogInformation("COBRA Teams Bot starting...");
 logger.LogInformation("Bot App ID configured: {HasAppId}", !string.IsNullOrEmpty(appId));
+logger.LogInformation("CobraAPI URL: {CobraApiUrl}", cobraApiUrl ?? "(not configured)");
 logger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);
 
 app.Run();
