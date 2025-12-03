@@ -199,29 +199,41 @@
 
 ## Feature: COBRA Integration
 
-### UC-TI-007: Integrate Bot with UC POC Database
+### UC-TI-007: Integrate Bot with CobraAPI via Webhooks
 
-**Title:** Connect Teams bot to existing UC POC data layer
+**Title:** Connect Teams bot to CobraAPI using webhook pattern (mirrors GroupMe)
 
-**As a** COBRA developer  
-**I want** the Teams bot to use the existing UC POC database  
-**So that** Teams messages appear alongside other channel messages
+**As a** COBRA developer
+**I want** the Teams bot to communicate with CobraAPI via HTTP webhooks
+**So that** Teams messages flow through the same infrastructure as GroupMe
 
 **Acceptance Criteria:**
-- [ ] Configure bot to use existing `PocDbContext` or equivalent
-- [ ] Inject `IChatService` into bot activity handler
-- [ ] Map Teams message activities to `ChatMessage` entities
+- [ ] TeamsBot forwards inbound messages to CobraAPI webhook endpoint
+- [ ] Add `POST /api/webhooks/teams/{mappingId}` endpoint to CobraAPI (WebhooksController)
+- [ ] Add `ProcessTeamsWebhookAsync()` method to `ExternalMessagingService`
+- [ ] Create `TeamsWebhookPayload` DTO for inbound message data
+- [ ] Map Teams message data to `ChatMessage` entities via existing `ChatService`
 - [ ] Populate `ExternalSource`, `ExternalMessageId`, `ExternalSenderName` fields
 - [ ] Store `ExternalPlatform.Teams` for platform identification
-- [ ] Handle Teams-specific message properties (importance, mentions, attachments)
 - [ ] Log integration events for debugging
 
-**Dependencies:** UC-TI-001, UC POC database infrastructure
+**Dependencies:** UC-TI-001, UC POC webhook infrastructure (GroupMe pattern)
 
 **Technical Notes:**
-- Reuse existing `ChatMessage` entity with nullable external fields
-- Teams messages include rich metadata - capture what's useful
-- Consider Teams message ID format for deduplication
+- **Architecture mirrors GroupMe integration** - bot is a bridge/adapter, CobraAPI owns data
+- TeamsBot calls CobraAPI webhook endpoint (no direct DB access from bot)
+- Reuse existing `ExternalMessagingService` pattern from GroupMe
+- For POC: trust network boundary or use simple API key (no OAuth needed)
+- Extend `IExternalMessagingService` interface for Teams support
+
+**Message Flow (Inbound - Teams to COBRA):**
+```
+Teams --> TeamsBot /api/messages --> HTTP POST --> CobraAPI /api/webhooks/teams/{mappingId}
+                                                           |
+                                         ExternalMessagingService.ProcessTeamsWebhookAsync()
+                                                           |
+                                                 ChatService --> DB + SignalR --> COBRA UI
+```
 
 ---
 
@@ -253,58 +265,90 @@
 
 ### UC-TI-009: Implement Inbound Message Handler
 
-**Title:** Process incoming Teams messages and save to COBRA
+**Title:** Process incoming Teams messages via webhook to CobraAPI
 
-**As a** COBRA system  
-**I want** to receive and process all Teams channel messages  
-**So that** they appear in COBRA's unified chat view
+**As a** COBRA system
+**I want** to receive Teams messages and forward them to CobraAPI via webhooks
+**So that** they appear in COBRA's unified chat view using existing infrastructure
 
 **Acceptance Criteria:**
-- [ ] Override `OnMessageActivityAsync` in bot handler
-- [ ] Extract message content, sender info, timestamp
+- [ ] Override `OnMessageActivityAsync` in TeamsBot handler
+- [ ] Extract message content, sender info, timestamp, channel info
+- [ ] Build `TeamsWebhookPayload` DTO with message data
+- [ ] HTTP POST payload to CobraAPI `/api/webhooks/teams/{mappingId}`
+- [ ] Filter out bot's own messages before forwarding (prevent echo)
 - [ ] Handle text messages, mentions, and basic formatting
-- [ ] Process image attachments (store URL or download)
-- [ ] Filter out bot's own messages (prevent echo)
-- [ ] Create `ChatMessage` record via `IChatService`
-- [ ] Broadcast to COBRA clients via SignalR
-- [ ] Handle message edits (`OnMessageUpdateActivityAsync`)
-- [ ] Handle message deletes (`OnMessageDeleteActivityAsync`)
+- [ ] Process image attachments (include URLs in payload)
+- [ ] Handle message edits (`OnMessageUpdateActivityAsync`) - forward as update
+- [ ] Handle message deletes (`OnMessageDeleteActivityAsync`) - forward as delete
 - [ ] Log all inbound activity for debugging
+- [ ] Handle CobraAPI webhook failures gracefully (log, don't crash)
 
 **Dependencies:** UC-TI-007, UC-TI-008
 
 **Technical Notes:**
+- **Bot does NOT call ChatService or SignalR directly** - CobraAPI handles that
 - Check `Activity.From.Id` to filter bot's own messages
-- Teams message edits come as separate activities
+- Teams message edits/deletes come as separate activities
 - Attachments may be links or inline content
+- Lookup `mappingId` from stored conversation reference associations
+- For POC: if no mappingId, log warning and skip (channel not linked)
+
+**Message Flow:**
+```
+Teams Message --> TeamsBot.OnMessageActivityAsync()
+                         |
+                  Build TeamsWebhookPayload
+                         |
+                  HTTP POST /api/webhooks/teams/{mappingId}
+                         |
+        ExternalMessagingService.ProcessTeamsWebhookAsync()
+                         |
+                ChatService.SaveMessageAsync() + SignalR broadcast
+```
 
 ---
 
 ### UC-TI-010: Implement Outbound Proactive Messaging
 
-**Title:** Send COBRA messages to Teams channels
+**Title:** Send COBRA messages to Teams via CobraAPI webhook to TeamsBot
 
-**As a** COBRA user  
-**I want** my messages in Teams-linked channels to appear in Teams  
+**As a** COBRA user
+**I want** my messages in Teams-linked channels to appear in Teams
 **So that** Teams users see COBRA communications
 
 **Acceptance Criteria:**
-- [ ] Create `ITeamsMessagingService` for outbound operations
-- [ ] Implement `SendToTeamsChannelAsync(eventId, message)` method
-- [ ] Retrieve stored `ConversationReference` for target channel
+- [ ] Add `POST /api/internal/send` endpoint to TeamsBot for receiving outbound requests
+- [ ] Create `TeamsSendRequest` DTO (conversationId, message, senderName, etc.)
+- [ ] Retrieve stored `ConversationReference` for target conversation
 - [ ] Use `ContinueConversationAsync` for proactive messaging
 - [ ] Format messages with sender attribution: "[Name] message content"
 - [ ] Support Adaptive Cards for rich message formatting
-- [ ] Handle send failures gracefully (log, don't block COBRA save)
+- [ ] Return success/failure response to CobraAPI
 - [ ] Implement retry logic for transient failures
 - [ ] Respect Teams API rate limits
+- [ ] Add `ITeamsApiClient` to CobraAPI for calling TeamsBot endpoints
+- [ ] Extend `ExternalMessagingService.BroadcastToExternalChannelsAsync()` for Teams
 
 **Dependencies:** UC-TI-008, UC-TI-009
 
 **Technical Notes:**
-- Proactive messaging requires valid `ConversationReference`
+- **CobraAPI calls TeamsBot** (not direct Bot Framework calls from CobraAPI)
+- Proactive messaging requires valid `ConversationReference` stored in TeamsBot
 - Rate limit: ~50 messages per second per bot per channel
-- Consider fire-and-forget pattern to not block COBRA UI
+- Fire-and-forget from CobraAPI perspective to not block COBRA UI
+- For POC: simple API key or trust network boundary for auth
+
+**Message Flow (Outbound - COBRA to Teams):**
+```
+COBRA UI --> ChatService.SaveMessageAsync()
+                    |
+         ExternalMessagingService.BroadcastToExternalChannelsAsync()
+                    |
+         HTTP POST to TeamsBot /api/internal/send
+                    |
+         TeamsBot.ContinueConversationAsync() --> Teams API --> Teams Channel
+```
 
 ---
 
@@ -756,12 +800,12 @@ Teams Admin Center > Teams apps > Permission policies > Org-wide settings > Cust
 - UC-TI-005: Create Teams App Manifest
 
 ### Phase 2: Basic Integration
-*Connect bot to COBRA, outbound messaging*
+*Connect bot to COBRA via webhooks (mirrors GroupMe pattern)*
 
-- UC-TI-007: Integrate Bot with UC POC Database
+- UC-TI-007: Integrate Bot with CobraAPI via Webhooks
 - UC-TI-008: Store Conversation References
-- UC-TI-009: Implement Inbound Message Handler
-- UC-TI-010: Implement Outbound Proactive Messaging
+- UC-TI-009: Implement Inbound Message Handler (webhook to CobraAPI)
+- UC-TI-010: Implement Outbound Proactive Messaging (CobraAPI to TeamsBot)
 - UC-TI-011: Create External Channel Mapping for Teams
 
 ### Phase 3: RSC & Full Bi-Directional
