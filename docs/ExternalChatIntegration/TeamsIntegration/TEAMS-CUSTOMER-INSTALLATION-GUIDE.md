@@ -15,19 +15,23 @@ This guide walks you through installing and configuring the COBRA Communications
 Before beginning installation, verify the following:
 
 ### Licensing Requirements
+
 - [ ] Microsoft 365 license that includes Microsoft Teams
 - [ ] Users who will interact with the bot have Teams access
 
 ### Administrative Access
+
 - [ ] Teams Administrator role, or
 - [ ] Global Administrator role, or
 - [ ] Team Owner (for single-team installation only)
 
 ### Tenant Configuration
+
 - [ ] Custom apps are allowed in your tenant (see [Tenant Settings](#tenant-settings-verification))
 - [ ] RSC (Resource-Specific Consent) permissions are enabled
 
 ### COBRA Requirements
+
 - [ ] Active COBRA account with appropriate permissions
 - [ ] At least one COBRA event created to link to Teams
 
@@ -61,11 +65,11 @@ Before installing the bot, verify your tenant allows custom apps and RSC permiss
 
 Choose the installation method that fits your needs:
 
-| Method | Best For | Admin Level Required |
-|--------|----------|---------------------|
-| [Teams Admin Center](#method-1-teams-admin-center-recommended) | Organization-wide deployment | Teams Admin |
-| [Direct Upload to Team](#method-2-direct-upload-to-team) | Single team or pilot testing | Team Owner |
-| [Sideloading](#method-3-sideloading-for-development) | Development/testing only | Developer with sideload permissions |
+| Method                                                         | Best For                     | Admin Level Required                |
+| -------------------------------------------------------------- | ---------------------------- | ----------------------------------- |
+| [Teams Admin Center](#method-1-teams-admin-center-recommended) | Organization-wide deployment | Teams Admin                         |
+| [Direct Upload to Team](#method-2-direct-upload-to-team)       | Single team or pilot testing | Team Owner                          |
+| [Sideloading](#method-3-sideloading-for-development)           | Development/testing only     | Developer with sideload permissions |
 
 ---
 
@@ -117,6 +121,7 @@ When installing, you'll be prompted to grant permissions:
 ![RSC Consent](images/rsc-consent.png)
 
 Review the permissions and click **Accept**:
+
 - **Read channel messages** - Required for receiving messages
 - **Read team settings** - Required for team/channel information
 
@@ -168,10 +173,11 @@ After the bot is installed, complete these steps to enable message flow.
 2. The bot should post a welcome message:
 
 > 👋 **Welcome to COBRA Communications!**
-> 
+>
 > I'm now connected to this channel and ready to bridge communications with COBRA.
-> 
+>
 > **Next Steps:**
+>
 > - Use `/link` to connect this channel to a COBRA event
 > - Use `/help` to see available commands
 > - Use `/status` to check connection status
@@ -202,6 +208,7 @@ If you don't see the welcome message, @mention the bot: `@COBRA Communications h
 In Teams, type: `@COBRA Communications status`
 
 The bot will respond with:
+
 - Connection status (Connected/Disconnected)
 - Linked COBRA event name
 - Last message timestamp
@@ -268,11 +275,11 @@ This stops message flow but preserves historical messages in both systems.
 
 The COBRA bot accesses the following data:
 
-| Data Type | Access Level | Purpose |
-|-----------|--------------|---------|
-| Channel messages | Read all (with RSC) | Capture messages for COBRA |
-| Team/channel info | Read | Display channel names, link correctly |
-| User display names | Read | Attribute messages to senders |
+| Data Type          | Access Level        | Purpose                               |
+| ------------------ | ------------------- | ------------------------------------- |
+| Channel messages   | Read all (with RSC) | Capture messages for COBRA            |
+| Team/channel info  | Read                | Display channel names, link correctly |
+| User display names | Read                | Attribute messages to senders         |
 
 ### Data Storage
 
@@ -291,11 +298,13 @@ The COBRA bot accesses the following data:
 ## Getting Help
 
 ### COBRA Support
-- Email: support@cobra5.com
-- Portal: https://support.cobra5.com
+
+- Email: support@cobrasoftware.com
+- Portal: https://www.cobrasoftware.com
 - Include: Tenant ID, Team name, Error messages
 
 ### Microsoft Teams Support
+
 - Teams Admin Center has built-in diagnostics
 - Microsoft 365 admin center for tenant-wide issues
 
@@ -303,14 +312,14 @@ The COBRA bot accesses the following data:
 
 ## Appendix: Quick Reference Commands
 
-| Command | Description |
-|---------|-------------|
-| `@COBRA Communications help` | Show available commands |
-| `@COBRA Communications status` | Check connection status |
-| `@COBRA Communications link` | Link channel to COBRA event |
-| `@COBRA Communications unlink` | Unlink from COBRA event |
+| Command                        | Description                 |
+| ------------------------------ | --------------------------- |
+| `@COBRA Communications help`   | Show available commands     |
+| `@COBRA Communications status` | Check connection status     |
+| `@COBRA Communications link`   | Link channel to COBRA event |
+| `@COBRA Communications unlink` | Unlink from COBRA event     |
 
 ---
 
-*Document Version: 1.0*  
-*Last Updated: December 2024*
+_Document Version: 1.0_  
+_Last Updated: December 2025_

@@ -61,14 +61,14 @@ This document provides comprehensive technical documentation for developers work
 
 ### Component Responsibilities
 
-| Component | Responsibility |
-|-----------|----------------|
-| Teams Client | User interface, message composition |
-| Azure Bot Service | Message routing, authentication, scaling |
-| COBRA Teams Bot | Message handling, COBRA integration, proactive messaging |
-| UC POC Services | Shared chat/channel services, database access |
-| SignalR Hub | Real-time updates to COBRA web clients |
-| SQL Server | Message persistence, conversation references |
+| Component         | Responsibility                                           |
+| ----------------- | -------------------------------------------------------- |
+| Teams Client      | User interface, message composition                      |
+| Azure Bot Service | Message routing, authentication, scaling                 |
+| COBRA Teams Bot   | Message handling, COBRA integration, proactive messaging |
+| UC POC Services   | Shared chat/channel services, database access            |
+| SignalR Hub       | Real-time updates to COBRA web clients                   |
+| SQL Server        | Message persistence, conversation references             |
 
 ---
 
@@ -255,29 +255,29 @@ app.Run();
 ```sql
 CREATE TABLE TeamsConversationReferences (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-    
+
     -- Teams identifiers
     TeamId NVARCHAR(100) NOT NULL,
     ChannelId NVARCHAR(100) NOT NULL,
     ServiceUrl NVARCHAR(500) NOT NULL,
-    
+
     -- Bot info
     BotId NVARCHAR(100) NOT NULL,
     BotName NVARCHAR(200),
-    
+
     -- Serialized ConversationReference
     ConversationReferenceJson NVARCHAR(MAX) NOT NULL,
-    
+
     -- Metadata
     TeamName NVARCHAR(200),
     ChannelName NVARCHAR(200),
     InstalledByUserId NVARCHAR(100),
     InstalledByUserName NVARCHAR(200),
-    
+
     -- Timestamps
     CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
     LastActivityAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-    
+
     -- Indexes
     INDEX IX_TeamChannel (TeamId, ChannelId)
 );
@@ -288,27 +288,27 @@ CREATE TABLE TeamsConversationReferences (
 ```sql
 CREATE TABLE TeamsChannelMappings (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-    
+
     -- COBRA event reference
     CobraEventId UNIQUEIDENTIFIER NOT NULL,
     CobraChannelId UNIQUEIDENTIFIER NOT NULL,
-    
+
     -- Teams reference
     TeamsConversationReferenceId UNIQUEIDENTIFIER NOT NULL,
-    
+
     -- Link metadata
     LinkedByUserId UNIQUEIDENTIFIER NOT NULL,
     LinkedByUserName NVARCHAR(200),
     LinkedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-    
+
     -- Status
     IsActive BIT NOT NULL DEFAULT 1,
     UnlinkedAt DATETIME2 NULL,
     UnlinkedByUserId UNIQUEIDENTIFIER NULL,
-    
-    FOREIGN KEY (TeamsConversationReferenceId) 
+
+    FOREIGN KEY (TeamsConversationReferenceId)
         REFERENCES TeamsConversationReferences(Id),
-    FOREIGN KEY (CobraChannelId) 
+    FOREIGN KEY (CobraChannelId)
         REFERENCES ExternalChannels(Id)
 );
 ```
@@ -323,32 +323,32 @@ CREATE TABLE TeamsChannelMappings (
 public class TeamsConversationReference
 {
     public Guid Id { get; set; }
-    
+
     // Teams identifiers
     public string TeamId { get; set; } = string.Empty;
     public string ChannelId { get; set; } = string.Empty;
     public string ServiceUrl { get; set; } = string.Empty;
-    
+
     // Bot info
     public string BotId { get; set; } = string.Empty;
     public string? BotName { get; set; }
-    
+
     // Serialized for flexibility
     public string ConversationReferenceJson { get; set; } = string.Empty;
-    
+
     // Display metadata
     public string? TeamName { get; set; }
     public string? ChannelName { get; set; }
     public string? InstalledByUserId { get; set; }
     public string? InstalledByUserName { get; set; }
-    
+
     // Timestamps
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime LastActivityAt { get; set; } = DateTime.UtcNow;
-    
+
     // Navigation
     public ICollection<TeamsChannelMapping> Mappings { get; set; } = new List<TeamsChannelMapping>();
-    
+
     /// <summary>
     /// Deserializes the stored ConversationReference.
     /// </summary>
@@ -357,7 +357,7 @@ public class TeamsConversationReference
         return JsonSerializer.Deserialize<ConversationReference>(ConversationReferenceJson)
             ?? throw new InvalidOperationException("Failed to deserialize ConversationReference");
     }
-    
+
     /// <summary>
     /// Serializes and stores a ConversationReference.
     /// </summary>
@@ -407,7 +407,7 @@ public class BotController : ControllerBase
     public async Task PostAsync()
     {
         _logger.LogInformation("Received activity from Bot Service");
-        
+
         await _adapter.ProcessAsync(Request, Response, _bot);
     }
 }
@@ -521,8 +521,8 @@ public class AdapterWithErrorHandler : CloudAdapter
     {
         OnTurnError = async (turnContext, exception) =>
         {
-            logger.LogError(exception, 
-                "Unhandled exception. Activity: {ActivityType}", 
+            logger.LogError(exception,
+                "Unhandled exception. Activity: {ActivityType}",
                 turnContext.Activity.Type);
 
             // Don't expose internal errors to Teams
@@ -620,7 +620,7 @@ public class ProactiveMessageService : IProactiveMessageService
     {
         _referenceService = referenceService;
         _adapter = adapter;
-        _appId = configuration["MicrosoftAppId"] 
+        _appId = configuration["MicrosoftAppId"]
             ?? throw new InvalidOperationException("MicrosoftAppId not configured");
         _logger = logger;
     }
@@ -650,7 +650,7 @@ public class ProactiveMessageService : IProactiveMessageService
             {
                 // Format message with sender attribution
                 var formattedMessage = $"**[{senderName} via COBRA]**\n\n{message}";
-                
+
                 await turnContext.SendActivityAsync(
                     MessageFactory.Text(formattedMessage),
                     cancellationToken);
@@ -659,7 +659,7 @@ public class ProactiveMessageService : IProactiveMessageService
 
         // Update last activity
         await _referenceService.UpdateLastActivityAsync(
-            reference.TeamId, 
+            reference.TeamId,
             reference.ChannelId);
     }
 
@@ -708,7 +708,7 @@ protected override async Task OnMessageActivityAsync(
     await _referenceService.UpdateServiceUrlAsync(
         reference.Conversation.Id,
         reference.ServiceUrl);
-    
+
     // ... process message
 }
 ```
@@ -752,11 +752,11 @@ protected override async Task OnMessageActivityAsync(
     CancellationToken cancellationToken)
 {
     var activity = turnContext.Activity;
-    
+
     // Check if this is a direct @mention or RSC-delivered message
     var isMentioned = activity.GetMentions()
         .Any(m => m.Mentioned.Id == activity.Recipient.Id);
-    
+
     if (isMentioned)
     {
         // User explicitly @mentioned the bot - respond
@@ -774,7 +774,7 @@ private async Task ProcessChannelMessageAsync(
     CancellationToken cancellationToken)
 {
     var activity = turnContext.Activity;
-    
+
     // Extract message data
     var message = new ChatMessage
     {
@@ -785,10 +785,10 @@ private async Task ProcessChannelMessageAsync(
         Timestamp = activity.Timestamp ?? DateTimeOffset.UtcNow,
         Source = MessageSource.Teams
     };
-    
+
     // Save to COBRA - no response to Teams
     await _chatService.SaveExternalMessageAsync(message);
-    
+
     // Broadcast to COBRA clients via SignalR
     await _signalRService.BroadcastMessageAsync(message);
 }
@@ -848,7 +848,7 @@ public static class WelcomeCard
                 new AdaptiveOpenUrlAction
                 {
                     Title = "Open COBRA",
-                    Url = new Uri("https://app.cobra5.com")
+                    Url = new Uri("https://cobra-poc.azurewebsites.net/")
                 }
             }
         };
@@ -925,12 +925,12 @@ public static class TeamsRetryPolicy
     {
         return Policy
             .Handle<HttpRequestException>()
-            .Or<ErrorResponseException>(ex => 
+            .Or<ErrorResponseException>(ex =>
                 ex.Response?.StatusCode == HttpStatusCode.TooManyRequests ||
                 ex.Response?.StatusCode == HttpStatusCode.ServiceUnavailable)
             .WaitAndRetryAsync(
                 retryCount: 3,
-                sleepDurationProvider: attempt => 
+                sleepDurationProvider: attempt =>
                     TimeSpan.FromSeconds(Math.Pow(2, attempt)),
                 onRetry: (exception, timeSpan, retryCount, context) =>
                 {
@@ -951,8 +951,8 @@ public static class TeamsRetryPolicy
 /// Sends message to Teams but doesn't block COBRA save on failure.
 /// </summary>
 public async Task SendMessageWithFallbackAsync(
-    Guid mappingId, 
-    string message, 
+    Guid mappingId,
+    string message,
     string senderName)
 {
     try
@@ -964,10 +964,10 @@ public async Task SendMessageWithFallbackAsync(
     }
     catch (Exception ex)
     {
-        _logger.LogError(ex, 
+        _logger.LogError(ex,
             "Failed to send message to Teams. MappingId: {MappingId}. Message saved to COBRA only.",
             mappingId);
-        
+
         // Queue for retry later
         await _retryQueue.EnqueueAsync(new FailedTeamsMessage
         {
@@ -1012,7 +1012,7 @@ public class CobraBotTests
             From = new ChannelAccount { Name = "Test User", AadObjectId = "user-123" },
             Conversation = new ConversationAccount { Id = "conv-123" }
         };
-        
+
         var turnContext = new TurnContext(new TestAdapter(), activity);
 
         // Act
@@ -1020,8 +1020,8 @@ public class CobraBotTests
 
         // Assert
         _mockChatService.Verify(
-            s => s.SaveExternalMessageAsync(It.Is<ChatMessage>(m => 
-                m.Content == "Test message" && 
+            s => s.SaveExternalMessageAsync(It.Is<ChatMessage>(m =>
+                m.Content == "Test message" &&
                 m.SenderName == "Test User")),
             Times.Once);
     }
@@ -1033,13 +1033,13 @@ public class CobraBotTests
         var activity = new Activity
         {
             Type = ActivityTypes.ConversationUpdate,
-            MembersAdded = new List<ChannelAccount> 
-            { 
-                new ChannelAccount { Id = "bot-id" } 
+            MembersAdded = new List<ChannelAccount>
+            {
+                new ChannelAccount { Id = "bot-id" }
             },
             Recipient = new ChannelAccount { Id = "bot-id" },
-            ChannelData = JObject.FromObject(new 
-            { 
+            ChannelData = JObject.FromObject(new
+            {
                 team = new { id = "team-123", name = "Test Team" },
                 channel = new { id = "channel-123", name = "General" }
             })
@@ -1091,7 +1091,7 @@ public class MessageFlowIntegrationTests : IClassFixture<WebApplicationFactory<P
 
         // Act
         var response = await _client.PostAsJsonAsync(
-            "/api/internal/proactive/send", 
+            "/api/internal/proactive/send",
             request);
 
         // Assert
@@ -1152,10 +1152,10 @@ trigger:
   - main
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: "ubuntu-latest"
 
 variables:
-  buildConfiguration: 'Release'
+  buildConfiguration: "Release"
 
 stages:
   - stage: Build
@@ -1164,33 +1164,33 @@ stages:
         steps:
           - task: UseDotNet@2
             inputs:
-              version: '8.x'
-          
+              version: "8.x"
+
           - task: DotNetCoreCLI@2
-            displayName: 'Restore'
+            displayName: "Restore"
             inputs:
-              command: 'restore'
-              projects: '**/*.csproj'
-          
+              command: "restore"
+              projects: "**/*.csproj"
+
           - task: DotNetCoreCLI@2
-            displayName: 'Build'
+            displayName: "Build"
             inputs:
-              command: 'build'
-              arguments: '--configuration $(buildConfiguration)'
-          
+              command: "build"
+              arguments: "--configuration $(buildConfiguration)"
+
           - task: DotNetCoreCLI@2
-            displayName: 'Test'
+            displayName: "Test"
             inputs:
-              command: 'test'
-              arguments: '--configuration $(buildConfiguration)'
-          
+              command: "test"
+              arguments: "--configuration $(buildConfiguration)"
+
           - task: DotNetCoreCLI@2
-            displayName: 'Publish'
+            displayName: "Publish"
             inputs:
-              command: 'publish'
+              command: "publish"
               publishWebProjects: true
-              arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
-          
+              arguments: "--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)"
+
           - publish: $(Build.ArtifactStagingDirectory)
             artifact: drop
 
@@ -1198,17 +1198,17 @@ stages:
     dependsOn: Build
     jobs:
       - deployment: Deploy
-        environment: 'production'
+        environment: "production"
         strategy:
           runOnce:
             deploy:
               steps:
                 - task: AzureWebApp@1
                   inputs:
-                    azureSubscription: 'Azure-Connection'
-                    appType: 'webApp'
-                    appName: 'cobra-teams-bot'
-                    package: '$(Pipeline.Workspace)/drop/**/*.zip'
+                    azureSubscription: "Azure-Connection"
+                    appType: "webApp"
+                    appName: "cobra-teams-bot"
+                    package: "$(Pipeline.Workspace)/drop/**/*.zip"
 ```
 
 ---
@@ -1217,13 +1217,13 @@ stages:
 
 ### Common Issues
 
-| Symptom | Possible Cause | Solution |
-|---------|---------------|----------|
-| Bot not receiving messages | Endpoint not reachable | Verify HTTPS, check firewall |
-| 401 Unauthorized | App ID/secret mismatch | Verify config matches Azure AD |
-| Proactive messages fail | Invalid ConversationReference | Check ServiceUrl, re-install bot |
-| RSC messages not received | Permissions not granted | Re-install app, verify manifest |
-| Messages delayed | Rate limiting | Implement backoff, check quotas |
+| Symptom                    | Possible Cause                | Solution                         |
+| -------------------------- | ----------------------------- | -------------------------------- |
+| Bot not receiving messages | Endpoint not reachable        | Verify HTTPS, check firewall     |
+| 401 Unauthorized           | App ID/secret mismatch        | Verify config matches Azure AD   |
+| Proactive messages fail    | Invalid ConversationReference | Check ServiceUrl, re-install bot |
+| RSC messages not received  | Permissions not granted       | Re-install app, verify manifest  |
+| Messages delayed           | Rate limiting                 | Implement backoff, check quotas  |
 
 ### Diagnostic Logging
 
@@ -1256,15 +1256,15 @@ For local testing without Teams:
 
 ## Glossary
 
-| Term | Definition |
-|------|------------|
-| **Activity** | Bot Framework message object (includes messages, events, etc.) |
-| **Adaptive Card** | JSON-based card format for rich Teams messages |
-| **ConversationReference** | Stored context required for proactive messaging |
-| **Proactive Message** | Bot-initiated message (vs. responding to user) |
-| **RSC** | Resource-Specific Consent - granular Teams permissions |
-| **Turn** | Single request/response exchange in Bot Framework |
-| **TurnContext** | Context object for current conversation turn |
+| Term                      | Definition                                                     |
+| ------------------------- | -------------------------------------------------------------- |
+| **Activity**              | Bot Framework message object (includes messages, events, etc.) |
+| **Adaptive Card**         | JSON-based card format for rich Teams messages                 |
+| **ConversationReference** | Stored context required for proactive messaging                |
+| **Proactive Message**     | Bot-initiated message (vs. responding to user)                 |
+| **RSC**                   | Resource-Specific Consent - granular Teams permissions         |
+| **Turn**                  | Single request/response exchange in Bot Framework              |
+| **TurnContext**           | Context object for current conversation turn                   |
 
 ---
 
@@ -1278,5 +1278,5 @@ For local testing without Teams:
 
 ---
 
-*Document Version: 1.0*  
-*Last Updated: December 2024*
+_Document Version: 1.0_  
+_Last Updated: December 2025_

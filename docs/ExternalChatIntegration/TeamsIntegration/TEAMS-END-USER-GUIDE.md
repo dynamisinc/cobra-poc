@@ -5,6 +5,7 @@
 The COBRA Communications bot connects your Microsoft Teams channels with COBRA events, allowing you to communicate seamlessly across both platforms during emergencies and operations.
 
 **What this means for you:**
+
 - Messages sent in Teams automatically appear in COBRA
 - Messages sent in COBRA automatically appear in Teams
 - Stay informed using your preferred platform
@@ -41,6 +42,7 @@ Look for these indicators that a Teams channel is linked to COBRA:
 Simply send a regular message in your Teams channel. **That's it!**
 
 Your message will automatically:
+
 - Appear in the linked COBRA event channel
 - Show your name as the sender
 - Include the timestamp
@@ -65,6 +67,7 @@ When you send a message in a COBRA channel that's linked to Teams:
 ### Messages from Teams Users
 
 In COBRA, messages from Teams appear with:
+
 - 📱 Teams icon indicator
 - Sender's Teams display name
 - "via Teams" label
@@ -73,12 +76,14 @@ In COBRA, messages from Teams appear with:
 ### Messages from COBRA Users
 
 In Teams, messages from COBRA appear as:
+
 ```
 [John Smith via COBRA]
 The evacuation is complete. All personnel accounted for.
 ```
 
 This format makes it clear:
+
 - Who sent the message (John Smith)
 - Where it came from (COBRA)
 - The actual message content
@@ -94,6 +99,7 @@ You can interact with the COBRA bot using these commands. Type them in any chann
 Shows available commands and quick tips.
 
 **Example:**
+
 ```
 @COBRA Communications help
 ```
@@ -101,17 +107,20 @@ Shows available commands and quick tips.
 ### @COBRA Communications status
 
 Shows the current connection status, including:
+
 - Whether the channel is linked to a COBRA event
 - Which event it's linked to
 - Last message timestamp
 - Any connection issues
 
 **Example:**
+
 ```
 @COBRA Communications status
 ```
 
 **Sample Response:**
+
 ```
 📊 Connection Status
 
@@ -128,6 +137,7 @@ Starts the process to link this Teams channel to a COBRA event.
 > **Note:** You may need appropriate COBRA permissions to link channels.
 
 **Example:**
+
 ```
 @COBRA Communications link
 ```
@@ -151,6 +161,7 @@ Disconnects this Teams channel from the COBRA event.
 Messages in Teams stay in Teams. Messages in COBRA stay in COBRA. The bot only bridges **new** messages sent after the connection is established.
 
 To see historical messages:
+
 - **Teams history:** Scroll up in the Teams channel
 - **COBRA history:** Check the event's channel in COBRA
 
@@ -175,6 +186,7 @@ This is intentional for audit and compliance purposes in emergency management.
 ### Why do some messages show differently?
 
 Messages may display differently based on:
+
 - **Formatting:** Rich formatting in Teams (bold, bullets, etc.) may appear as plain text in COBRA
 - **Mentions:** @mentions in Teams show as text in COBRA
 - **Emojis:** Most emojis transfer correctly, but some may vary
@@ -211,12 +223,12 @@ If messages aren't flowing:
 
 ### Message Formatting Tips
 
-| Do | Don't |
-|----|----|
-| Keep messages under 2000 characters | Send extremely long messages |
-| Use plain text for important info | Rely heavily on rich formatting |
-| Include context in each message | Assume recipients saw previous messages |
-| Use clear, professional language | Use slang or abbreviations others may not know |
+| Do                                  | Don't                                          |
+| ----------------------------------- | ---------------------------------------------- |
+| Keep messages under 2000 characters | Send extremely long messages                   |
+| Use plain text for important info   | Rely heavily on rich formatting                |
+| Include context in each message     | Assume recipients saw previous messages        |
+| Use clear, professional language    | Use slang or abbreviations others may not know |
 
 ---
 
@@ -246,6 +258,7 @@ If messages aren't flowing:
 ### "I see 'Unable to reach app' error"
 
 This usually means:
+
 - The bot service is temporarily unavailable
 - Network issues between Teams and the bot
 - The bot was removed from your organization
@@ -259,6 +272,7 @@ This usually means:
 ### What data is shared?
 
 When you send a message in a linked channel:
+
 - Your display name
 - Your message content
 - Timestamp
@@ -295,8 +309,8 @@ When you send a message in a linked channel:
 
 ### COBRA Support
 
-- **Email:** support@cobra5.com
-- **Portal:** https://support.cobra5.com
+- **Email:** support@cobrasoftware.com
+- **Portal:** https://www.cobrasoftware.com
 - **Include:** Your organization name, event name, and description of the issue
 
 ---
@@ -333,5 +347,5 @@ Print this section for quick reference:
 
 ---
 
-*Document Version: 1.0*  
-*Last Updated: December 2024*
+_Document Version: 1.0_  
+_Last Updated: December 2025_

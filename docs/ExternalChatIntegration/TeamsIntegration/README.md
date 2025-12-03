@@ -167,4 +167,4 @@ All user stories use the **UC-TI** prefix (Unified Communications - Teams Integr
 
 ---
 
-*Last Updated: December 2024*
+*Last Updated: December 2025*
