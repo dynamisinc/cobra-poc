@@ -58,6 +58,12 @@ export interface ChatThreadDto {
   color?: string;
   messageCount: number;
   createdAt: string;
+  /** Whether the channel is active (false = archived) */
+  isActive?: boolean;
+  /** Timestamp of the last message in this channel (null if no messages) */
+  lastMessageAt?: string;
+  /** Display name of the sender of the last message (null if no messages) */
+  lastMessageSender?: string;
   /** For External channels, the linked external channel details */
   externalChannel?: ExternalChannelMappingDto;
 }
@@ -147,6 +153,30 @@ export enum ChannelType {
   /** Custom named group */
   Custom = 4,
 }
+
+/**
+ * Helper to check if a channel type matches one of the expected types.
+ * Handles the string/number mismatch when backend uses JsonStringEnumConverter.
+ *
+ * @example
+ * // Check if channel is External
+ * if (isChannelType(channel.channelType, ChannelType.External)) { ... }
+ *
+ * // Check if channel is Internal or Announcements
+ * if (isChannelType(channel.channelType, ChannelType.Internal, ChannelType.Announcements)) { ... }
+ */
+export const isChannelType = (
+  channelType: ChannelType | string,
+  ...types: ChannelType[]
+): boolean => {
+  return types.some((type) => {
+    // Direct numeric match
+    if (channelType === type) return true;
+    // String match (API returns "Internal" but enum is 0)
+    if (typeof channelType === 'string' && channelType === ChannelType[type]) return true;
+    return false;
+  });
+};
 
 /**
  * Channel display information for sidebar/tabs.

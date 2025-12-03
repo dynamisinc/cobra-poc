@@ -40,6 +40,21 @@ public class ChatThreadDto
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
+    /// Whether the channel is active (false = archived).
+    /// </summary>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Timestamp of the last message in this channel (null if no messages).
+    /// </summary>
+    public DateTime? LastMessageAt { get; set; }
+
+    /// <summary>
+    /// Display name of the sender of the last message (null if no messages).
+    /// </summary>
+    public string? LastMessageSender { get; set; }
+
+    /// <summary>
     /// For External channels, the linked external channel details.
     /// </summary>
     public ExternalChannelMappingDto? ExternalChannel { get; set; }

@@ -251,7 +251,7 @@
 - [ ] Unified view updates in real-time
 - [ ] Connection status is indicated in the UI
 - [ ] Graceful reconnection on connection loss
-- [ ] Unread message indicators update in real-time per channel
+- [ ] Unread message indicators update in real-time per channel (see UC-027)
 
 **Dependencies:** UC-009, UC-010
 
@@ -275,7 +275,7 @@
 - [x] Internal channels display without platform indicator
 - [x] External channels display platform icon (e.g., GroupMe icon)
 - [x] Announcements channel shows visual indicator (bullhorn icon)
-- [ ] Unread message count badge per channel
+- [ ] Unread message indicator per channel (see UC-027)
 - [x] Sidebar can be collapsed/hidden
 - [x] Sidebar width persists during session (ChatSidebarContext)
 - [x] External section and menu hidden if no external messaging platforms configured by admin
@@ -330,7 +330,7 @@
 - [x] Compose input sends to the active tab's channel
 - [ ] Unified view available as a tab option
 - [ ] Load earlier messages via pagination/infinite scroll
-- [ ] Unread indicators on inactive tabs
+- [ ] Unread indicators on inactive tabs (see UC-027)
 - [x] Navigation back to other event pages
 - [x] External channel menu and chips hidden if no external messaging platforms configured by admin
 
@@ -605,6 +605,158 @@
 
 ---
 
+## Feature: Chat Administration
+
+### UC-026: Chat Administration Dashboard
+
+**Title:** Chat Administration Dashboard for Event Channels
+
+**GitHub Issue:** #34
+
+**As a** user with Manage permissions
+**I want** a dedicated chat administration view for the event
+**So that** I can manage all channels, view archived channels, restore channels, and perform administrative actions on messages
+
+**Background:**
+
+When users click on the Chat tool name in the breadcrumbs (rather than navigating to a specific channel), they should see an administration view instead of the default chat experience. This follows the C5 pattern where `/Events/{EventName}/Chat` shows the admin view and `/Events/{EventName}/Chat/Dashboard` shows the normal user experience.
+
+**Acceptance Criteria:**
+
+*Channel Overview Table*
+- [ ] Display all active channels in a table with columns:
+  - Channel name and type icon
+  - Message count
+  - Last message timestamp and sender
+  - Connected external platform (if any) with platform icon
+  - Actions menu
+- [ ] Sort channels by display order (default) or by last activity
+- [ ] Filter channels by type (Internal, Announcements, External, Custom)
+
+*Channel Actions (Manage Permission Required)*
+- [ ] Archive channel (except Announcements and default Event Chat)
+- [ ] Archive all messages in a channel
+- [ ] Archive messages older than a specified date/time
+- [ ] Edit channel name and description
+- [ ] View channel details (creation date, created by, message stats)
+
+*Archived Channels View*
+- [ ] Separate tab or section showing archived channels
+- [ ] Display archived date and who archived it
+- [ ] **Restore channel** - returns channel to active state
+- [ ] **Permanent delete** - removes channel from event (data retained in DB, requires SQL to recover)
+- [ ] Confirmation dialog for permanent delete with clear warning
+
+*Navigation*
+- [ ] Breadcrumb: Event > Chat shows admin view
+- [ ] Breadcrumb: Event > Chat > Dashboard shows normal chat experience
+- [ ] Quick navigation from admin view to specific channel
+- [ ] "Back to Chat" button to return to Dashboard view
+
+*Permissions*
+- [ ] Read-only users can view channel list but not perform actions
+- [ ] Manage permission required for archive, restore, delete, and edit operations
+- [ ] All administrative actions are logged for audit
+
+**Technical Notes:**
+
+*Routes*
+- `/events/:eventId/chat` → ChatAdminPage (administration view)
+- `/events/:eventId/chat/dashboard` → ChatPage (normal user experience)
+
+*Backend Endpoints Needed*
+- `GET /api/events/{eventId}/chat/channels?includeArchived=true` - Get all channels including archived
+- `POST /api/events/{eventId}/chat/channels/{channelId}/restore` - Restore archived channel
+- `DELETE /api/events/{eventId}/chat/channels/{channelId}/permanent` - Permanent delete
+- `POST /api/events/{eventId}/chat/channels/{channelId}/archive-messages` - Archive messages with optional date filter
+
+*Components*
+- `ChatAdminPage.tsx` - Main admin view with tabs
+- `ChannelOverviewTable.tsx` - Active channels table
+- `ArchivedChannelsTable.tsx` - Archived channels view
+- `RestoreChannelDialog.tsx` - Confirmation for restore
+- `PermanentDeleteDialog.tsx` - Warning dialog for permanent delete
+- `ArchiveMessagesDialog.tsx` - Date picker for message archival
+
+**Dependencies:** UC-004, UC-008
+
+---
+
+### UC-027: Unread Message Indicators
+
+**Title:** Display unread message counts across all channels
+
+**As a** COBRA user
+**I want** to see unread message indicators on channels I haven't read
+**So that** I know where new communications have arrived without checking each channel
+
+**Acceptance Criteria:**
+
+*Badge Display*
+- [ ] Each channel shows an unread indicator (red dot) when unread messages exist
+- [ ] Badge is visible on channel names in sidebar channel list
+- [ ] Badge is visible on inactive tabs in full-page view
+- [ ] Badge uses attention-drawing color (theme.palette.error)
+
+*Section Aggregation (Sidebar)*
+- [ ] Collapsed sections (Channels, External, Groups) show red dot if any child channel has unread messages
+- [ ] Expanding a section shows individual channel indicators
+- [ ] Section indicator updates in real-time as channels are read
+
+*Read State Logic*
+- [ ] Messages are marked as read when:
+  - Channel accordion is expanded AND messages are visible in viewport for 2+ seconds (intersection observer)
+  - Channel tab is active in full-page view AND messages are visible for 2+ seconds
+  - User sends a message in the channel (implicit read)
+- [ ] Read state is per-user (my unread state doesn't affect other users)
+- [ ] Read state persists across sessions (stored server-side)
+
+*Real-Time Updates*
+- [ ] Indicators update via SignalR when new messages arrive in any channel
+- [ ] Indicators clear when messages are marked as read
+- [ ] Works across multiple browser tabs/windows for same user
+- [ ] Other channels in sidebar list show indicators even when one channel is actively displayed
+
+*Edge Cases*
+- [ ] New channels start with 0 unread (user is "caught up" at creation)
+- [ ] Archived channels don't show unread indicators
+- [ ] External messages trigger indicators same as internal messages
+- [ ] Reconnecting after offline marks messages received during disconnect as unread
+
+**Dependencies:** UC-011, UC-012, UC-014
+
+**Technical Notes:**
+
+*Backend Changes*
+- New table: `UserChannelReadState` (UserId, ChannelId, LastReadMessageId, LastReadAt)
+- New endpoint: `POST /api/events/{eventId}/chat/channels/{channelId}/mark-read` - marks channel as read up to latest message
+- New endpoint: `GET /api/events/{eventId}/chat/channels/unread-status` - returns unread status (boolean) per channel for user
+- SignalR enhancement: Include `messageId` and `timestamp` in message broadcasts
+- On user joining event SignalR group, send current unread status
+
+*Frontend Changes*
+- New hook: `useUnreadStatus()` - tracks unread boolean per channel via SignalR
+- Intersection observer in expanded channel accordion for auto-mark-read (2s debounce)
+- Red dot indicator component on channel names and collapsed section headers
+- SignalR handler for setting unread=true on new messages in non-visible channels
+
+*Database Schema*
+```sql
+CREATE TABLE UserChannelReadState (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWSEQUENTIALID(),
+    UserId NVARCHAR(450) NOT NULL,
+    ChannelId UNIQUEIDENTIFIER NOT NULL,
+    LastReadMessageId UNIQUEIDENTIFIER NULL,
+    LastReadAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    CONSTRAINT FK_UserChannelReadState_Channel FOREIGN KEY (ChannelId)
+        REFERENCES ChatThreads(Id) ON DELETE CASCADE,
+    CONSTRAINT UQ_UserChannelReadState UNIQUE (UserId, ChannelId)
+);
+CREATE INDEX IX_UserChannelReadState_UserId ON UserChannelReadState(UserId);
+```
+
+---
+
 ## Future Enhancements
 
 *These stories are documented for future consideration and are not part of the core POC scope.*
@@ -827,7 +979,8 @@
 | Message Promotion | UC-020, UC-021 |
 | Configuration | UC-022, UC-023 |
 | Non-Functional | UC-024, UC-025 |
-| **Core Total** | **25 stories** |
+| Chat Administration | UC-026, UC-027 |
+| **Core Total** | **27 stories** |
 | Future Enhancements | UC-FUT-001 to UC-FUT-004 |
 
 ---
@@ -899,3 +1052,8 @@ Each user story maps to a Work Item:
 - UC-019: Admin Message Management
 - UC-020: Promote Chat Message to Logbook Entry
 - UC-021: View Promoted Message Status
+
+### Phase 6 - Chat Administration
+*Admin dashboard and channel management*
+
+- UC-026: Chat Administration Dashboard

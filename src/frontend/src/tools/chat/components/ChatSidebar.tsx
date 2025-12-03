@@ -189,7 +189,7 @@ export const ChatSidebar: React.FC = () => {
 
   // Open full chat page
   const handleExpandToFullPage = () => {
-    navigate('/chat');
+    navigate('/chat/dashboard');
   };
 
   if (!isOpen) {

@@ -88,10 +88,87 @@ export const chatService = {
   },
 
   /**
-   * Deletes a channel (soft delete).
+   * Deletes a channel (soft delete/archive).
    */
   deleteChannel: async (eventId: string, channelId: string): Promise<void> => {
     await apiClient.delete(`/api/events/${eventId}/chat/channels/${channelId}`);
+  },
+
+  /**
+   * Gets all channels including archived for administration.
+   */
+  getAllChannels: async (
+    eventId: string,
+    includeArchived = true
+  ): Promise<ChatThreadDto[]> => {
+    const response = await apiClient.get<ChatThreadDto[]>(
+      `/api/events/${eventId}/chat/channels/all?includeArchived=${includeArchived}`
+    );
+    return response.data;
+  },
+
+  /**
+   * Gets archived channels for an event.
+   */
+  getArchivedChannels: async (eventId: string): Promise<ChatThreadDto[]> => {
+    const response = await apiClient.get<ChatThreadDto[]>(
+      `/api/events/${eventId}/chat/channels/archived`
+    );
+    return response.data;
+  },
+
+  /**
+   * Restores an archived channel.
+   */
+  restoreChannel: async (
+    eventId: string,
+    channelId: string
+  ): Promise<ChatThreadDto> => {
+    const response = await apiClient.post<ChatThreadDto>(
+      `/api/events/${eventId}/chat/channels/${channelId}/restore`
+    );
+    return response.data;
+  },
+
+  /**
+   * Permanently deletes a channel (cannot be undone without SQL access).
+   */
+  permanentDeleteChannel: async (
+    eventId: string,
+    channelId: string
+  ): Promise<void> => {
+    await apiClient.delete(
+      `/api/events/${eventId}/chat/channels/${channelId}/permanent`
+    );
+  },
+
+  /**
+   * Archives all messages in a channel.
+   * @returns Number of messages archived.
+   */
+  archiveAllMessages: async (
+    eventId: string,
+    channelId: string
+  ): Promise<number> => {
+    const response = await apiClient.post<{ archivedCount: number }>(
+      `/api/events/${eventId}/chat/channels/${channelId}/archive-messages`
+    );
+    return response.data.archivedCount;
+  },
+
+  /**
+   * Archives messages older than specified days in a channel.
+   * @returns Number of messages archived.
+   */
+  archiveMessagesOlderThan: async (
+    eventId: string,
+    channelId: string,
+    days: number
+  ): Promise<number> => {
+    const response = await apiClient.post<{ archivedCount: number }>(
+      `/api/events/${eventId}/chat/channels/${channelId}/archive-messages-older-than?days=${days}`
+    );
+    return response.data.archivedCount;
   },
 
   // ===== Legacy Thread API =====

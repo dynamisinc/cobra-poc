@@ -46,7 +46,7 @@ import {
   faExternalLinkAlt,
   faInfoCircle,
 } from '@fortawesome/free-solid-svg-icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useEvents } from '../../../shared/events';
 import { EventChat } from '../components/EventChat';
@@ -56,7 +56,7 @@ import CobraStyles from '../../../theme/CobraStyles';
 import { CobraPrimaryButton } from '../../../theme/styledComponents';
 import { useTheme, Theme } from '@mui/material/styles';
 import type { ChatThreadDto, ExternalChannelMappingDto } from '../types/chat';
-import { ChannelType, ExternalPlatform, PlatformInfo } from '../types/chat';
+import { ChannelType, ExternalPlatform, PlatformInfo, isChannelType } from '../types/chat';
 
 /**
  * Get icon for channel based on type
@@ -99,7 +99,7 @@ const getChannelColor = (channel: ChatThreadDto, theme: Theme) => {
     return channel.color;
   }
 
-  if (channel.channelType === ChannelType.External && channel.externalChannel) {
+  if (isChannelType(channel.channelType, ChannelType.External) && channel.externalChannel) {
     const platformKey = channel.externalChannel.platform as ExternalPlatform;
     const platformInfo = PlatformInfo[platformKey];
     if (platformInfo) {
@@ -107,17 +107,17 @@ const getChannelColor = (channel: ChatThreadDto, theme: Theme) => {
     }
   }
 
-  switch (channel.channelType) {
-    case ChannelType.Internal:
-      return theme.palette.primary.main;
-    case ChannelType.Announcements:
-      return theme.palette.warning.main;
-    case ChannelType.Position:
-      return theme.palette.info.main;
-    case ChannelType.Custom:
-    default:
-      return theme.palette.text.secondary;
+  if (isChannelType(channel.channelType, ChannelType.Internal)) {
+    return theme.palette.primary.main;
   }
+  if (isChannelType(channel.channelType, ChannelType.Announcements)) {
+    return theme.palette.warning.main;
+  }
+  if (isChannelType(channel.channelType, ChannelType.Position)) {
+    return theme.palette.info.main;
+  }
+  // Custom or default
+  return theme.palette.text.secondary;
 };
 
 /**
@@ -125,13 +125,17 @@ const getChannelColor = (channel: ChatThreadDto, theme: Theme) => {
  */
 export const ChatPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const { currentEvent, loading: eventLoading } = useEvents();
   const { isConfigured: externalMessagingConfigured } = useExternalMessagingConfig();
 
+  // Get channel ID from URL query parameter if present
+  const channelFromUrl = searchParams.get('channel');
+
   // Channel state
   const [channels, setChannels] = useState<ChatThreadDto[]>([]);
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(channelFromUrl);
   const [channelsLoading, setChannelsLoading] = useState(true);
   const [channelsError, setChannelsError] = useState<string | null>(null);
 
@@ -153,9 +157,15 @@ export const ChatPage: React.FC = () => {
       setChannels(channelsData);
       setExternalChannels(externalData);
 
-      // Select first channel by default
-      if (channelsData.length > 0 && !selectedChannelId) {
-        setSelectedChannelId(channelsData[0].id);
+      // Select channel from URL or default to first channel
+      if (channelsData.length > 0) {
+        if (channelFromUrl && channelsData.some((c) => c.id === channelFromUrl)) {
+          // Channel from URL exists, keep it selected
+          setSelectedChannelId(channelFromUrl);
+        } else if (!selectedChannelId) {
+          // No channel selected, default to first
+          setSelectedChannelId(channelsData[0].id);
+        }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load channels';
@@ -164,7 +174,7 @@ export const ChatPage: React.FC = () => {
     } finally {
       setChannelsLoading(false);
     }
-  }, [currentEvent, selectedChannelId]);
+  }, [currentEvent, selectedChannelId, channelFromUrl]);
 
   useEffect(() => {
     loadChannels();
@@ -179,9 +189,11 @@ export const ChatPage: React.FC = () => {
   // Get selected channel
   const selectedChannel = channels.find((c) => c.id === selectedChannelId) || null;
 
-  // Handle tab change
+  // Handle tab change - also update URL
   const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
     setSelectedChannelId(newValue);
+    // Update URL with selected channel (replace to avoid history pollution)
+    setSearchParams({ channel: newValue }, { replace: true });
   };
 
   // Get active external channels
@@ -262,8 +274,21 @@ export const ChatPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth={false} disableGutters>
-      <Stack spacing={2} padding={CobraStyles.Padding.MainWindow}>
+    <Container
+      maxWidth={false}
+      disableGutters
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        overflow: 'hidden',
+      }}
+    >
+      <Stack
+        spacing={2}
+        padding={CobraStyles.Padding.MainWindow}
+        sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      >
         {/* Info Banner - subtle gray with good contrast */}
         <Box
           sx={{
@@ -288,7 +313,7 @@ export const ChatPage: React.FC = () => {
         </Box>
 
         {/* Channel Tabs and Actions Row */}
-        <Box sx={{ maxWidth: 900 }}>
+        <Box sx={{ maxWidth: 900, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <Box
             sx={{
               display: 'flex',

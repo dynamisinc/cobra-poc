@@ -3,7 +3,7 @@
 > **Last Updated:** 2025-12-03
 > **Status:** Active
 > **Scope:** Checklist tool specific features
-> **Version:** 3.0.0 - Added CHK-XX story prefixes, new import/integration stories
+> **Version:** 2.1.0 - Aligned scoring algorithm with implementation, added Future-5 smart suggestion enhancements
 
 ## Overview
 
@@ -11,7 +11,6 @@ This document contains user stories specific to the **Checklist Tool**. For plat
 
 - [Core Platform User Stories](../Core/USER-STORIES.md) - Authentication, permissions, observability
 - [Core Platform NFRs](../Core/NFR.md) - Performance, accessibility, security standards
-- [Checklist Roadmap](./CHECKLIST_ROADMAP.md) - Medium-term, long-term, and future vision stories
 
 ### Cross-References to Core Platform
 
@@ -19,8 +18,8 @@ The following features are defined at the platform level and extended by this to
 
 | Core Story | Checklist Extension |
 |------------|---------------------|
-| Core-1: Role-Based Permissions | CHK-2.6 adds ownership-based archive permission for Contributors |
-| Core-2: Profile Management | Used for position context in smart suggestions (CHK-1.7) |
+| Core-1: Role-Based Permissions | Story 2.6 adds ownership-based archive permission for Contributors |
+| Core-2: Profile Management | Used for position context in smart suggestions (Story 1.7) |
 | Core-4: Readonly Visual Indicators | Applied to checklist items, buttons, and forms |
 | Core-5: Application Insights | Checklist events: `ChecklistCreated`, `ItemCompleted`, `TemplateCreated` |
 | Core-9: Demo Seed Data | 3 sample templates (Safety, ICS Forms, Logistics) |
@@ -40,32 +39,9 @@ Navigation items visible by role:
 
 ---
 
-## Story Prefix Convention
+## Epic: Checklist Template Management
 
-All checklist stories use the **CHK-X.Y** prefix where:
-- **X** = Epic number (1-12+)
-- **Y** = Story number within epic
-
-| Epic | Name | Stories |
-|------|------|---------|
-| 1 | Template Management | CHK-1.1 - CHK-1.9 |
-| 2 | Instance Management | CHK-2.0 - CHK-2.7 |
-| 3 | Item Interaction | CHK-3.1 - CHK-3.7 |
-| 4 | Permissions & Access | CHK-4.1 - CHK-4.4 |
-| 5 | Analytics & Reporting | CHK-5.1 - CHK-5.3 |
-| 6 | Integration & Context | CHK-6.1 - CHK-6.6 |
-| 7 | User Experience | CHK-7.1 - CHK-7.6 |
-| 8 | Advanced Features | CHK-8.1 - CHK-8.6 |
-| 9 | Performance & Technical | CHK-9.1 - CHK-9.3 |
-| 10 | Administration | CHK-10.1 - CHK-10.3 |
-| 11 | Import & Migration | CHK-11.1 - CHK-11.3 |
-| 12 | COBRA Deep Integration | CHK-12.1 - CHK-12.5 |
-
----
-
-## Epic 1: Checklist Template Management
-
-### CHK-1.1: Create Checklist Template
+### Story 1.1: Create Checklist Template
 **As a** COBRA administrator  
 **I want to** create reusable checklist templates  
 **So that** operational teams can quickly instantiate standardized checklists for common incident types
@@ -108,7 +84,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-1.2: Edit Existing Template
+### Story 1.2: Edit Existing Template
 **As a** COBRA administrator  
 **I want to** modify existing checklist templates  
 **So that** I can improve templates based on operational feedback
@@ -138,7 +114,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-1.3: View Template Library
+### Story 1.3: View Template Library
 **As a** COBRA user  
 **I want to** browse available checklist templates  
 **So that** I can find and instantiate the right template for my needs
@@ -169,7 +145,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-1.4: Duplicate Template
+### Story 1.4: Duplicate Template
 **As a** COBRA administrator  
 **I want to** duplicate an existing template  
 **So that** I can create variations without starting from scratch
@@ -195,7 +171,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-1.5: Archive Template
+### Story 1.5: Archive Template
 **As a** COBRA administrator  
 **I want to** archive obsolete templates  
 **So that** users don't see outdated templates but historical data is preserved
@@ -223,7 +199,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-1.6: Template Categories and Tags
+### Story 1.6: Template Categories and Tags
 **As a** COBRA administrator
 **I want to** organize templates with categories and tags
 **So that** users can quickly find relevant templates for their incident type
@@ -250,7 +226,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-1.7: Smart Template Suggestions
+### Story 1.7: Smart Template Suggestions
 **As a** COBRA operational user
 **I want to** see intelligent template recommendations based on my position and context
 **So that** I can quickly find the right template without searching through dozens of options
@@ -315,7 +291,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-1.8: Template Preview
+### Story 1.8: Template Preview
 **As a** COBRA operational user
 **I want to** preview a template's structure and items before creating a checklist from it
 **So that** I can verify it's the right template for my needs without creating an instance
@@ -350,7 +326,9 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-1.9: Item Library
+## Epic: Item Library Management
+
+### Story 1.9: Item Library
 **As a** COBRA administrator
 **I want to** maintain a library of reusable checklist items
 **So that** I can quickly build templates from pre-defined, standardized items
@@ -418,9 +396,9 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-## Epic 2: Checklist Instance Management
+## Epic: Checklist Instance Management
 
-### CHK-2.0: Quick Checklist Creation from My Checklists
+### Story 2.0: Quick Checklist Creation from My Checklists
 **As a** COBRA contributor or manager
 **I want to** quickly create a new checklist from the My Checklists page
 **So that** I don't have to navigate through multiple pages to start working
@@ -470,7 +448,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-2.1: Create Checklist Instance from Template
+### Story 2.1: Create Checklist Instance from Template
 **As a** COBRA operational user
 **I want to** create a checklist instance from a template
 **So that** I can track completion of required tasks during an incident
@@ -499,7 +477,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-2.2: Create Checklist Instance from Multiple Templates
+### Story 2.2: Create Checklist Instance from Multiple Templates
 **As a** COBRA operational user  
 **I want to** create a single checklist instance from multiple templates  
 **So that** I can combine related checklists (e.g., "Hurricane Response" + "Shelter Operations")
@@ -522,7 +500,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-2.3: View My Checklists
+### Story 2.3: View My Checklists
 **As a** COBRA operational user  
 **I want to** view all checklist instances assigned to me or my position  
 **So that** I can track my responsibilities
@@ -552,7 +530,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-2.4: View Checklist Instance Detail
+### Story 2.4: View Checklist Instance Detail
 **As a** COBRA operational user  
 **I want to** view all items in a checklist instance  
 **So that** I can see what needs to be completed
@@ -578,11 +556,11 @@ All checklist stories use the **CHK-X.Y** prefix where:
 **Implementation Status:** ✅ Complete
 - Frontend: ChecklistDetailPage.tsx with full item display and interaction
 - Backend: GET /api/checklists/{id}
-- All acceptance criteria met (real-time updates not yet implemented - see CHK-2.7)
+- All acceptance criteria met (real-time updates not yet implemented - see Story 2.7)
 
 ---
 
-### CHK-2.5: Clone Checklist Instance
+### Story 2.5: Clone Checklist Instance
 **As a** COBRA operational user  
 **I want to** clone an existing checklist instance  
 **So that** I can replicate checklists across operational periods or similar incidents
@@ -609,7 +587,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-2.6: Archive Checklist Instance
+### Story 2.6: Archive Checklist Instance
 **As a** COBRA operational user
 **I want to** archive completed checklist instances
 **So that** my active checklist view stays focused on current work
@@ -643,7 +621,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-2.7: Real-time Change Notifications
+### Story 2.7: Real-time Change Notifications
 **As a** COBRA operational user  
 **I want to** be notified when someone updates a checklist I'm not currently viewing  
 **So that** I stay aware of checklist progress
@@ -665,9 +643,9 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-## Epic 3: Checklist Item Interaction
+## Epic: Checklist Item Interaction
 
-### CHK-3.1: Complete Checkbox Item
+### Story 3.1: Complete Checkbox Item
 **As a** COBRA operational user  
 **I want to** mark checkbox items as complete  
 **So that** I can track task completion
@@ -692,11 +670,11 @@ All checklist stories use the **CHK-X.Y** prefix where:
 **Implementation Status:** ✅ Complete
 - Frontend: ChecklistDetailPage.tsx with checkbox toggle
 - Backend: PATCH /api/checklists/{checklistId}/items/{itemId}/completion
-- All acceptance criteria met (real-time broadcast not yet implemented - see CHK-2.7)
+- All acceptance criteria met (real-time broadcast not yet implemented - see Story 2.7)
 
 ---
 
-### CHK-3.2: Update Status Dropdown Item
+### Story 3.2: Update Status Dropdown Item
 **As a** COBRA operational user  
 **I want to** update status dropdown items  
 **So that** I can track task progress through multiple states
@@ -720,11 +698,11 @@ All checklist stories use the **CHK-X.Y** prefix where:
 **Implementation Status:** ✅ Complete
 - Frontend: ChecklistDetailPage.tsx with status dropdown
 - Backend: PATCH /api/checklists/{checklistId}/items/{itemId}/status
-- All acceptance criteria met (real-time broadcast not yet implemented - see CHK-2.7)
+- All acceptance criteria met (real-time broadcast not yet implemented - see Story 2.7)
 
 ---
 
-### CHK-3.3: Add Notes to Checklist Item
+### Story 3.3: Add Notes to Checklist Item
 **As a** COBRA operational user  
 **I want to** add notes or comments to checklist items  
 **So that** I can provide context or additional information
@@ -750,11 +728,11 @@ All checklist stories use the **CHK-X.Y** prefix where:
 **Implementation Status:** ✅ Complete
 - Frontend: ChecklistDetailPage.tsx with notes dialog
 - Backend: PATCH /api/checklists/{checklistId}/items/{itemId}/notes
-- All acceptance criteria met (real-time updates not yet implemented - see CHK-2.7)
+- All acceptance criteria met (real-time updates not yet implemented - see Story 2.7)
 
 ---
 
-### CHK-3.4: Bulk Complete Items
+### Story 3.4: Bulk Complete Items
 **As a** COBRA operational user  
 **I want to** mark multiple items complete at once  
 **So that** I can efficiently update checklists
@@ -779,7 +757,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-3.5: Reorder Checklist Items
+### Story 3.5: Reorder Checklist Items
 **As a** COBRA operational user with edit permissions  
 **I want to** reorder items in a checklist instance  
 **So that** I can organize items logically for current operations
@@ -802,7 +780,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-3.6: Item Dependencies
+### Story 3.6: Item Dependencies
 **As a** COBRA operational user  
 **I want to** see when items depend on completion of other items  
 **So that** I follow the correct sequence of operations
@@ -825,7 +803,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-3.7: Required Items
+### Story 3.7: Required Items
 **As a** COBRA administrator  
 **I want to** mark checklist items as required  
 **So that** critical tasks must be completed before closing checklist
@@ -847,12 +825,12 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-## Epic 4: Permissions and Position-Based Access
+## Epic: Permissions and Position-Based Access
 
 > **Note:** Core permission system stories (4.0, 4.0b) have been moved to [Core Platform User Stories](../Core/USER-STORIES.md).
 > This section contains **checklist-specific** permission extensions.
 
-### CHK-4.1: Position-Based Checklist Visibility
+### Story 4.1: Position-Based Checklist Visibility
 **As a** COBRA operational user  
 **I want to** see only checklists relevant to my current position  
 **So that** I'm not overwhelmed with irrelevant information
@@ -875,7 +853,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-4.2: Edit Permissions by Position
+### Story 4.2: Edit Permissions by Position
 **As a** COBRA administrator  
 **I want to** control which positions can edit specific checklist items  
 **So that** only authorized personnel modify critical information
@@ -897,7 +875,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-4.3: Delegate Checklist Item
+### Story 4.3: Delegate Checklist Item
 **As a** COBRA operational user  
 **I want to** assign specific checklist items to specific people  
 **So that** responsibilities are clearly distributed
@@ -921,7 +899,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-4.4: Read-Only Mode After Operational Period Close
+### Story 4.4: Read-Only Mode After Operational Period Close
 **As a** COBRA administrator  
 **I want to** automatically lock checklists when operational period closes  
 **So that** historical records remain unchanged
@@ -943,9 +921,9 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-## Epic 5: Analytics and Reporting
+## Epic: Analytics and Reporting
 
-### CHK-5.1: Checklist Progress Dashboard
+### Story 5.1: Checklist Progress Dashboard
 **As a** COBRA command staff  
 **I want to** view progress across all checklists in my incident  
 **So that** I can identify bottlenecks and ensure critical tasks complete on time
@@ -969,7 +947,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-5.2: Completion Trend Analysis
+### Story 5.2: Completion Trend Analysis
 **As a** COBRA planning section chief  
 **I want to** analyze historical checklist completion trends  
 **So that** I can improve future planning and resource allocation
@@ -992,7 +970,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-5.3: Position Workload Report
+### Story 5.3: Position Workload Report
 **As a** COBRA incident commander  
 **I want to** see checklist workload distribution across positions  
 **So that** I can balance responsibilities and prevent burnout
@@ -1014,9 +992,9 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-## Epic 6: Integration and Context
+## Epic: Integration and Context
 
-### CHK-6.1: Event Association Required
+### Story 6.1: Event Association Required
 **As a** COBRA system administrator  
 **I want to** require all checklist instances to associate with an event  
 **So that** audit trails maintain FEMA compliance
@@ -1038,7 +1016,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-6.2: Operational Period Association
+### Story 6.2: Operational Period Association
 **As a** COBRA operational user  
 **I want to** associate checklists with operational periods  
 **So that** I can organize checklists by time-based operational phases
@@ -1065,7 +1043,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-6.3: Link Checklist Item to Resource
+### Story 6.3: Link Checklist Item to Resource
 **As a** COBRA logistics section chief  
 **I want to** link checklist items to COBRA resources  
 **So that** I can track resource-related tasks
@@ -1088,7 +1066,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-6.4: Link Checklist Item to Logbook Entry
+### Story 6.4: Link Checklist Item to Logbook Entry
 **As a** COBRA operational user  
 **I want to** create logbook entries directly from checklist items  
 **So that** important completions are documented in the official logbook
@@ -1111,7 +1089,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-6.5: Auto-Create Checklists on Incident Type Change
+### Story 6.5: Auto-Create Checklists on Incident Type Change
 **As a** COBRA system administrator  
 **I want to** automatically create checklist instances when incident type changes  
 **So that** users don't forget critical checklists for specific incident types
@@ -1134,7 +1112,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-6.6: Export Checklist to IAP
+### Story 6.6: Export Checklist to IAP
 **As a** COBRA planning section chief  
 **I want to** export checklist status to Incident Action Plan format  
 **So that** checklist progress appears in official IAP documentation
@@ -1157,9 +1135,9 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-## Epic 7: User Experience Enhancements
+## Epic: User Experience Enhancements
 
-### CHK-7.1: Mobile-Optimized Checklist View
+### Story 7.1: Mobile-Optimized Checklist View
 **As a** COBRA field operations user
 **I want to** use checklists on mobile devices
 **So that** I can update checklists from the field without returning to command post
@@ -1183,7 +1161,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-7.1b: Mobile-Optimized Template Picker
+### Story 7.1b: Mobile-Optimized Template Picker
 **As a** COBRA field operations user
 **I want to** select templates using a mobile-native interface
 **So that** I can create checklists quickly from my phone or tablet
@@ -1244,7 +1222,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-7.2: Keyboard Shortcuts
+### Story 7.2: Keyboard Shortcuts
 **As a** COBRA console operator  
 **I want to** keyboard shortcuts for common checklist actions  
 **So that** I can work more efficiently
@@ -1269,7 +1247,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-7.3: Search Within Checklists
+### Story 7.3: Search Within Checklists
 **As a** COBRA operational user  
 **I want to** search for specific items across my checklists  
 **So that** I can quickly find tasks by keyword
@@ -1292,7 +1270,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-7.4: Print/PDF Export
+### Story 7.4: Print/PDF Export
 **As a** COBRA operational user  
 **I want to** print checklists or export to PDF  
 **So that** field teams can use paper copies during operations
@@ -1316,7 +1294,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-7.5: Checklist Templates from Existing Instance
+### Story 7.5: Checklist Templates from Existing Instance
 **As a** COBRA operational user  
 **I want to** create a template from an existing checklist instance  
 **So that** I can formalize ad-hoc checklists for future use
@@ -1338,7 +1316,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-7.6: Undo Recent Action
+### Story 7.6: Undo Recent Action
 **As a** COBRA operational user  
 **I want to** undo my last checklist action  
 **So that** I can correct mistakes without contacting an administrator
@@ -1361,9 +1339,9 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-## Epic 8: Advanced Features
+## Epic: Advanced Features
 
-### CHK-8.1: Recurring Checklist Auto-Creation
+### Story 8.1: Recurring Checklist Auto-Creation
 **As a** COBRA administrator  
 **I want to** automatically create checklists on a schedule  
 **So that** routine checklists (daily, per-shift) are created without manual intervention
@@ -1387,7 +1365,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-8.2: Conditional Items
+### Story 8.2: Conditional Items
 **As a** COBRA administrator  
 **I want to** show/hide checklist items based on other item values  
 **So that** checklists adapt dynamically to situation
@@ -1410,7 +1388,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-8.3: Checklist Item Due Dates
+### Story 8.3: Checklist Item Due Dates
 **As a** COBRA operational user  
 **I want to** assign due dates to checklist items  
 **So that** time-sensitive tasks are completed on schedule
@@ -1435,7 +1413,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-8.4: Priority Levels
+### Story 8.4: Priority Levels
 **As a** COBRA operational user  
 **I want to** assign priority levels to checklist items  
 **So that** critical tasks are completed first
@@ -1458,7 +1436,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-8.5: Attach Files to Items
+### Story 8.5: Attach Files to Items
 **As a** COBRA operational user  
 **I want to** attach files or photos to checklist items  
 **So that** I can provide supporting documentation
@@ -1484,7 +1462,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-8.6: Checklist Collaboration Chat
+### Story 8.6: Checklist Collaboration Chat
 **As a** COBRA operational user  
 **I want to** discuss checklist items with team members in real-time  
 **So that** we can coordinate without leaving the checklist interface
@@ -1510,9 +1488,9 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-## Epic 9: Performance and Technical
+## Epic: Performance and Technical
 
-### CHK-9.1: Offline Capability
+### Story 9.1: Offline Capability
 **As a** COBRA field operations user  
 **I want to** view and edit checklists while offline  
 **So that** I can work in areas without network connectivity
@@ -1537,7 +1515,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-9.2: Performance Optimization for Large Checklists
+### Story 9.2: Performance Optimization for Large Checklists
 **As a** COBRA system administrator  
 **I want** checklists to perform well even with 500+ items  
 **So that** users have responsive experience
@@ -1562,7 +1540,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-9.3: API Rate Limiting and Error Handling
+### Story 9.3: API Rate Limiting and Error Handling
 **As a** COBRA system administrator  
 **I want** proper API rate limiting and error handling  
 **So that** system remains stable under heavy load
@@ -1585,9 +1563,9 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-## Epic 10: Administration and Configuration
+## Epic: Administration and Configuration
 
-### CHK-10.1: System Settings for Checklist Module
+### Story 10.1: System Settings for Checklist Module
 **As a** COBRA system administrator  
 **I want to** configure checklist module settings  
 **So that** I can tune behavior for my organization
@@ -1613,7 +1591,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-10.2: Audit Log for All Checklist Actions
+### Story 10.2: Audit Log for All Checklist Actions
 **As a** COBRA compliance officer  
 **I want to** view complete audit trail of all checklist actions  
 **So that** I can meet FEMA documentation requirements
@@ -1636,7 +1614,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-10.3: Checklist Usage Analytics
+### Story 10.3: Checklist Usage Analytics
 **As a** COBRA system administrator  
 **I want to** view checklist usage statistics  
 **So that** I can understand adoption and optimize the system
@@ -1664,249 +1642,9 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-## Epic 11: Import and Migration
-
-### CHK-11.1: Import Checklist from Excel/CSV
-**As a** COBRA administrator  
-**I want to** import checklist items from Excel or CSV files  
-**So that** I can quickly migrate existing organizational checklists without manual re-entry
-
-**Acceptance Criteria:**
-- Upload Excel (.xlsx) or CSV file via drag-and-drop or file picker
-- Preview imported data with column mapping UI
-- Map columns to: Item Text, Item Type, Category/Section, Notes, Display Order
-- Auto-detect common column headers ("Task", "Action", "Step", "Description", "Checklist Item")
-- Validate import: required fields present, character limits, duplicates highlighted
-- Option to create new template or add items to existing template
-- Import summary shows: items imported, items skipped (with reasons), warnings
-- Undo import option within 5 minutes
-- Support common Excel structures:
-  - Single column lists
-  - Multi-column with metadata
-  - Merged cells (common in formatted checklists)
-  - Multiple sheets (select which sheet to import)
-
-**Technical Notes:**
-- Use SheetJS (xlsx) library for Excel parsing
-- Max file size: 5MB, max rows: 1000
-- API Endpoint: `POST /api/templates/import`
-- Store import history for audit
-- Consider background processing for large files
-
-**Adoption Likelihood:** Very High (95%)  
-**Story Points:** 5
-
----
-
-### CHK-11.2: Import from Word Document (Basic)
-**As a** COBRA administrator  
-**I want to** import checklist items from Word documents  
-**So that** I can migrate SOPs and procedures that exist in document format
-
-**Acceptance Criteria:**
-- Upload Word (.docx) file
-- Extract text content with structure recognition:
-  - Numbered lists → individual items with display order
-  - Bullet lists → individual items
-  - Checkbox symbols (☐, □, ○) → checkbox items
-  - Section headers → item categories/groups
-- Preview extracted items before import
-- User can:
-  - Accept/reject individual items
-  - Edit extracted text
-  - Merge/split items
-  - Add missed items manually
-- Import into new or existing template
-- Track import source in template metadata
-
-**Technical Notes:**
-- Use mammoth.js for Word document parsing
-- Focus on structure extraction, not AI interpretation
-- Max file size: 10MB
-- API Endpoint: `POST /api/templates/import/word`
-
-**Adoption Likelihood:** High (85%)  
-**Story Points:** 8
-
----
-
-### CHK-11.3: Cross-Event Template Availability
-**As a** COBRA multi-event user  
-**I want to** use templates across different events  
-**So that** I don't recreate the same checklists for each incident
-
-**Acceptance Criteria:**
-- Templates exist at organization level (not event-specific)
-- Creating instance associates with specific event
-- Template library shows all org templates regardless of current event
-- Template usage statistics show usage across all events
-- "Most used in events like this" smart suggestion based on event category
-- Template creator can optionally restrict to specific event types
-- Event-specific templates tagged with event category restrictions
-
-**Technical Notes:**
-- Verify current architecture supports org-level templates
-- Add EventCategoryRestrictions to template if needed
-- Update smart suggestions to leverage cross-event usage data
-
-**Adoption Likelihood:** High (85%)  
-**Story Points:** 3
-
-**Implementation Status:** 🟡 Partial - Architecture supports this, verify UX complete
-
----
-
-## Epic 12: COBRA Deep Integration
-
-### CHK-12.1: Link Checklist Item to C5 Attachments
-**As a** COBRA operational user  
-**I want to** link existing C5 attachments to specific checklist items  
-**So that** evidence and documentation is associated with the task that required it
-
-**Acceptance Criteria:**
-- "Link Attachment" button on each checklist item (icon: paperclip)
-- Opens C5 attachment browser filtered to current event
-- Can select one or multiple attachments to link
-- Linked attachments display as thumbnails/chips below item
-- Click attachment to open C5 attachment viewer
-- Can unlink attachment without deleting the attachment itself
-- Reverse view: from attachment detail, show linked checklist items
-- Links persist through checklist archive/restore
-- Different from CHK-8.5 (Attach Files): this links to EXISTING attachments, not uploading new files
-
-**Technical Notes:**
-- Many-to-many relationship: ChecklistItems ↔ Attachments
-- API: `POST /api/checklists/{id}/items/{itemId}/attachments/link`
-- Uses existing C5 attachment infrastructure
-- No file upload in checklist—just linking
-
-**Adoption Likelihood:** High (85%)  
-**Story Points:** 3
-
----
-
-### CHK-12.2: Reference Document Quick Links
-**As a** COBRA template administrator  
-**I want to** attach reference document links to template items  
-**So that** users can access SOPs, guides, and procedures directly from the checklist
-
-**Acceptance Criteria:**
-- Template editor: "Add Reference" button on each item
-- Link types supported:
-  - C5 Organization Files (browse and select)
-  - External URL (with validation)
-  - C5 Form reference (e.g., "See ICS-214")
-- Reference displays as icon + label below item text
-- Click reference to open document in new tab/modal
-- Multiple references per item (max 5)
-- References copy to instances created from template
-- Instance users can view but not edit references
-
-**Technical Notes:**
-- Store references as JSON array on TemplateItem
-- Reference schema: `{ type: 'orgFile' | 'url' | 'form', target: string, label: string }`
-- Validate URLs server-side
-- C5 org files require file picker integration
-
-**Adoption Likelihood:** High (80%)  
-**Story Points:** 5
-
----
-
-### CHK-12.3: Shift Handoff Summary
-**As an** incoming shift operator  
-**I want to** see a structured handoff summary when taking over checklists  
-**So that** I understand what's complete, what's in progress, and what needs immediate attention
-
-**Acceptance Criteria:**
-- "Generate Handoff Summary" action on checklist or from landing page
-- Summary includes:
-  - Checklist name, event, operational period
-  - Overall progress percentage
-  - Items completed this shift (with who/when)
-  - Items in progress (partial status, assigned to)
-  - Blocked items with notes
-  - Critical/overdue items highlighted
-  - Recent notes (last 4 hours)
-- Outgoing user can add "Handoff Notes" free-text field
-- Summary viewable as modal or exportable as PDF
-- Handoff notes timestamped and attributed
-- Previous handoff summaries archived and viewable
-- Follows I-PASS structure: Illness severity, Patient summary, Action list, Situation awareness, Synthesis
-
-**Technical Notes:**
-- Follows I-PASS handoff structure from healthcare research
-- API: `GET /api/checklists/{id}/handoff-summary`
-- Store handoff notes in separate HandoffNotes table
-- Consider operational period boundaries for "this shift" calculation
-
-**Adoption Likelihood:** Very High (90%)  
-**Story Points:** 5
-
----
-
-### CHK-12.4: Predictive Checklist Triggering
-**As a** COBRA system administrator  
-**I want** checklists to be suggested or auto-created based on event data and external triggers  
-**So that** operational teams are proactive rather than reactive
-
-**Acceptance Criteria:**
-- Configure triggers based on:
-  - Weather data integration (NWS alerts → hurricane prep checklist)
-  - Event escalation (severity increase → additional checklists)
-  - Time-based patterns (08:00 daily → shift briefing checklist)
-  - Operational period start (new op period → position-specific checklists)
-  - Event status changes (activation, demobilization phases)
-- Trigger creates notification: "Suggested: [Checklist] due to [trigger reason]"
-- User can accept (create checklist) or dismiss
-- Auto-create option for high-confidence triggers
-- Trigger history and effectiveness analytics
-- Duplicate prevention: don't suggest if instance already exists
-- Admin configuration UI for trigger rules
-
-**Technical Notes:**
-- Event-driven architecture for trigger evaluation
-- Integration with external data sources (NWS API, etc.)
-- Background job for periodic trigger evaluation
-- Store trigger rules in TriggerConfiguration table
-- Consider false positive management
-
-**Adoption Likelihood:** High (80%)  
-**Story Points:** 13
-
----
-
-### CHK-12.5: Suggest ICS Form Actions from Checklist
-**As a** COBRA planning section chief  
-**I want to** see suggestions for ICS forms that should be completed based on checklist progress  
-**So that** I don't miss required documentation
-
-**Acceptance Criteria:**
-- Analysis panel shows "Suggested Forms" based on:
-  - Checklist template category
-  - Completed items (e.g., "Briefing complete" suggests ICS-201 update)
-  - Current operational period status
-- Suggestions include:
-  - Form type (ICS-201, 202, 204, 214, etc.)
-  - Reason for suggestion
-  - "Create Form" action button
-- Creating form navigates to C5 forms module with context pre-filled
-- Dismissing suggestion logs it (don't show again for this instance)
-- Configurable: Admin can define item-to-form mappings in template
-
-**Technical Notes:**
-- Rule-based suggestions initially, AI-enhanced later
-- Configuration stored in template metadata
-- Integration with C5 forms API
-
-**Adoption Likelihood:** Medium (70%)  
-**Story Points:** 8
-
----
-
 ## Non-Functional Requirements
 
-### CHK-NFR-1: Accessibility (WCAG 2.1 AA Compliance)
+### NFR-1: Accessibility (WCAG 2.1 AA Compliance)
 **Requirement:** Checklist interface must be fully keyboard navigable and screen reader compatible
 
 **Acceptance Criteria:**
@@ -1922,7 +1660,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-NFR-2: Security and Authentication
+### NFR-2: Security and Authentication
 **Requirement:** All checklist operations must enforce proper authentication and authorization
 
 **Acceptance Criteria:**
@@ -1939,7 +1677,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-NFR-3: Performance Benchmarks
+### NFR-3: Performance Benchmarks
 **Requirement:** Checklist operations must meet performance targets
 
 **Acceptance Criteria:**
@@ -1955,7 +1693,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-NFR-4: Browser and Device Compatibility
+### NFR-4: Browser and Device Compatibility
 **Requirement:** Checklist interface must work across common browsers and devices
 
 **Acceptance Criteria:**
@@ -1970,7 +1708,7 @@ All checklist stories use the **CHK-X.Y** prefix where:
 
 ---
 
-### CHK-NFR-5: Data Backup and Recovery
+### NFR-5: Data Backup and Recovery
 **Requirement:** Checklist data must be backed up and recoverable
 
 **Acceptance Criteria:**
@@ -2198,7 +1936,7 @@ The following questions were identified during requirements gathering and need p
 
 ## Future Considerations (Beyond MVP)
 
-> See [CHECKLIST_ROADMAP.md](./CHECKLIST_ROADMAP.md) for detailed medium-term, long-term, and future vision stories.
+> Sourced from [SMART_SUGGESTIONS_AND_PERMISSIONS.md](./SMART_SUGGESTIONS_AND_PERMISSIONS.md) and product roadmap discussions.
 
 ### Future-1: Mobile Native App
 - Dedicated iOS/Android apps for better offline experience
@@ -2245,20 +1983,19 @@ The following questions were identified during requirements gathering and need p
 Your stated maximum capacity: 8 story points per sprint
 
 **Recommended MVP for Sprint 1-2:**
-- CHK-1.1 (5) + CHK-1.3 (3) = 8 points
-- CHK-2.1 (5) + CHK-2.3 (5) - 2 = 8 points
-- CHK-3.1 (3) + CHK-3.2 (3) + CHK-2.4 (5) - 3 = 8 points
+- Story 1.1 (5) + Story 1.3 (3) = 8 points
+- Story 2.1 (5) + Story 2.3 (5) - 2 = 8 points
+- Story 3.1 (3) + Story 3.2 (3) + Story 2.4 (5) - 3 = 8 points
 
 This gives you core template management, instance creation, and basic item interaction in 3 sprints (24 points).
 
 ---
 
-**Total Story Points (All Stories):** ~400 points  
-**Estimated Timeline at 8 pts/sprint:** ~50 sprints (~12.5 months assuming 2-week sprints)
+**Total Story Points (All Stories):** ~350 points  
+**Estimated Timeline at 8 pts/sprint:** ~44 sprints (~11 months assuming 2-week sprints)
 
 **Recommended Phased Approach:**
-- **Phase 1 (MVP):** CHK-1.1-1.3, CHK-2.1-2.4, CHK-3.1-3.2, CHK-6.1 = ~40 points (5 sprints)
-- **Phase 2 (Import & Integration):** CHK-11.1-11.3, CHK-12.1-12.3 = ~29 points (4 sprints)
-- **Phase 3 (Collaboration):** CHK-2.7, CHK-3.3-3.4, CHK-4.1-4.2 = ~35 points (4-5 sprints)
-- **Phase 4 (Advanced):** CHK-12.4-12.5, analytics, remaining features = ~80 points (10 sprints)
-- **Phase 5 (Polish):** NFRs, mobile optimization, remaining features = remainder
+- **Phase 1 (MVP):** Stories 1.1-1.3, 2.1-2.4, 3.1-3.2, 6.1 = ~40 points (5 sprints)
+- **Phase 2 (Collaboration):** Stories 2.7, 3.3-3.4, 4.1-4.2 = ~35 points (4-5 sprints)
+- **Phase 3 (Advanced):** Dependencies, analytics, integrations = ~80 points (10 sprints)
+- **Phase 4 (Polish):** NFRs, mobile optimization, remaining features = remainder

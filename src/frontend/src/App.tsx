@@ -44,7 +44,7 @@ import { ChatSidebarProvider } from "./tools/chat";
 
 // Pages - from shared/tools modules
 import { EventsListPage, EventLandingPage } from "./shared/events";
-import { ChatPage } from "./tools/chat";
+import { ChatPage, ChatAdminPage } from "./tools/chat";
 import { AdminPage } from "./admin/pages/AdminPage";
 
 // Pages - checklist tool
@@ -257,6 +257,18 @@ const ChatPageWrapper: React.FC = () => {
 };
 
 /**
+ * Chat Admin Page Wrapper
+ * Administration view for chat channels
+ */
+const ChatAdminPageWrapper: React.FC = () => {
+  return (
+    <AppLayout>
+      <ChatAdminPage />
+    </AppLayout>
+  );
+};
+
+/**
  * Analytics Page (Placeholder)
  */
 const AnalyticsPage: React.FC = () => {
@@ -348,8 +360,11 @@ function App() {
           {/* Admin Page (central administration hub) */}
           <Route path="/admin" element={<AdminPageWrapper />} />
 
-          {/* Chat Page (event chat with external platform integration) */}
-          <Route path="/chat" element={<ChatPageWrapper />} />
+          {/* Chat Tool Routes */}
+          {/* /chat - Admin view (channel management) */}
+          <Route path="/chat" element={<ChatAdminPageWrapper />} />
+          {/* /chat/dashboard - Normal chat experience */}
+          <Route path="/chat/dashboard" element={<ChatPageWrapper />} />
 
           {/* Legacy routes - redirect to new structure */}
           <Route

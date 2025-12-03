@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import * as signalR from '@microsoft/signalr';
-import type { ChatMessageDto, ExternalChannelMappingDto } from '../types/chat';
+import type { ChatMessageDto, ExternalChannelMappingDto, ChatThreadDto } from '../types/chat';
 
 /**
  * Connection state for UI display
@@ -14,6 +14,14 @@ export interface ChatHubHandlers {
   onReceiveChatMessage?: (message: ChatMessageDto) => void;
   onExternalChannelConnected?: (channel: ExternalChannelMappingDto) => void;
   onExternalChannelDisconnected?: (channelId: string) => void;
+  /** Called when a channel is created */
+  onChannelCreated?: (channel: ChatThreadDto) => void;
+  /** Called when a channel is archived */
+  onChannelArchived?: (channelId: string) => void;
+  /** Called when a channel is restored */
+  onChannelRestored?: (channel: ChatThreadDto) => void;
+  /** Called when a channel is permanently deleted */
+  onChannelDeleted?: (channelId: string) => void;
   /** Called when connection is restored after being lost - use to refresh data */
   onReconnected?: () => void;
 }
@@ -116,6 +124,26 @@ export const useChatHub = (handlers: ChatHubHandlers = {}) => {
     connection.on('ExternalChannelDisconnected', (channelId: string) => {
       console.log('[ChatHub] ExternalChannelDisconnected:', channelId);
       handlersRef.current.onExternalChannelDisconnected?.(channelId);
+    });
+
+    connection.on('ChannelCreated', (channel: ChatThreadDto) => {
+      console.log('[ChatHub] ChannelCreated:', channel);
+      handlersRef.current.onChannelCreated?.(channel);
+    });
+
+    connection.on('ChannelArchived', (channelId: string) => {
+      console.log('[ChatHub] ChannelArchived:', channelId);
+      handlersRef.current.onChannelArchived?.(channelId);
+    });
+
+    connection.on('ChannelRestored', (channel: ChatThreadDto) => {
+      console.log('[ChatHub] ChannelRestored:', channel);
+      handlersRef.current.onChannelRestored?.(channel);
+    });
+
+    connection.on('ChannelDeleted', (channelId: string) => {
+      console.log('[ChatHub] ChannelDeleted:', channelId);
+      handlersRef.current.onChannelDeleted?.(channelId);
     });
 
     // Connection lifecycle events from SignalR

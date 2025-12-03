@@ -35,13 +35,13 @@ public class ChannelService : IChannelService
     {
         var channels = await _dbContext.ChatThreads
             .Include(ct => ct.ExternalChannelMapping)
+            .Include(ct => ct.Messages.Where(m => m.IsActive))
             .Where(ct => ct.EventId == eventId && ct.IsActive)
             .OrderBy(ct => ct.DisplayOrder)
             .ThenBy(ct => ct.CreatedAt)
-            .Select(ct => MapToDto(ct))
             .ToListAsync();
 
-        return channels;
+        return channels.Select(MapToDto).ToList();
     }
 
     /// <inheritdoc />
@@ -49,11 +49,11 @@ public class ChannelService : IChannelService
     {
         var channel = await _dbContext.ChatThreads
             .Include(ct => ct.ExternalChannelMapping)
+            .Include(ct => ct.Messages.Where(m => m.IsActive))
             .Where(ct => ct.Id == channelId && ct.IsActive)
-            .Select(ct => MapToDto(ct))
             .FirstOrDefaultAsync();
 
-        return channel;
+        return channel != null ? MapToDto(channel) : null;
     }
 
     /// <inheritdoc />
@@ -239,11 +239,189 @@ public class ChannelService : IChannelService
         return true;
     }
 
+    /// <inheritdoc />
+    public async Task<List<ChatThreadDto>> GetAllEventChannelsAsync(Guid eventId, bool includeArchived = true)
+    {
+        var query = _dbContext.ChatThreads
+            .Include(ct => ct.ExternalChannelMapping)
+            .Include(ct => ct.Messages.Where(m => m.IsActive))
+            .Where(ct => ct.EventId == eventId);
+
+        if (!includeArchived)
+        {
+            query = query.Where(ct => ct.IsActive);
+        }
+
+        var channels = await query
+            .OrderBy(ct => ct.DisplayOrder)
+            .ThenBy(ct => ct.CreatedAt)
+            .ToListAsync();
+
+        return channels.Select(MapToDto).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<List<ChatThreadDto>> GetArchivedChannelsAsync(Guid eventId)
+    {
+        var channels = await _dbContext.ChatThreads
+            .Include(ct => ct.ExternalChannelMapping)
+            .Include(ct => ct.Messages.Where(m => m.IsActive))
+            .Where(ct => ct.EventId == eventId && !ct.IsActive)
+            // Exclude permanently deleted channels (those with [DELETED] prefix)
+            .Where(ct => !ct.Name.StartsWith("[DELETED]"))
+            .OrderBy(ct => ct.Name)
+            .ToListAsync();
+
+        return channels.Select(MapToDto).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<ChatThreadDto?> RestoreChannelAsync(Guid channelId)
+    {
+        var channel = await _dbContext.ChatThreads
+            .Include(ct => ct.ExternalChannelMapping)
+            .FirstOrDefaultAsync(ct => ct.Id == channelId && !ct.IsActive);
+
+        if (channel == null)
+        {
+            _logger.LogWarning("Cannot restore channel {ChannelId}: not found or not archived", channelId);
+            return null;
+        }
+
+        // Get max display order for this event to place restored channel at end
+        var maxOrder = await _dbContext.ChatThreads
+            .Where(ct => ct.EventId == channel.EventId && ct.IsActive)
+            .MaxAsync(ct => (int?)ct.DisplayOrder) ?? -1;
+
+        channel.IsActive = true;
+        channel.DisplayOrder = maxOrder + 1;
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Restored channel {ChannelId} '{Name}'", channelId, channel.Name);
+
+        return MapToDto(channel);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> PermanentDeleteChannelAsync(Guid channelId)
+    {
+        var userContext = GetUserContext();
+        var channel = await _dbContext.ChatThreads
+            .FirstOrDefaultAsync(ct => ct.Id == channelId);
+
+        if (channel == null)
+        {
+            return false;
+        }
+
+        // Cannot permanently delete default event channel
+        if (channel.IsDefaultEventThread)
+        {
+            _logger.LogWarning(
+                "Cannot permanently delete default event channel {ChannelId}",
+                channelId);
+            return false;
+        }
+
+        // Cannot permanently delete Announcements channel
+        if (channel.ChannelType == ChannelType.Announcements)
+        {
+            _logger.LogWarning(
+                "Cannot permanently delete Announcements channel {ChannelId}",
+                channelId);
+            return false;
+        }
+
+        // Mark as permanently deleted (set special flag or delete entirely)
+        // For audit compliance, we keep the record but mark it as removed from event
+        // This is a "logical" permanent delete - data remains for SQL recovery
+        channel.IsActive = false;
+        channel.Name = $"[DELETED] {channel.Name}";
+        channel.Description = $"Permanently deleted by {userContext.Email} at {DateTime.UtcNow:u}. Original description: {channel.Description}";
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Permanently deleted channel {ChannelId} by {User}",
+            channelId, userContext.Email);
+
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<int> ArchiveAllMessagesAsync(Guid channelId)
+    {
+        var messages = await _dbContext.ChatMessages
+            .Where(m => m.ChatThreadId == channelId && m.IsActive)
+            .ToListAsync();
+
+        if (messages.Count == 0)
+        {
+            return 0;
+        }
+
+        foreach (var message in messages)
+        {
+            message.IsActive = false;
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Archived {Count} messages in channel {ChannelId}",
+            messages.Count, channelId);
+
+        return messages.Count;
+    }
+
+    /// <inheritdoc />
+    public async Task<int> ArchiveMessagesOlderThanAsync(Guid channelId, int olderThanDays)
+    {
+        var cutoffDate = DateTime.UtcNow.AddDays(-olderThanDays);
+
+        var messages = await _dbContext.ChatMessages
+            .Where(m => m.ChatThreadId == channelId && m.IsActive && m.CreatedAt < cutoffDate)
+            .ToListAsync();
+
+        if (messages.Count == 0)
+        {
+            return 0;
+        }
+
+        foreach (var message in messages)
+        {
+            message.IsActive = false;
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Archived {Count} messages older than {Days} days in channel {ChannelId}",
+            messages.Count, olderThanDays, channelId);
+
+        return messages.Count;
+    }
+
+    /// <summary>
+    /// Ensures a DateTime is specified as UTC kind for proper JSON serialization.
+    /// EF Core retrieves DateTime from SQL Server without kind specified.
+    /// </summary>
+    private static DateTime SpecifyUtc(DateTime dateTime)
+    {
+        return DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+    }
+
     /// <summary>
     /// Maps a ChatThread entity to ChatThreadDto.
     /// </summary>
     private static ChatThreadDto MapToDto(ChatThread ct)
     {
+        // Get the last message (most recent by CreatedAt)
+        var lastMessage = ct.Messages?
+            .Where(m => m.IsActive)
+            .OrderByDescending(m => m.CreatedAt)
+            .FirstOrDefault();
+
         return new ChatThreadDto
         {
             Id = ct.Id,
@@ -257,7 +435,14 @@ public class ChannelService : IChannelService
             IconName = ct.IconName,
             Color = ct.Color,
             MessageCount = ct.Messages?.Count(m => m.IsActive) ?? 0,
-            CreatedAt = ct.CreatedAt,
+            CreatedAt = SpecifyUtc(ct.CreatedAt),
+            IsActive = ct.IsActive,
+            LastMessageAt = lastMessage != null ? SpecifyUtc(lastMessage.CreatedAt) : null,
+            LastMessageSender = lastMessage != null
+                ? (lastMessage.IsExternalMessage
+                    ? lastMessage.ExternalSenderName ?? lastMessage.SenderDisplayName
+                    : lastMessage.SenderDisplayName)
+                : null,
             ExternalChannel = ct.ExternalChannelMapping != null
                 ? new ExternalChannelMappingDto
                 {
@@ -269,7 +454,7 @@ public class ChannelService : IChannelService
                     ExternalGroupName = ct.ExternalChannelMapping.ExternalGroupName,
                     ShareUrl = ct.ExternalChannelMapping.ShareUrl,
                     IsActive = ct.ExternalChannelMapping.IsActive,
-                    CreatedAt = ct.ExternalChannelMapping.CreatedAt
+                    CreatedAt = SpecifyUtc(ct.ExternalChannelMapping.CreatedAt)
                 }
                 : null
         };

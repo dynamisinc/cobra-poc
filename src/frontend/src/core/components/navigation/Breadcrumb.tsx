@@ -144,9 +144,32 @@ const useAutoBreadcrumbs = (customLabel?: string): BreadcrumbItem[] => {
     return items;
   }
 
+  // Chat tool routes (follows same pattern as checklists)
+  if (pathParts[0] === "chat") {
+    items.push({ label: "Events", path: "/events" });
+    if (currentEvent) {
+      items.push({ label: currentEvent.name, path: `/events/${currentEvent.id}` });
+    }
+
+    // /chat - admin/management view
+    if (pathParts.length === 1) {
+      items.push({ label: "Chat" });
+      return items;
+    }
+
+    // /chat/dashboard - normal user experience
+    if (pathParts[1] === "dashboard") {
+      items.push({ label: "Chat", path: "/chat" });
+      items.push({ label: "Dashboard" });
+      return items;
+    }
+
+    items.push({ label: "Chat" });
+    return items;
+  }
+
   // Other placeholder tools
   const toolMap: Record<string, string> = {
-    chat: "Chat",
     map: "Map",
     "status-chart": "Status Chart",
     files: "Files",

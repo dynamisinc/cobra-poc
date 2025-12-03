@@ -22,6 +22,9 @@ import {
   IconButton,
   Tooltip,
   Badge,
+  Menu,
+  MenuItem,
+  ListItemIcon as MenuItemIcon,
 } from '@mui/material';
 import { useTheme, Theme } from '@mui/material/styles';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -33,11 +36,15 @@ import {
   faPlus,
   faHashtag,
   faUserGroup,
+  faEllipsisVertical,
+  faBoxArchive,
 } from '@fortawesome/free-solid-svg-icons';
 import { chatService } from '../services/chatService';
 import { useExternalMessagingConfig } from '../hooks/useExternalMessagingConfig';
 import type { ChatThreadDto } from '../types/chat';
-import { ChannelType, ExternalPlatform, PlatformInfo } from '../types/chat';
+import { ChannelType, ExternalPlatform, PlatformInfo, isChannelType } from '../types/chat';
+import { CreateChannelDialog } from './CreateChannelDialog';
+import { ArchiveChannelDialog } from './ArchiveChannelDialog';
 
 interface ChannelListProps {
   eventId: string;
@@ -92,7 +99,7 @@ const getChannelColor = (channel: ChatThreadDto, theme: Theme) => {
   }
 
   // External channels use platform colors
-  if (channel.channelType === ChannelType.External && channel.externalChannel) {
+  if (isChannelType(channel.channelType, ChannelType.External) && channel.externalChannel) {
     const platformKey = channel.externalChannel.platform as ExternalPlatform;
     const platformInfo = PlatformInfo[platformKey];
     if (platformInfo) {
@@ -101,17 +108,17 @@ const getChannelColor = (channel: ChatThreadDto, theme: Theme) => {
   }
 
   // Default colors by type
-  switch (channel.channelType) {
-    case ChannelType.Internal:
-      return theme.palette.primary.main;
-    case ChannelType.Announcements:
-      return theme.palette.warning.main;
-    case ChannelType.Position:
-      return theme.palette.info.main;
-    case ChannelType.Custom:
-    default:
-      return theme.palette.text.secondary;
+  if (isChannelType(channel.channelType, ChannelType.Internal)) {
+    return theme.palette.primary.main;
   }
+  if (isChannelType(channel.channelType, ChannelType.Announcements)) {
+    return theme.palette.warning.main;
+  }
+  if (isChannelType(channel.channelType, ChannelType.Position)) {
+    return theme.palette.info.main;
+  }
+  // Custom or default
+  return theme.palette.text.secondary;
 };
 
 export const ChannelList: React.FC<ChannelListProps> = ({
@@ -130,6 +137,10 @@ export const ChannelList: React.FC<ChannelListProps> = ({
     external: true,
     custom: false,
   });
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [channelToArchive, setChannelToArchive] = useState<ChatThreadDto | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ element: HTMLElement; channel: ChatThreadDto } | null>(null);
 
   // Load channels
   const loadChannels = useCallback(async () => {
@@ -141,7 +152,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load channels';
       setError(message);
-      console.error('Failed to load channels:', err);
+      console.error('[ChannelList] Failed to load channels:', err);
     } finally {
       setLoading(false);
     }
@@ -159,13 +170,61 @@ export const ChannelList: React.FC<ChannelListProps> = ({
     }));
   };
 
-  // Group channels by type
+  // Handle channel created - add to list and select it
+  const handleChannelCreated = (channel: ChatThreadDto) => {
+    setChannels((prev) => [...prev, channel]);
+    // Expand the custom section to show the new channel
+    setExpandedSections((prev) => ({ ...prev, custom: true }));
+    // Auto-select the new channel
+    onChannelSelect(channel);
+  };
+
+  // Handle channel archived - remove from list
+  const handleChannelArchived = (channelId: string) => {
+    setChannels((prev) => prev.filter((c) => c.id !== channelId));
+    // If the archived channel was selected, clear selection
+    if (selectedChannelId === channelId) {
+      // Select the first remaining channel if available
+      const remaining = channels.filter((c) => c.id !== channelId);
+      if (remaining.length > 0) {
+        onChannelSelect(remaining[0]);
+      }
+    }
+  };
+
+  // Menu handlers
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, channel: ChatThreadDto) => {
+    event.stopPropagation();
+    setMenuAnchor({ element: event.currentTarget, channel });
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+  };
+
+  const handleArchiveClick = () => {
+    if (menuAnchor) {
+      setChannelToArchive(menuAnchor.channel);
+      setArchiveDialogOpen(true);
+      handleMenuClose();
+    }
+  };
+
+  // Check if a channel can be archived (for menu display)
+  const canArchiveChannel = (channel: ChatThreadDto): boolean => {
+    if (channel.isDefaultEventThread) return false;
+    if (isChannelType(channel.channelType, ChannelType.External)) return false;
+    if (isChannelType(channel.channelType, ChannelType.Announcements)) return false;
+    return true;
+  };
+
+  // Group channels by type (using shared isChannelType helper for string/number enum handling)
   const internalChannels = channels.filter(
-    (c) => c.channelType === ChannelType.Internal || c.channelType === ChannelType.Announcements
+    (c) => isChannelType(c.channelType, ChannelType.Internal, ChannelType.Announcements)
   );
-  const externalChannels = channels.filter((c) => c.channelType === ChannelType.External);
+  const externalChannels = channels.filter((c) => isChannelType(c.channelType, ChannelType.External));
   const otherChannels = channels.filter(
-    (c) => c.channelType === ChannelType.Position || c.channelType === ChannelType.Custom
+    (c) => isChannelType(c.channelType, ChannelType.Position, ChannelType.Custom)
   );
 
   if (loading) {
@@ -197,6 +256,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
     const isSelected = channel.id === selectedChannelId;
     const icon = getChannelIcon(channel);
     const color = getChannelColor(channel, theme);
+    const showMenu = canArchiveChannel(channel);
 
     return (
       <ListItemButton
@@ -216,6 +276,9 @@ export const ChannelList: React.FC<ChannelListProps> = ({
           },
           '&:hover': {
             backgroundColor: theme.palette.action.hover,
+            '& .channel-menu-button': {
+              opacity: 1,
+            },
           },
         }}
       >
@@ -248,6 +311,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
             color="default"
             max={99}
             sx={{
+              mr: showMenu ? 0.5 : 0,
               '& .MuiBadge-badge': {
                 fontSize: 10,
                 height: 16,
@@ -257,6 +321,26 @@ export const ChannelList: React.FC<ChannelListProps> = ({
               },
             }}
           />
+        )}
+        {showMenu && (
+          <IconButton
+            className="channel-menu-button"
+            size="small"
+            onClick={(e) => handleMenuOpen(e, channel)}
+            sx={{
+              p: 0.5,
+              opacity: 0,
+              transition: 'opacity 0.15s',
+              '&:hover': {
+                backgroundColor: theme.palette.action.hover,
+              },
+            }}
+          >
+            <FontAwesomeIcon
+              icon={faEllipsisVertical}
+              style={{ fontSize: 12, color: theme.palette.text.secondary }}
+            />
+          </IconButton>
         )}
       </ListItemButton>
     );
@@ -313,7 +397,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
-                  // TODO: Open create channel dialog
+                  setCreateDialogOpen(true);
                 }}
                 sx={{ p: 0.5 }}
               >
@@ -351,7 +435,10 @@ export const ChannelList: React.FC<ChannelListProps> = ({
 
   return (
     <Box sx={{ py: 1 }}>
-      {renderSection('Channels', 'internal', internalChannels)}
+      {renderSection('Channels', 'internal', internalChannels, {
+        alwaysShow: true,
+        emptyMessage: 'No channels available',
+      })}
       {/* Only show External section if external messaging is configured by admin */}
       {externalMessagingConfigured &&
         renderSection('External', 'external', externalChannels, {
@@ -360,13 +447,67 @@ export const ChannelList: React.FC<ChannelListProps> = ({
         })}
       {renderSection('Groups', 'custom', otherChannels, { showAddButton: true })}
 
-      {channels.length === 0 && (
-        <Box sx={{ p: 2, textAlign: 'center' }}>
-          <Typography variant="body2" color="text.secondary">
-            No channels available
-          </Typography>
-        </Box>
-      )}
+
+      {/* Create Channel Dialog */}
+      <CreateChannelDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        eventId={eventId}
+        onChannelCreated={handleChannelCreated}
+      />
+
+      {/* Archive Channel Dialog */}
+      <ArchiveChannelDialog
+        open={archiveDialogOpen}
+        onClose={() => {
+          setArchiveDialogOpen(false);
+          setChannelToArchive(null);
+        }}
+        channel={channelToArchive}
+        eventId={eventId}
+        onChannelArchived={handleChannelArchived}
+      />
+
+      {/* Channel Context Menu */}
+      <Menu
+        anchorEl={menuAnchor?.element}
+        open={Boolean(menuAnchor)}
+        onClose={handleMenuClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        slotProps={{
+          paper: {
+            sx: {
+              minWidth: 150,
+              boxShadow: theme.shadows[4],
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={handleArchiveClick}
+          sx={{
+            color: theme.palette.warning.main,
+            '&:hover': {
+              backgroundColor: `${theme.palette.warning.main}10`,
+            },
+          }}
+        >
+          <MenuItemIcon sx={{ color: 'inherit', minWidth: 32 }}>
+            <FontAwesomeIcon icon={faBoxArchive} style={{ fontSize: 14 }} />
+          </MenuItemIcon>
+          <ListItemText
+            primary="Archive"
+            primaryTypographyProps={{ fontSize: 14 }}
+          />
+        </MenuItem>
+      </Menu>
     </Box>
   );
 };

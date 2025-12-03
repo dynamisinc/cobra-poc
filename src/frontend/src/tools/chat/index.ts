@@ -15,6 +15,7 @@ export { ChatSidebarProvider, useChatSidebar } from './contexts/ChatSidebarConte
 
 // Pages
 export { ChatPage } from './pages/ChatPage';
+export { ChatAdminPage } from './pages/ChatAdminPage';
 
 // Services
 export { chatService } from './services/chatService';

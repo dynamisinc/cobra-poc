@@ -29,7 +29,7 @@ import { getCurrentUser } from '../../../core/services/api';
 import { useChatHub } from '../hooks/useChatHub';
 import { usePermissions } from '../../../shared/hooks';
 import type { ChatMessageDto, ChatThreadDto } from '../types/chat';
-import { ChannelType } from '../types/chat';
+import { ChannelType, isChannelType } from '../types/chat';
 
 interface EventChatProps {
   eventId: string;
@@ -58,7 +58,7 @@ export const EventChat: React.FC<EventChatProps> = ({
   // Check if user can send messages based on channel type and permissions
   // Announcements channel requires Manage role, other channels allow all users
   const canSendMessages =
-    channelType === ChannelType.Announcements ? canPostToAnnouncements : true;
+    channelType && isChannelType(channelType, ChannelType.Announcements) ? canPostToAnnouncements : true;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -246,9 +246,8 @@ export const EventChat: React.FC<EventChatProps> = ({
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
-        minHeight: compact ? 0 : 500,
-        maxHeight: compact ? '100%' : 'calc(100vh - 200px)',
+        flex: 1,
+        minHeight: compact ? 0 : 300,
         border: compact ? 'none' : `1px solid ${theme.palette.divider}`,
         borderRadius: compact ? 0 : 1,
         overflow: 'hidden',
