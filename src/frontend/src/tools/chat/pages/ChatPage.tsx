@@ -21,11 +21,17 @@ import {
   Stack,
   CircularProgress,
   Alert,
-  Card,
-  CardContent,
   Tabs,
   Tab,
   Skeleton,
+  IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+  Chip,
+  Tooltip,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -34,15 +40,21 @@ import {
   faBullhorn,
   faHashtag,
   faUserGroup,
+  faEllipsisV,
+  faLink,
+  faLinkSlash,
+  faExternalLinkAlt,
+  faInfoCircle,
 } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useEvents } from '../../../shared/events';
 import { EventChat } from '../components/EventChat';
 import { chatService } from '../services/chatService';
 import CobraStyles from '../../../theme/CobraStyles';
 import { CobraPrimaryButton } from '../../../theme/styledComponents';
 import { useTheme, Theme } from '@mui/material/styles';
-import type { ChatThreadDto } from '../types/chat';
+import type { ChatThreadDto, ExternalChannelMappingDto } from '../types/chat';
 import { ChannelType, ExternalPlatform, PlatformInfo } from '../types/chat';
 
 /**
@@ -121,6 +133,10 @@ export const ChatPage: React.FC = () => {
   const [channelsLoading, setChannelsLoading] = useState(true);
   const [channelsError, setChannelsError] = useState<string | null>(null);
 
+  // External channels state
+  const [externalChannels, setExternalChannels] = useState<ExternalChannelMappingDto[]>([]);
+  const [channelMenuAnchor, setChannelMenuAnchor] = useState<null | HTMLElement>(null);
+
   // Load channels when event changes
   const loadChannels = useCallback(async () => {
     if (!currentEvent) return;
@@ -128,12 +144,16 @@ export const ChatPage: React.FC = () => {
     try {
       setChannelsLoading(true);
       setChannelsError(null);
-      const data = await chatService.getChannels(currentEvent.id);
-      setChannels(data);
+      const [channelsData, externalData] = await Promise.all([
+        chatService.getChannels(currentEvent.id),
+        chatService.getExternalChannels(currentEvent.id),
+      ]);
+      setChannels(channelsData);
+      setExternalChannels(externalData);
 
       // Select first channel by default
-      if (data.length > 0 && !selectedChannelId) {
-        setSelectedChannelId(data[0].id);
+      if (channelsData.length > 0 && !selectedChannelId) {
+        setSelectedChannelId(channelsData[0].id);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load channels';
@@ -160,6 +180,49 @@ export const ChatPage: React.FC = () => {
   // Handle tab change
   const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
     setSelectedChannelId(newValue);
+  };
+
+  // Get active external channels
+  const activeChannels = externalChannels.filter((c) => c.isActive);
+  const hasGroupMeChannel = activeChannels.some(
+    (c) => c.platform === ExternalPlatform.GroupMe
+  );
+
+  // Create GroupMe channel
+  const handleCreateGroupMeChannel = async () => {
+    if (!currentEvent) return;
+    setChannelMenuAnchor(null);
+    try {
+      const channel = await chatService.createExternalChannel(currentEvent.id, {
+        platform: ExternalPlatform.GroupMe,
+        customGroupName: currentEvent.name,
+      });
+      setExternalChannels((prev) => {
+        if (prev.some((c) => c.id === channel.id)) {
+          return prev;
+        }
+        return [...prev, channel];
+      });
+      // Reload channels to get the new external channel in the list
+      loadChannels();
+      toast.success('GroupMe channel connected! Share the link with external team members.');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to create GroupMe channel';
+      toast.error(errorMsg);
+    }
+  };
+
+  // Disconnect external channel
+  const handleDisconnectChannel = async (channelId: string) => {
+    if (!currentEvent) return;
+    try {
+      await chatService.deactivateExternalChannel(currentEvent.id, channelId);
+      setExternalChannels((prev) => prev.filter((c) => c.id !== channelId));
+      toast.success('External channel disconnected');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to disconnect channel';
+      toast.error(errorMsg);
+    }
   };
 
   if (eventLoading) {
@@ -198,112 +261,199 @@ export const ChatPage: React.FC = () => {
 
   return (
     <Container maxWidth={false} disableGutters>
-      <Stack spacing={3} padding={CobraStyles.Padding.MainWindow}>
-        {/* Page Header */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              backgroundColor: theme.palette.buttonPrimary.light,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <FontAwesomeIcon
-              icon={faComments}
-              size="lg"
-              style={{ color: theme.palette.buttonPrimary.main }}
-            />
-          </Box>
-          <Box>
-            <Typography variant="h5" fontWeight={600}>
-              Event Chat
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {currentEvent.name}
-            </Typography>
-          </Box>
-        </Box>
-
-        {/* Info Card */}
-        <Card
-          variant="outlined"
+      <Stack spacing={2} padding={CobraStyles.Padding.MainWindow}>
+        {/* Info Banner - subtle gray with good contrast */}
+        <Box
           sx={{
-            backgroundColor: theme.palette.info.light,
-            borderColor: theme.palette.info.main,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            px: 2,
+            py: 1,
+            backgroundColor: theme.palette.grey[100],
+            borderRadius: 1,
+            border: `1px solid ${theme.palette.grey[300]}`,
           }}
         >
-          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-            <Typography variant="body2">
-              Chat with your team in real-time. Connect external channels like GroupMe
-              to include field personnel who don't have access to COBRA.
-            </Typography>
-          </CardContent>
-        </Card>
+          <FontAwesomeIcon
+            icon={faInfoCircle}
+            style={{ color: theme.palette.text.secondary, fontSize: 14 }}
+          />
+          <Typography variant="body2" color="text.secondary">
+            Chat with your team in real-time. Connect external channels like GroupMe
+            to include field personnel who don't have access to COBRA.
+          </Typography>
+        </Box>
 
-        {/* Channel Tabs and Chat */}
+        {/* Channel Tabs and Actions Row */}
         <Box sx={{ maxWidth: 900 }}>
-          {/* Channel Tabs */}
-          {channelsLoading ? (
-            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} variant="rounded" width={120} height={36} />
-              ))}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              mb: 2,
+            }}
+          >
+            {/* Channel Tabs */}
+            <Box sx={{ flex: 1, borderBottom: 1, borderColor: 'divider' }}>
+              {channelsLoading ? (
+                <Box sx={{ display: 'flex', gap: 1, py: 1 }}>
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} variant="rounded" width={100} height={32} />
+                  ))}
+                </Box>
+              ) : channelsError ? null : channels.length > 0 ? (
+                <Tabs
+                  value={selectedChannelId || false}
+                  onChange={handleTabChange}
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  sx={{
+                    '& .MuiTab-root': {
+                      textTransform: 'none',
+                      minHeight: 42,
+                      fontWeight: 500,
+                    },
+                  }}
+                >
+                  {channels.map((channel) => {
+                    const icon = getChannelIcon(channel);
+                    const color = getChannelColor(channel, theme);
+                    const isSelected = channel.id === selectedChannelId;
+
+                    return (
+                      <Tab
+                        key={channel.id}
+                        value={channel.id}
+                        label={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <FontAwesomeIcon
+                              icon={icon}
+                              style={{
+                                fontSize: 14,
+                                color: isSelected ? color : theme.palette.text.secondary,
+                              }}
+                            />
+                            <span>{channel.name}</span>
+                          </Box>
+                        }
+                        sx={{
+                          '&.Mui-selected': {
+                            color: color,
+                          },
+                        }}
+                      />
+                    );
+                  })}
+                </Tabs>
+              ) : null}
             </Box>
-          ) : channelsError ? (
+
+            {/* External Channels & Menu */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+              {/* Connected channel chips */}
+              {activeChannels.map((channel) => {
+                const platformKey = channel.platform as ExternalPlatform;
+                const platformInfo = PlatformInfo[platformKey] || null;
+
+                return (
+                  <Chip
+                    key={channel.id}
+                    size="small"
+                    label={platformInfo?.name || channel.platform}
+                    onDelete={() => handleDisconnectChannel(channel.id)}
+                    deleteIcon={
+                      <Tooltip title="Disconnect channel">
+                        <span>
+                          <FontAwesomeIcon icon={faLinkSlash} style={{ fontSize: 10 }} />
+                        </span>
+                      </Tooltip>
+                    }
+                    sx={{
+                      backgroundColor: `${platformInfo?.color || '#666'}20`,
+                      color: platformInfo?.color || '#666',
+                      '& .MuiChip-deleteIcon': {
+                        color: 'inherit',
+                        opacity: 0.7,
+                        '&:hover': { opacity: 1 },
+                      },
+                    }}
+                    onClick={() => {
+                      if (channel.shareUrl) {
+                        window.open(channel.shareUrl, '_blank');
+                      }
+                    }}
+                    icon={
+                      channel.shareUrl ? (
+                        <FontAwesomeIcon icon={faExternalLinkAlt} style={{ fontSize: 10 }} />
+                      ) : undefined
+                    }
+                  />
+                );
+              })}
+
+              {/* Channel menu */}
+              <IconButton
+                size="small"
+                onClick={(e) => setChannelMenuAnchor(e.currentTarget)}
+              >
+                <FontAwesomeIcon icon={faEllipsisV} />
+              </IconButton>
+              <Menu
+                anchorEl={channelMenuAnchor}
+                open={Boolean(channelMenuAnchor)}
+                onClose={() => setChannelMenuAnchor(null)}
+              >
+                {!hasGroupMeChannel && (
+                  <MenuItem onClick={handleCreateGroupMeChannel}>
+                    <ListItemIcon>
+                      <FontAwesomeIcon icon={faLink} />
+                    </ListItemIcon>
+                    <ListItemText>Connect GroupMe</ListItemText>
+                  </MenuItem>
+                )}
+                {activeChannels.length > 0 && (
+                  <>
+                    <Divider />
+                    <MenuItem disabled>
+                      <Typography variant="caption" color="text.secondary">
+                        Connected Channels
+                      </Typography>
+                    </MenuItem>
+                    {activeChannels.map((channel) => (
+                      <MenuItem
+                        key={channel.id}
+                        onClick={() => handleDisconnectChannel(channel.id)}
+                      >
+                        <ListItemIcon>
+                          <FontAwesomeIcon icon={faLinkSlash} />
+                        </ListItemIcon>
+                        <ListItemText>Disconnect {channel.externalGroupName}</ListItemText>
+                      </MenuItem>
+                    ))}
+                  </>
+                )}
+                {!hasGroupMeChannel && activeChannels.length === 0 && (
+                  <MenuItem disabled>
+                    <Typography variant="caption" color="text.secondary">
+                      No external channels
+                    </Typography>
+                  </MenuItem>
+                )}
+              </Menu>
+            </Box>
+          </Box>
+
+          {/* Error state */}
+          {channelsError && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {channelsError}
             </Alert>
-          ) : channels.length > 0 ? (
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-              <Tabs
-                value={selectedChannelId || false}
-                onChange={handleTabChange}
-                variant="scrollable"
-                scrollButtons="auto"
-                sx={{
-                  '& .MuiTab-root': {
-                    textTransform: 'none',
-                    minHeight: 48,
-                    fontWeight: 500,
-                  },
-                }}
-              >
-                {channels.map((channel) => {
-                  const icon = getChannelIcon(channel);
-                  const color = getChannelColor(channel, theme);
-                  const isSelected = channel.id === selectedChannelId;
+          )}
 
-                  return (
-                    <Tab
-                      key={channel.id}
-                      value={channel.id}
-                      label={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <FontAwesomeIcon
-                            icon={icon}
-                            style={{
-                              fontSize: 14,
-                              color: isSelected ? color : theme.palette.text.secondary,
-                            }}
-                          />
-                          <span>{channel.name}</span>
-                        </Box>
-                      }
-                      sx={{
-                        '&.Mui-selected': {
-                          color: color,
-                        },
-                      }}
-                    />
-                  );
-                })}
-              </Tabs>
-            </Box>
-          ) : (
+          {/* No channels state */}
+          {!channelsLoading && !channelsError && channels.length === 0 && (
             <Alert severity="info" sx={{ mb: 2 }}>
               No channels available for this event.
             </Alert>
