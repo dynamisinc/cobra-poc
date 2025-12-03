@@ -47,6 +47,7 @@ import { useChatSidebar } from '../contexts/ChatSidebarContext';
 import { useEvents } from '../../../shared/events';
 import { EventChat } from './EventChat';
 import { ChannelList } from './ChannelList';
+import { TeamsChannelDialog } from './TeamsChannelDialog';
 import { chatService } from '../services/chatService';
 import { useExternalMessagingConfig } from '../hooks/useExternalMessagingConfig';
 import { useChatHub } from '../hooks/useChatHub';
@@ -63,7 +64,8 @@ export const ChatSidebar: React.FC = () => {
     width,
     setWidth,
   } = useChatSidebar();
-  const { isConfigured: externalMessagingConfigured } = useExternalMessagingConfig();
+  const externalMessagingConfig = useExternalMessagingConfig();
+  const { isConfigured: externalMessagingConfigured } = externalMessagingConfig;
   const { connectionState } = useChatHub();
 
   // Channel state
@@ -103,6 +105,12 @@ export const ChatSidebar: React.FC = () => {
   const hasGroupMeChannel = activeChannels.some(
     (c) => c.platform === ExternalPlatform.GroupMe
   );
+  const hasTeamsChannel = activeChannels.some(
+    (c) => c.platform === ExternalPlatform.Teams
+  );
+
+  // Teams dialog state
+  const [teamsDialogOpen, setTeamsDialogOpen] = useState(false);
 
   // Create GroupMe channel
   const handleCreateGroupMeChannel = async () => {
@@ -124,6 +132,24 @@ export const ChatSidebar: React.FC = () => {
       const errorMsg = err instanceof Error ? err.message : 'Failed to create GroupMe channel';
       toast.error(errorMsg);
     }
+  };
+
+  // Open Teams channel dialog
+  const handleOpenTeamsDialog = () => {
+    setChannelMenuAnchor(null);
+    setTeamsDialogOpen(true);
+  };
+
+  // Handle Teams channel connected (callback from dialog)
+  const handleTeamsChannelConnected = (channel: ExternalChannelMappingDto) => {
+    setExternalChannels((prev) => {
+      if (prev.some((c) => c.id === channel.id)) {
+        return prev;
+      }
+      return [...prev, channel];
+    });
+    setTeamsDialogOpen(false);
+    toast.success('Teams channel connected!');
   };
 
   // Disconnect external channel
@@ -353,12 +379,32 @@ export const ChatSidebar: React.FC = () => {
                 open={Boolean(channelMenuAnchor)}
                 onClose={() => setChannelMenuAnchor(null)}
               >
-                {!hasGroupMeChannel && (
+                {!hasGroupMeChannel && externalMessagingConfig.groupMe.isConfigured && (
                   <MenuItem onClick={handleCreateGroupMeChannel}>
                     <ListItemIcon>
                       <FontAwesomeIcon icon={faLink} />
                     </ListItemIcon>
                     <ListItemText>Connect GroupMe</ListItemText>
+                  </MenuItem>
+                )}
+                {!hasTeamsChannel && externalMessagingConfig.teams.isConfigured && (
+                  <MenuItem
+                    onClick={handleOpenTeamsDialog}
+                    disabled={!externalMessagingConfig.teams.isConnected}
+                  >
+                    <ListItemIcon>
+                      <FontAwesomeIcon icon={faLink} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary="Connect Teams"
+                      secondary={
+                        !externalMessagingConfig.teams.isConnected
+                          ? 'Bot not available'
+                          : externalMessagingConfig.teams.availableConversations === 0
+                            ? 'No channels available'
+                            : `${externalMessagingConfig.teams.availableConversations} channel(s)`
+                      }
+                    />
                   </MenuItem>
                 )}
                 {activeChannels.length > 0 && (
@@ -382,7 +428,7 @@ export const ChatSidebar: React.FC = () => {
                     ))}
                   </>
                 )}
-                {!hasGroupMeChannel && activeChannels.length === 0 && (
+                {!hasGroupMeChannel && !hasTeamsChannel && activeChannels.length === 0 && (
                   <MenuItem disabled>
                     <Typography variant="caption" color="text.secondary">
                       No external channels
@@ -487,6 +533,16 @@ export const ChatSidebar: React.FC = () => {
         >
           {width}px
         </Box>
+      )}
+
+      {/* Teams Channel Dialog */}
+      {currentEvent && (
+        <TeamsChannelDialog
+          open={teamsDialogOpen}
+          onClose={() => setTeamsDialogOpen(false)}
+          eventId={currentEvent.id}
+          onChannelConnected={handleTeamsChannelConnected}
+        />
       )}
     </Box>
   );

@@ -38,10 +38,13 @@ builder.Services.AddScoped<IEventService, EventService>();
 // Register chat services
 builder.Services.Configure<GroupMeSettings>(
     builder.Configuration.GetSection(GroupMeSettings.SectionName));
+builder.Services.Configure<TeamsBotSettings>(
+    builder.Configuration.GetSection(TeamsBotSettings.SectionName));
 builder.Services.AddHttpClient<IGroupMeApiClient, GroupMeApiClient>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+builder.Services.AddHttpClient(); // Generic HTTP client for Teams integration status checks
 builder.Services.AddScoped<IChatHubService, ChatHubService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<ChatService>(); // Concrete type for internal use
