@@ -72,8 +72,7 @@ namespace ChecklistAPI.Migrations
                 table: "ChatThreads",
                 column: "ExternalChannelMappingId",
                 principalTable: "ExternalChannelMappings",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.SetNull);
+                principalColumn: "Id");
         }
 
         /// <inheritdoc />

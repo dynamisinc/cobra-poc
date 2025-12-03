@@ -224,10 +224,11 @@ public class CobraDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Optional FK to ExternalChannelMapping for External channels
+            // Use NoAction to avoid multiple cascade paths (Event cascades to both ChatThread and ExternalChannelMapping)
             entity.HasOne(e => e.ExternalChannelMapping)
                 .WithMany()
                 .HasForeignKey(e => e.ExternalChannelMappingId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.NoAction);
 
             entity.HasIndex(e => new { e.EventId, e.IsDefaultEventThread });
             entity.HasIndex(e => new { e.EventId, e.ChannelType });

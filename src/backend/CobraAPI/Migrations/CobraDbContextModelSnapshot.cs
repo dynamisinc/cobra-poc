@@ -4,7 +4,6 @@ using CobraAPI.Core.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -12,11 +11,9 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ChecklistAPI.Migrations
 {
     [DbContext(typeof(CobraDbContext))]
-    [Migration("20251203001314_AddChannelTypeAndMetadata")]
-    partial class AddChannelTypeAndMetadata
+    partial class CobraDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -912,7 +909,7 @@ namespace ChecklistAPI.Migrations
                     b.HasOne("CobraAPI.Tools.Chat.Models.Entities.ExternalChannelMapping", "ExternalChannelMapping")
                         .WithMany()
                         .HasForeignKey("ExternalChannelMappingId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Event");
 
