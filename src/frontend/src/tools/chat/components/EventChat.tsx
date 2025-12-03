@@ -107,6 +107,11 @@ export const EventChat: React.FC<EventChatProps> = ({
     onReconnected: handleReconnected,
   });
 
+  // Debug: log connection state changes
+  useEffect(() => {
+    console.log('[EventChat] Connection state changed:', connectionState);
+  }, [connectionState]);
+
   // Scroll to bottom of messages
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

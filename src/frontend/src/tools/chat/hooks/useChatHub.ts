@@ -84,7 +84,7 @@ export const useChatHub = (handlers: ChatHubHandlers = {}) => {
 
     // Connection lifecycle events
     connection.onreconnecting((error) => {
-      console.warn('[ChatHub] Reconnecting...', error);
+      console.warn('[ChatHub] Reconnecting... Setting state to reconnecting', error);
       setConnectionState('reconnecting');
     });
 
@@ -96,11 +96,34 @@ export const useChatHub = (handlers: ChatHubHandlers = {}) => {
     });
 
     connection.onclose((error) => {
+      // onclose fires when connection is fully terminated
+      // If withAutomaticReconnect is configured and retries haven't exhausted,
+      // onreconnecting should fire before this. But if reconnect fails during
+      // negotiation (e.g., network offline), onclose may fire without onreconnecting.
+      console.warn('[ChatHub] Connection closed. Setting state to disconnected', error);
       setConnectionState('disconnected');
       if (hasConnectedOnceRef.current && error) {
-        console.error('[ChatHub] Connection closed:', error);
+        console.error('[ChatHub] Connection closed with error:', error);
       }
     });
+
+    // Also listen for the internal reconnecting state via connection state
+    // This handles edge cases where onreconnecting doesn't fire
+    const checkConnectionState = () => {
+      const state = connection.state;
+      if (state === signalR.HubConnectionState.Reconnecting) {
+        setConnectionState('reconnecting');
+      } else if (state === signalR.HubConnectionState.Connected) {
+        setConnectionState('connected');
+      } else if (state === signalR.HubConnectionState.Disconnected) {
+        setConnectionState('disconnected');
+      } else if (state === signalR.HubConnectionState.Connecting) {
+        setConnectionState('connecting');
+      }
+    };
+
+    // Poll connection state as a fallback (SignalR callbacks can be unreliable)
+    const stateCheckInterval = setInterval(checkConnectionState, 1000);
 
     setConnectionState('connecting');
 
@@ -125,6 +148,9 @@ export const useChatHub = (handlers: ChatHubHandlers = {}) => {
 
     // Cleanup on unmount
     return () => {
+      // Clear the state polling interval
+      clearInterval(stateCheckInterval);
+
       // Reset refs so React Strict Mode remount can create a new connection
       isConnectingRef.current = false;
       connectionRef.current = null;
