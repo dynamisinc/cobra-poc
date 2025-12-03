@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>CobraAPI.TeamsBot</RootNamespace>
+    <AssemblyName>CobraAPI.TeamsBot</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Bot Framework SDK v4 -->
+    <PackageReference Include="Microsoft.Bot.Builder" Version="4.22.9" />
+    <PackageReference Include="Microsoft.Bot.Builder.Integration.AspNet.Core" Version="4.22.9" />
+
+    <!-- Teams-specific extensions -->
+    <PackageReference Include="Microsoft.Bot.Connector" Version="4.22.9" />
+
+    <!-- Configuration and DI -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+
+    <!-- Logging -->
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
+
+    <!-- Swagger for API documentation -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+  </ItemGroup>
+
+</Project>
