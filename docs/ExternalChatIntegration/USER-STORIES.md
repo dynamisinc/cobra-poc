@@ -278,13 +278,15 @@
 - [ ] Unread message count badge per channel
 - [x] Sidebar can be collapsed/hidden
 - [x] Sidebar width persists during session (ChatSidebarContext)
+- [x] External section and menu hidden if no external messaging platforms configured by admin
 
-**Dependencies:** UC-001, UC-009
+**Dependencies:** UC-001, UC-009, UC-022 (external platforms must be configured)
 
 **Implementation Notes:**
 - ChatSidebar.tsx: Resizable sidebar with channel list navigation
 - ChannelList.tsx: Accordion-style channel sections (Channels, External, Groups)
 - EventChat.tsx: Message display and compose for selected channel
+- useExternalMessagingConfig.ts: Hook to check if external platforms are configured
 
 ---
 
@@ -330,13 +332,15 @@
 - [ ] Load earlier messages via pagination/infinite scroll
 - [ ] Unread indicators on inactive tabs
 - [x] Navigation back to other event pages
+- [x] External channel menu and chips hidden if no external messaging platforms configured by admin
 
-**Dependencies:** UC-012
+**Dependencies:** UC-012, UC-022 (external platforms must be configured)
 
 **Implementation Notes:**
 - ChatPage.tsx: Full-page view with channel tabs using MUI Tabs component
 - Reuses EventChat.tsx for message display in each tab
 - Automatically selects first channel when page loads
+- Uses useExternalMessagingConfig hook to conditionally show external features
 
 ---
 

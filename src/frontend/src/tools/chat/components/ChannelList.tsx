@@ -35,6 +35,7 @@ import {
   faUserGroup,
 } from '@fortawesome/free-solid-svg-icons';
 import { chatService } from '../services/chatService';
+import { useExternalMessagingConfig } from '../hooks/useExternalMessagingConfig';
 import type { ChatThreadDto } from '../types/chat';
 import { ChannelType, ExternalPlatform, PlatformInfo } from '../types/chat';
 
@@ -120,6 +121,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   compact = false,
 }) => {
   const theme = useTheme();
+  const { isConfigured: externalMessagingConfigured } = useExternalMessagingConfig();
   const [channels, setChannels] = useState<ChatThreadDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -350,10 +352,12 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   return (
     <Box sx={{ py: 1 }}>
       {renderSection('Channels', 'internal', internalChannels)}
-      {renderSection('External', 'external', externalChannels, {
-        alwaysShow: true,
-        emptyMessage: 'No external channels connected',
-      })}
+      {/* Only show External section if external messaging is configured by admin */}
+      {externalMessagingConfigured &&
+        renderSection('External', 'external', externalChannels, {
+          alwaysShow: true,
+          emptyMessage: 'No external channels connected',
+        })}
       {renderSection('Groups', 'custom', otherChannels, { showAddButton: true })}
 
       {channels.length === 0 && (
