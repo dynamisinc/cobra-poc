@@ -83,7 +83,14 @@
       "Bash(git merge:*)",
       "Bash(git branch:*)",
       "Bash(git stash:*)",
-      "Bash(dotnet ef dbcontext:*)"
+      "Bash(dotnet ef dbcontext:*)",
+      "Bash(gh label:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue comment:*)",
+      "Bash(gh issue close:*)",
+      "Bash(mkdir:*)",
+      "Bash(Select-String -Pattern \"(error|warning)\")",
+      "Bash(Select-Object -First 20)"
     ],
     "deny": [],
     "ask": []
