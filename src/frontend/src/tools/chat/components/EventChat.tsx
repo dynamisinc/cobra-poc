@@ -136,8 +136,9 @@ export const EventChat: React.FC<EventChatProps> = ({
     setSending(true);
 
     try {
-      const sentMessage = await chatService.sendMessage(eventId, thread.id, messageText);
-      setMessages((prev) => [...prev, sentMessage]);
+      // Send the message - don't add to state here since SignalR will broadcast it back
+      // This prevents double-messages when both API response and SignalR arrive
+      await chatService.sendMessage(eventId, thread.id, messageText);
       scrollToBottom();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to send message';
