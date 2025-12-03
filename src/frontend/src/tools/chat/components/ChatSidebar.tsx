@@ -38,6 +38,8 @@ import {
   faLink,
   faLinkSlash,
   faExternalLinkAlt,
+  faWifi,
+  faExclamationTriangle,
 } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -47,6 +49,7 @@ import { EventChat } from './EventChat';
 import { ChannelList } from './ChannelList';
 import { chatService } from '../services/chatService';
 import { useExternalMessagingConfig } from '../hooks/useExternalMessagingConfig';
+import { useChatHub } from '../hooks/useChatHub';
 import type { ChatThreadDto, ExternalChannelMappingDto } from '../types/chat';
 import { ExternalPlatform, PlatformInfo } from '../types/chat';
 
@@ -61,6 +64,7 @@ export const ChatSidebar: React.FC = () => {
     setWidth,
   } = useChatSidebar();
   const { isConfigured: externalMessagingConfigured } = useExternalMessagingConfig();
+  const { connectionState } = useChatHub();
 
   // Channel state
   const [selectedChannel, setSelectedChannel] = useState<ChatThreadDto | null>(null);
@@ -271,6 +275,35 @@ export const ChatSidebar: React.FC = () => {
           >
             {showChannelList ? 'Event Chat' : selectedChannel?.name || 'Chat'}
           </Typography>
+          {/* Connection status indicator */}
+          {connectionState !== 'connected' && (
+            <Tooltip
+              title={
+                connectionState === 'reconnecting'
+                  ? 'Reconnecting to real-time updates...'
+                  : connectionState === 'connecting'
+                    ? 'Connecting...'
+                    : 'Disconnected - messages may be delayed'
+              }
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  color:
+                    connectionState === 'reconnecting'
+                      ? theme.palette.warning.main
+                      : theme.palette.error.main,
+                }}
+              >
+                <FontAwesomeIcon
+                  icon={connectionState === 'reconnecting' ? faWifi : faExclamationTriangle}
+                  style={{ fontSize: 10 }}
+                />
+              </Box>
+            </Tooltip>
+          )}
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           {/* Connected channel chips - only show if external messaging is configured */}
