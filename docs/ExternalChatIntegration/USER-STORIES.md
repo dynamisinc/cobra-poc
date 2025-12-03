@@ -25,9 +25,9 @@
 - [x] When a new event is created, an "Announcements" channel is automatically created
 - [x] Internal channel is accessible to all COBRA users with event access
 - [x] Internal channel messages never bridge to external platforms (ChannelType.Internal)
-- [ ] Announcements channel is read-only for standard users (UI enforcement pending)
-- [ ] Announcements channel is writable only by users with Manage permissions (UI enforcement pending)
-- [ ] Both channels appear in the sidebar accordion and full-page channel tabs (UI pending)
+- [x] Announcements channel is read-only for standard users (shows "This channel is read-only")
+- [ ] Announcements channel is writable only by users with Manage permissions (role-based check pending)
+- [x] Both channels appear in the sidebar accordion and full-page channel tabs
 - [x] Channel creation is logged for verification
 
 **Dependencies:** None
@@ -651,7 +651,7 @@
 
 | Story | Title | Notes |
 |-------|-------|-------|
-| UC-001 | Auto-Create Default Channels | Backend complete: "Event Chat" (Internal) and "Announcements" channels created on event creation. UI enforcement for announcements permissions pending. |
+| UC-001 | Auto-Create Default Channels | Complete: Backend auto-creates channels on event creation. Frontend ChannelList component displays channels in sidebar accordion. Announcements channel shows read-only message. Role-based write permission pending. |
 | UC-005 | Create GroupMe Channel | Create new GroupMe group for event. Includes duplicate prevention and reconnect support. |
 | UC-007 | Disconnect External Channel | Deactivate channel (soft delete). Reconnecting reactivates the same GroupMe group. |
 | UC-009 | Receive External Messages | Webhook receives GroupMe messages and displays in COBRA via SignalR real-time. |
@@ -687,9 +687,15 @@
 - `src/backend/CobraAPI/Core/Data/CobraDbContext.cs` - Added ChatThread channel field configurations
 - `src/backend/CobraAPI/Program.cs` - Registered IChannelService
 
+**Frontend Files Created:**
+- `src/frontend/src/tools/chat/components/ChannelList.tsx` - Accordion-style channel list with sections for Internal, External, and Custom channels
+
 **Frontend Files Modified:**
 - `src/frontend/src/tools/chat/types/chat.ts` - Extended ChatThreadDto, added CreateChannelRequest/UpdateChannelRequest interfaces
 - `src/frontend/src/tools/chat/services/chatService.ts` - Added 6 channel API methods
+- `src/frontend/src/tools/chat/components/ChatSidebar.tsx` - Added channel list view with channel selection and back navigation
+- `src/frontend/src/tools/chat/components/EventChat.tsx` - Added channelId/channelType props, read-only check for Announcements
+- `src/frontend/src/tools/chat/components/index.ts` - Export ChannelList component
 
 **Key Implementation Notes:**
 - Default channels created: "Event Chat" (Internal, DisplayOrder=0, icon=comments) and "Announcements" (Announcements type, DisplayOrder=1, icon=bullhorn)
