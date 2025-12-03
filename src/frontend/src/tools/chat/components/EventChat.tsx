@@ -39,6 +39,7 @@ import { ChatMessage } from './ChatMessage';
 import { chatService } from '../services/chatService';
 import { getCurrentUser } from '../../../core/services/api';
 import { useChatHub } from '../hooks/useChatHub';
+import { usePermissions } from '../../../shared/hooks';
 import type {
   ChatMessageDto,
   ChatThreadDto,
@@ -69,10 +70,12 @@ export const EventChat: React.FC<EventChatProps> = ({
 }) => {
   const theme = useTheme();
   const currentUser = getCurrentUser();
+  const { canPostToAnnouncements } = usePermissions();
 
-  // Check if user can send messages (announcements channel is read-only for non-admin users)
-  // TODO: Implement proper permission check based on user roles
-  const canSendMessages = channelType !== ChannelType.Announcements;
+  // Check if user can send messages based on channel type and permissions
+  // Announcements channel requires Manage role, other channels allow all users
+  const canSendMessages =
+    channelType === ChannelType.Announcements ? canPostToAnnouncements : true;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 

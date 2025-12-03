@@ -26,7 +26,7 @@
 - [x] Internal channel is accessible to all COBRA users with event access
 - [x] Internal channel messages never bridge to external platforms (ChannelType.Internal)
 - [x] Announcements channel is read-only for standard users (shows "This channel is read-only")
-- [ ] Announcements channel is writable only by users with Manage permissions (role-based check pending)
+- [x] Announcements channel is writable only by users with Manage permissions (canPostToAnnouncements permission)
 - [x] Both channels appear in the sidebar accordion and full-page channel tabs
 - [x] Channel creation is logged for verification
 
@@ -268,18 +268,23 @@
 **So that** I can monitor and participate in communications without leaving my current page
 
 **Acceptance Criteria:**
-- [ ] Chat sidebar is accessible from main navigation or event header
-- [ ] Each channel is displayed as an expandable accordion section
-- [ ] Expanding a channel shows recent messages and compose input
-- [ ] Compose input is contextual - sending goes to the expanded channel
-- [ ] Internal channels display without platform indicator
-- [ ] External channels display platform icon (e.g., GroupMe icon)
-- [ ] Announcements channel shows visual indicator of broadcast behavior
+- [x] Chat sidebar is accessible from main navigation or event header
+- [x] Each channel is displayed as an expandable accordion section
+- [x] Expanding a channel shows recent messages and compose input
+- [x] Compose input is contextual - sending goes to the expanded channel
+- [x] Internal channels display without platform indicator
+- [x] External channels display platform icon (e.g., GroupMe icon)
+- [x] Announcements channel shows visual indicator (bullhorn icon)
 - [ ] Unread message count badge per channel
-- [ ] Sidebar can be collapsed/hidden
-- [ ] Sidebar state persists during session
+- [x] Sidebar can be collapsed/hidden
+- [x] Sidebar width persists during session (ChatSidebarContext)
 
 **Dependencies:** UC-001, UC-009
+
+**Implementation Notes:**
+- ChatSidebar.tsx: Resizable sidebar with channel list navigation
+- ChannelList.tsx: Accordion-style channel sections (Channels, External, Groups)
+- EventChat.tsx: Message display and compose for selected channel
 
 ---
 
@@ -316,17 +321,22 @@
 **So that** I can focus on communications during active incidents
 
 **Acceptance Criteria:**
-- [ ] Dedicated route/page for event chat (e.g., /events/{id}/chat)
-- [ ] Channels displayed as tabs across the top
-- [ ] Tab icons indicate channel type (internal, external platform, announcements)
-- [ ] Active tab shows full message history with compose input
-- [ ] Compose input sends to the active tab's channel
+- [x] Dedicated route/page for event chat (/chat)
+- [x] Channels displayed as tabs across the top
+- [x] Tab icons indicate channel type (internal, external platform, announcements)
+- [x] Active tab shows full message history with compose input
+- [x] Compose input sends to the active tab's channel
 - [ ] Unified view available as a tab option
 - [ ] Load earlier messages via pagination/infinite scroll
 - [ ] Unread indicators on inactive tabs
-- [ ] Navigation back to other event pages
+- [x] Navigation back to other event pages
 
 **Dependencies:** UC-012
+
+**Implementation Notes:**
+- ChatPage.tsx: Full-page view with channel tabs using MUI Tabs component
+- Reuses EventChat.tsx for message display in each tab
+- Automatically selects first channel when page loads
 
 ---
 
