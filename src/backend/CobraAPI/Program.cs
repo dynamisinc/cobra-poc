@@ -40,6 +40,7 @@ builder.Services.AddHttpClient<IGroupMeApiClient, GroupMeApiClient>(client =>
 builder.Services.AddScoped<IChatHubService, ChatHubService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<ChatService>(); // Concrete type for internal use
+builder.Services.AddScoped<IChannelService, ChannelService>();
 builder.Services.AddScoped<IExternalMessagingService, ExternalMessagingService>();
 
 // Register system settings service

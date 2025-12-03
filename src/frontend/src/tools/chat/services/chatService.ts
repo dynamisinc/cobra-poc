@@ -12,14 +12,93 @@ import type {
   ExternalChannelMappingDto,
   SendMessageRequest,
   CreateExternalChannelRequest,
+  CreateChannelRequest,
+  UpdateChannelRequest,
 } from '../types/chat';
 
 /**
  * Chat API service
  */
 export const chatService = {
+  // ===== Channel API =====
+
+  /**
+   * Gets all channels for an event.
+   */
+  getChannels: async (eventId: string): Promise<ChatThreadDto[]> => {
+    const response = await apiClient.get<ChatThreadDto[]>(
+      `/api/events/${eventId}/chat/channels`
+    );
+    return response.data;
+  },
+
+  /**
+   * Gets a specific channel by ID.
+   */
+  getChannel: async (
+    eventId: string,
+    channelId: string
+  ): Promise<ChatThreadDto> => {
+    const response = await apiClient.get<ChatThreadDto>(
+      `/api/events/${eventId}/chat/channels/${channelId}`
+    );
+    return response.data;
+  },
+
+  /**
+   * Creates a new channel in an event.
+   */
+  createChannel: async (
+    eventId: string,
+    request: Omit<CreateChannelRequest, 'eventId'>
+  ): Promise<ChatThreadDto> => {
+    const response = await apiClient.post<ChatThreadDto>(
+      `/api/events/${eventId}/chat/channels`,
+      request
+    );
+    return response.data;
+  },
+
+  /**
+   * Updates a channel's metadata.
+   */
+  updateChannel: async (
+    eventId: string,
+    channelId: string,
+    request: UpdateChannelRequest
+  ): Promise<ChatThreadDto> => {
+    const response = await apiClient.patch<ChatThreadDto>(
+      `/api/events/${eventId}/chat/channels/${channelId}`,
+      request
+    );
+    return response.data;
+  },
+
+  /**
+   * Reorders channels within an event.
+   */
+  reorderChannels: async (
+    eventId: string,
+    orderedChannelIds: string[]
+  ): Promise<void> => {
+    await apiClient.put(
+      `/api/events/${eventId}/chat/channels/reorder`,
+      orderedChannelIds
+    );
+  },
+
+  /**
+   * Deletes a channel (soft delete).
+   */
+  deleteChannel: async (eventId: string, channelId: string): Promise<void> => {
+    await apiClient.delete(`/api/events/${eventId}/chat/channels/${channelId}`);
+  },
+
+  // ===== Legacy Thread API =====
+
   /**
    * Gets or creates the default chat thread for an event.
+   * @deprecated Use getChannels instead
    */
   getEventChatThread: async (eventId: string): Promise<ChatThreadDto> => {
     const response = await apiClient.get<ChatThreadDto>(

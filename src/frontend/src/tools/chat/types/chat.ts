@@ -39,15 +39,24 @@ export interface ChatMessageDto {
 }
 
 /**
- * Chat thread summary information.
+ * Chat thread/channel summary information.
+ * Extended with channel type and metadata for multi-channel support.
  */
 export interface ChatThreadDto {
   id: string;
   eventId: string;
   name: string;
+  description?: string;
+  channelType: ChannelType;
+  channelTypeName: string;
   isDefaultEventThread: boolean;
+  displayOrder: number;
+  iconName?: string;
+  color?: string;
   messageCount: number;
   createdAt: string;
+  /** For External channels, the linked external channel details */
+  externalChannel?: ExternalChannelMappingDto;
 }
 
 /**
@@ -120,20 +129,20 @@ export const PlatformInfo: Record<ExternalPlatform, PlatformDisplayInfo> = {
 };
 
 /**
- * Channel types for future extensibility.
+ * Channel types matching backend enum.
  * Supports internal COBRA channels, external platforms, and custom groups.
  */
 export enum ChannelType {
   /** Default internal COBRA channel */
-  Internal = 'internal',
+  Internal = 0,
   /** Announcements channel (read-only for most users) */
-  Announcements = 'announcements',
+  Announcements = 1,
   /** External platform integration (GroupMe, Teams, etc.) */
-  External = 'external',
+  External = 2,
   /** Position-based channel (e.g., "Logistics", "Operations") */
-  Position = 'position',
+  Position = 3,
   /** Custom named group */
-  Custom = 'custom',
+  Custom = 4,
 }
 
 /**
@@ -171,4 +180,26 @@ export interface SendMessageRequest {
 export interface CreateExternalChannelRequest {
   platform: ExternalPlatform;
   customGroupName?: string;
+}
+
+/**
+ * Request payload for creating a new channel.
+ */
+export interface CreateChannelRequest {
+  eventId: string;
+  name: string;
+  description?: string;
+  channelType: ChannelType;
+  iconName?: string;
+  color?: string;
+}
+
+/**
+ * Request payload for updating a channel.
+ */
+export interface UpdateChannelRequest {
+  name?: string;
+  description?: string;
+  iconName?: string;
+  color?: string;
 }

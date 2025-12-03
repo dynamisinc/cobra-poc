@@ -21,14 +21,14 @@
 **So that** my team has immediate, organized communication infrastructure
 
 **Acceptance Criteria:**
-- [ ] When a new event is created, an "Internal" channel is automatically created
-- [ ] When a new event is created, an "Announcements" channel is automatically created
-- [ ] Internal channel is accessible to all COBRA users with event access
-- [ ] Internal channel messages never bridge to external platforms
-- [ ] Announcements channel is read-only for standard users
-- [ ] Announcements channel is writable only by users with Manage permissions
-- [ ] Both channels appear in the sidebar accordion and full-page channel tabs
-- [ ] Channel creation is logged for verification
+- [x] When a new event is created, an "Internal" channel is automatically created
+- [x] When a new event is created, an "Announcements" channel is automatically created
+- [x] Internal channel is accessible to all COBRA users with event access
+- [x] Internal channel messages never bridge to external platforms (ChannelType.Internal)
+- [ ] Announcements channel is read-only for standard users (UI enforcement pending)
+- [ ] Announcements channel is writable only by users with Manage permissions (UI enforcement pending)
+- [ ] Both channels appear in the sidebar accordion and full-page channel tabs (UI pending)
+- [x] Channel creation is logged for verification
 
 **Dependencies:** None
 
@@ -651,6 +651,7 @@
 
 | Story | Title | Notes |
 |-------|-------|-------|
+| UC-001 | Auto-Create Default Channels | Backend complete: "Event Chat" (Internal) and "Announcements" channels created on event creation. UI enforcement for announcements permissions pending. |
 | UC-005 | Create GroupMe Channel | Create new GroupMe group for event. Includes duplicate prevention and reconnect support. |
 | UC-007 | Disconnect External Channel | Deactivate channel (soft delete). Reconnecting reactivates the same GroupMe group. |
 | UC-009 | Receive External Messages | Webhook receives GroupMe messages and displays in COBRA via SignalR real-time. |
@@ -670,6 +671,31 @@
 | - | - | - |
 
 ### Implementation Details
+
+#### Channel Architecture (UC-001)
+
+**Backend Files Created:**
+- `src/backend/CobraAPI/Tools/Chat/Services/IChannelService.cs` - Interface for channel management operations
+- `src/backend/CobraAPI/Tools/Chat/Services/ChannelService.cs` - Full implementation with CRUD operations
+- `src/backend/CobraAPI/Tools/Chat/Models/Entities/ChannelType.cs` - Enum: Internal, Announcements, External, Position, Custom
+
+**Backend Files Modified:**
+- `src/backend/CobraAPI/Tools/Chat/Models/Entities/ChatThread.cs` - Added channel fields (ChannelType, Description, DisplayOrder, IconName, Color, ExternalChannelMappingId)
+- `src/backend/CobraAPI/Tools/Chat/Models/DTOs/ChatDTOs.cs` - Added UpdateChannelRequest DTO, extended ChatThreadDto
+- `src/backend/CobraAPI/Tools/Chat/Controllers/ChatController.cs` - Added 6 channel endpoints (CRUD + reorder)
+- `src/backend/CobraAPI/Shared/Events/Services/EventService.cs` - Calls CreateDefaultChannelsAsync after event creation
+- `src/backend/CobraAPI/Core/Data/CobraDbContext.cs` - Added ChatThread channel field configurations
+- `src/backend/CobraAPI/Program.cs` - Registered IChannelService
+
+**Frontend Files Modified:**
+- `src/frontend/src/tools/chat/types/chat.ts` - Extended ChatThreadDto, added CreateChannelRequest/UpdateChannelRequest interfaces
+- `src/frontend/src/tools/chat/services/chatService.ts` - Added 6 channel API methods
+
+**Key Implementation Notes:**
+- Default channels created: "Event Chat" (Internal, DisplayOrder=0, icon=comments) and "Announcements" (Announcements type, DisplayOrder=1, icon=bullhorn)
+- ChannelType enum values: Internal=0, Announcements=1, External=2, Position=3, Custom=4
+- DeleteChannelAsync prevents deletion of default event channel (IsDefaultEventThread=true) and External channels
+- ReorderChannelsAsync updates DisplayOrder based on ordered list of channel IDs
 
 #### GroupMe Integration (UC-005, UC-007, UC-009, UC-010, UC-022, UC-023, UC-024)
 

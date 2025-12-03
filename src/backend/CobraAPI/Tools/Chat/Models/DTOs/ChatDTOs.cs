@@ -21,16 +21,40 @@ public class ChatMessageDto
 }
 
 /// <summary>
-/// Chat thread summary information.
+/// Chat channel summary information.
 /// </summary>
 public class ChatThreadDto
 {
     public Guid Id { get; set; }
     public Guid EventId { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public ChannelType ChannelType { get; set; }
+    public string ChannelTypeName { get; set; } = string.Empty;
     public bool IsDefaultEventThread { get; set; }
+    public int DisplayOrder { get; set; }
+    public string? IconName { get; set; }
+    public string? Color { get; set; }
     public int MessageCount { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// For External channels, the linked external channel details.
+    /// </summary>
+    public ExternalChannelMappingDto? ExternalChannel { get; set; }
+}
+
+/// <summary>
+/// Request to create a new channel.
+/// </summary>
+public class CreateChannelRequest
+{
+    public Guid EventId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public ChannelType ChannelType { get; set; } = ChannelType.Custom;
+    public string? IconName { get; set; }
+    public string? Color { get; set; }
 }
 
 /// <summary>
@@ -57,6 +81,17 @@ public class ExternalChannelMappingDto
     public string? ShareUrl { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>
+/// Request to update a channel.
+/// </summary>
+public class UpdateChannelRequest
+{
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public string? IconName { get; set; }
+    public string? Color { get; set; }
 }
 
 /// <summary>

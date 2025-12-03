@@ -4,25 +4,133 @@ namespace CobraAPI.Tools.Chat.Controllers;
 
 /// <summary>
 /// API controller for chat operations.
-/// Provides endpoints for sending messages, retrieving messages, and managing external channels.
+/// Provides endpoints for sending messages, retrieving messages, and managing channels.
 /// </summary>
 [ApiController]
 [Route("api/events/{eventId:guid}/chat")]
 public class ChatController : ControllerBase
 {
     private readonly IChatService _chatService;
+    private readonly IChannelService _channelService;
     private readonly IExternalMessagingService _externalMessagingService;
     private readonly ILogger<ChatController> _logger;
 
     public ChatController(
         IChatService chatService,
+        IChannelService channelService,
         IExternalMessagingService externalMessagingService,
         ILogger<ChatController> logger)
     {
         _chatService = chatService;
+        _channelService = channelService;
         _externalMessagingService = externalMessagingService;
         _logger = logger;
     }
+
+    #region Channels
+
+    /// <summary>
+    /// Gets all channels for an event.
+    /// </summary>
+    [HttpGet("channels")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<ChatThreadDto>>> GetChannels(Guid eventId)
+    {
+        var channels = await _channelService.GetEventChannelsAsync(eventId);
+        return Ok(channels);
+    }
+
+    /// <summary>
+    /// Gets a specific channel by ID.
+    /// </summary>
+    [HttpGet("channels/{channelId:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ChatThreadDto>> GetChannel(Guid eventId, Guid channelId)
+    {
+        var channel = await _channelService.GetChannelAsync(channelId);
+        if (channel == null)
+        {
+            return NotFound("Channel not found");
+        }
+        return Ok(channel);
+    }
+
+    /// <summary>
+    /// Creates a new channel in an event.
+    /// </summary>
+    [HttpPost("channels")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ChatThreadDto>> CreateChannel(
+        Guid eventId,
+        [FromBody] CreateChannelRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return BadRequest("Channel name is required");
+        }
+
+        request.EventId = eventId;
+        var channel = await _channelService.CreateChannelAsync(request);
+
+        return CreatedAtAction(
+            nameof(GetChannel),
+            new { eventId, channelId = channel.Id },
+            channel);
+    }
+
+    /// <summary>
+    /// Updates a channel's metadata.
+    /// </summary>
+    [HttpPatch("channels/{channelId:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ChatThreadDto>> UpdateChannel(
+        Guid eventId,
+        Guid channelId,
+        [FromBody] UpdateChannelRequest request)
+    {
+        var channel = await _channelService.UpdateChannelAsync(channelId, request);
+        if (channel == null)
+        {
+            return NotFound("Channel not found");
+        }
+        return Ok(channel);
+    }
+
+    /// <summary>
+    /// Reorders channels within an event.
+    /// </summary>
+    [HttpPut("channels/reorder")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<ActionResult> ReorderChannels(
+        Guid eventId,
+        [FromBody] List<Guid> orderedChannelIds)
+    {
+        await _channelService.ReorderChannelsAsync(eventId, orderedChannelIds);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Deletes a channel (soft delete).
+    /// Cannot delete the default event channel or external channels.
+    /// </summary>
+    [HttpDelete("channels/{channelId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> DeleteChannel(Guid eventId, Guid channelId)
+    {
+        var result = await _channelService.DeleteChannelAsync(channelId);
+        if (!result)
+        {
+            return BadRequest("Cannot delete this channel. It may be a default or external channel.");
+        }
+        return NoContent();
+    }
+
+    #endregion
 
     /// <summary>
     /// Gets or creates the default chat thread for an event.
