@@ -50,6 +50,7 @@ import {
   SettingCategory,
   SettingCategoryNames,
   GroupMeIntegrationStatus,
+  TeamsIntegrationStatus,
 } from '../types/systemSettings';
 
 // Category icons
@@ -245,11 +246,16 @@ const SettingRow: React.FC<SettingRowProps> = ({ setting, onSave, onToggle, savi
 /**
  * GroupMe Integration Status Card
  * Displays read-only webhook configuration from server appsettings
+ * and editable GroupMe settings from the database
  */
 const GroupMeStatusCard: React.FC<{
   status: GroupMeIntegrationStatus | null;
   loading: boolean;
-}> = ({ status, loading }) => {
+  settings: SystemSettingDto[];
+  onSave: (key: string, value: string) => Promise<void>;
+  onToggle: (key: string) => Promise<void>;
+  saving: boolean;
+}> = ({ status, loading, settings, onSave, onToggle, saving }) => {
   const theme = useTheme();
 
   const handleCopyUrl = (url: string, label: string) => {
@@ -434,6 +440,224 @@ const GroupMeStatusCard: React.FC<{
                 </Tooltip>
               </Box>
             </Box>
+
+            {/* GroupMe Database Settings */}
+            {settings.length > 0 && (
+              <Box sx={{ mt: 3, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ display: 'block', mb: 1.5 }}>
+                  GroupMe Settings
+                </Typography>
+                {settings.map((setting) => (
+                  <SettingRow
+                    key={setting.id}
+                    setting={setting}
+                    onSave={onSave}
+                    onToggle={onToggle}
+                    saving={saving}
+                  />
+                ))}
+              </Box>
+            )}
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
+
+/**
+ * Teams Integration Status Card
+ * Displays connection status to the TeamsBot service
+ */
+const TeamsStatusCard: React.FC<{
+  status: TeamsIntegrationStatus | null;
+  loading: boolean;
+}> = ({ status, loading }) => {
+  const theme = useTheme();
+
+  const handleCopyUrl = (url: string, label: string) => {
+    navigator.clipboard.writeText(url);
+    toast.success(`${label} copied to clipboard`);
+  };
+
+  if (loading || !status) {
+    return null;
+  }
+
+  return (
+    <Card
+      sx={{
+        mb: 3,
+        borderLeft: `4px solid`,
+        borderLeftColor: status.isConnected
+          ? theme.palette.success.main
+          : status.isConfigured
+            ? theme.palette.warning.main
+            : theme.palette.grey[400],
+        backgroundColor: theme.palette.grey[50],
+      }}
+    >
+      <CardContent sx={{ py: 2, '&:last-child': { pb: 2 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+          {/* Icon */}
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: 1,
+              backgroundColor: status.isConfigured
+                ? '#6264a720'
+                : theme.palette.grey[100],
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <FontAwesomeIcon
+              icon={faPlug}
+              style={{ color: status.isConfigured ? '#6264a7' : theme.palette.grey[400] }}
+            />
+          </Box>
+
+          {/* Content */}
+          <Box sx={{ flex: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <Typography variant="subtitle2">Microsoft Teams Bot</Typography>
+              <Chip
+                icon={
+                  <FontAwesomeIcon
+                    icon={status.isConnected ? faCircleCheck : faCircleXmark}
+                    style={{ fontSize: 10 }}
+                  />
+                }
+                label={
+                  status.isConnected
+                    ? 'Connected'
+                    : status.isConfigured
+                      ? 'Not Reachable'
+                      : 'Not Configured'
+                }
+                size="small"
+                color={status.isConnected ? 'success' : status.isConfigured ? 'warning' : 'default'}
+                sx={{ height: 20, fontSize: 10 }}
+              />
+              {status.isConnected && status.availableConversations > 0 && (
+                <Chip
+                  label={`${status.availableConversations} channel(s)`}
+                  size="small"
+                  color="info"
+                  sx={{ height: 20, fontSize: 10 }}
+                />
+              )}
+            </Box>
+
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+              {status.statusMessage}
+            </Typography>
+
+            {!status.isConfigured && (
+              <Alert severity="info" sx={{ mb: 2, py: 0.5 }}>
+                <Typography variant="caption" component="div">
+                  <strong>Teams Bot not configured.</strong> To enable Teams integration:
+                </Typography>
+                <Box component="pre" sx={{
+                  mt: 0.5,
+                  p: 1,
+                  backgroundColor: theme.palette.grey[100],
+                  borderRadius: 1,
+                  fontSize: '0.75rem',
+                  overflow: 'auto',
+                }}>
+                  {`# Add to appsettings.json:\n"TeamsBot": {\n  "BaseUrl": "http://localhost:3978"\n}`}
+                </Box>
+              </Alert>
+            )}
+
+            {status.isConfigured && !status.isConnected && (
+              <Alert severity="warning" sx={{ mb: 2, py: 0.5 }}>
+                <Typography variant="caption" component="div">
+                  <strong>TeamsBot service is not reachable.</strong> Make sure the TeamsBot is running:
+                </Typography>
+                <Box component="pre" sx={{
+                  mt: 0.5,
+                  p: 1,
+                  backgroundColor: theme.palette.grey[100],
+                  borderRadius: 1,
+                  fontSize: '0.75rem',
+                  overflow: 'auto',
+                }}>
+                  {`cd src/backend/CobraAPI.TeamsBot\ndotnet run`}
+                </Box>
+              </Alert>
+            )}
+
+            {/* Bot Base URL */}
+            <Box sx={{ mb: 1.5 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                Bot Base URL (from appsettings)
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <CobraTextField
+                  size="small"
+                  fullWidth
+                  value={status.botBaseUrl}
+                  InputProps={{ readOnly: true }}
+                  sx={{
+                    maxWidth: 500,
+                    '& .MuiInputBase-input': {
+                      fontFamily: 'monospace',
+                      fontSize: '0.85rem',
+                    },
+                  }}
+                />
+                {status.isConfigured && (
+                  <Tooltip title="Copy URL">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleCopyUrl(status.botBaseUrl, 'Bot Base URL')}
+                    >
+                      <FontAwesomeIcon icon={faCopy} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            </Box>
+
+            {/* Internal API URL */}
+            {status.isConfigured && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                  Internal Send API
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                  <CobraTextField
+                    size="small"
+                    fullWidth
+                    value={status.internalApiUrl}
+                    InputProps={{ readOnly: true }}
+                    sx={{
+                      maxWidth: 500,
+                      '& .MuiInputBase-input': {
+                        fontFamily: 'monospace',
+                        fontSize: '0.85rem',
+                      },
+                    }}
+                  />
+                  <Tooltip title="Copy URL">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleCopyUrl(status.internalApiUrl, 'Internal API URL')}
+                    >
+                      <FontAwesomeIcon icon={faCopy} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  CobraAPI uses this endpoint to send outbound messages to Teams channels.
+                </Typography>
+              </Box>
+            )}
           </Box>
         </Box>
       </CardContent>
@@ -445,6 +669,7 @@ export const SystemSettingsAdmin: React.FC = () => {
   const theme = useTheme();
   const [settings, setSettings] = useState<SystemSettingDto[]>([]);
   const [groupMeStatus, setGroupMeStatus] = useState<GroupMeIntegrationStatus | null>(null);
+  const [teamsStatus, setTeamsStatus] = useState<TeamsIntegrationStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -453,12 +678,14 @@ export const SystemSettingsAdmin: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [settingsData, groupMeData] = await Promise.all([
+      const [settingsData, groupMeData, teamsData] = await Promise.all([
         systemSettingsService.getAllSettings(),
         systemSettingsService.getGroupMeIntegrationStatus(),
+        systemSettingsService.getTeamsIntegrationStatus(),
       ]);
       setSettings(settingsData);
       setGroupMeStatus(groupMeData);
+      setTeamsStatus(teamsData);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load settings';
       setError(message);
@@ -536,18 +763,25 @@ export const SystemSettingsAdmin: React.FC = () => {
     );
   }
 
-  // Group settings by category
-  const settingsByCategory = settings.reduce(
+  // Group settings by category name (API returns string category names like "Integration", "AI")
+  const settingsByCategoryName = settings.reduce(
     (acc, setting) => {
-      const category = setting.category;
-      if (!acc[category]) {
-        acc[category] = [];
+      // Use categoryName for grouping since API returns string enum names
+      const categoryName = setting.categoryName;
+      if (!acc[categoryName]) {
+        acc[categoryName] = [];
       }
-      acc[category].push(setting);
+      acc[categoryName].push(setting);
       return acc;
     },
-    {} as Record<SettingCategory, SystemSettingDto[]>
+    {} as Record<string, SystemSettingDto[]>
   );
+
+  // Helper to get settings by category name
+  const getSettingsByCategory = (category: SettingCategory): SystemSettingDto[] => {
+    const categoryName = SettingCategoryNames[category];
+    return settingsByCategoryName[categoryName] || [];
+  };
 
   return (
     <Box>
@@ -580,47 +814,85 @@ export const SystemSettingsAdmin: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Settings by category */}
-      {Object.entries(settingsByCategory).map(([categoryStr, categorySettings]) => {
-        const category = Number(categoryStr) as SettingCategory;
-        const categoryName = SettingCategoryNames[category] || 'Other';
-        const categoryIcon = categoryIcons[category] || faGear;
-        const isIntegrationCategory = category === SettingCategory.Integration;
+      {/* Integration Status Section - Always show regardless of settings */}
+      <Box sx={{ mb: 4 }}>
+        <Typography
+          variant="subtitle1"
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            mb: 2,
+            color: theme.palette.text.primary,
+            fontWeight: 600,
+          }}
+        >
+          <FontAwesomeIcon icon={faPlug} />
+          {SettingCategoryNames[SettingCategory.Integration]}
+        </Typography>
 
-        return (
-          <Box key={category} sx={{ mb: 4 }}>
-            <Typography
-              variant="subtitle1"
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                mb: 2,
-                color: theme.palette.text.primary,
-                fontWeight: 600,
-              }}
-            >
-              <FontAwesomeIcon icon={categoryIcon} />
-              {categoryName}
-            </Typography>
+        {/* Integration status cards with their related settings */}
+        <GroupMeStatusCard
+          status={groupMeStatus}
+          loading={loading}
+          settings={getSettingsByCategory(SettingCategory.Integration).filter(s => s.key.startsWith('GroupMe.'))}
+          onSave={handleSaveSetting}
+          onToggle={handleToggleSetting}
+          saving={saving}
+        />
+        <TeamsStatusCard status={teamsStatus} loading={loading} />
 
-            {/* Show GroupMe webhook status card in Integration category */}
-            {isIntegrationCategory && (
-              <GroupMeStatusCard status={groupMeStatus} loading={loading} />
-            )}
+        {/* Other Integration settings (not GroupMe) */}
+        {getSettingsByCategory(SettingCategory.Integration)
+          .filter(s => !s.key.startsWith('GroupMe.'))
+          .map((setting) => (
+            <SettingRow
+              key={setting.id}
+              setting={setting}
+              onSave={handleSaveSetting}
+              onToggle={handleToggleSetting}
+              saving={saving}
+            />
+          ))}
+      </Box>
 
-            {categorySettings.map((setting) => (
-              <SettingRow
-                key={setting.id}
-                setting={setting}
-                onSave={handleSaveSetting}
-                onToggle={handleToggleSetting}
-                saving={saving}
-              />
-            ))}
-          </Box>
-        );
-      })}
+      {/* Other settings by category (excluding Integration which is handled above) */}
+      {Object.entries(settingsByCategoryName)
+        .filter(([categoryName]) => categoryName !== SettingCategoryNames[SettingCategory.Integration])
+        .map(([categoryName, categorySettings]) => {
+          // Find the corresponding category enum
+          const category = (Object.entries(SettingCategoryNames).find(([, name]) => name === categoryName)?.[0] as unknown as SettingCategory) ?? SettingCategory.System;
+          const categoryIcon = categoryIcons[category] || faGear;
+
+          return (
+            <Box key={category} sx={{ mb: 4 }}>
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  mb: 2,
+                  color: theme.palette.text.primary,
+                  fontWeight: 600,
+                }}
+              >
+                <FontAwesomeIcon icon={categoryIcon} />
+                {categoryName}
+              </Typography>
+
+              {categorySettings.map((setting) => (
+                <SettingRow
+                  key={setting.id}
+                  setting={setting}
+                  onSave={handleSaveSetting}
+                  onToggle={handleToggleSetting}
+                  saving={saving}
+                />
+              ))}
+            </Box>
+          );
+        })}
 
       {settings.length === 0 && (
         <Alert severity="info" sx={{ mt: 2 }}>

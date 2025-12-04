@@ -17,15 +17,21 @@ public class SystemSettingsController : ControllerBase
 {
     private readonly ISystemSettingsService _settingsService;
     private readonly GroupMeSettings _groupMeSettings;
+    private readonly TeamsBotSettings _teamsBotSettings;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<SystemSettingsController> _logger;
 
     public SystemSettingsController(
         ISystemSettingsService settingsService,
         IOptions<GroupMeSettings> groupMeSettings,
+        IOptions<TeamsBotSettings> teamsBotSettings,
+        IHttpClientFactory httpClientFactory,
         ILogger<SystemSettingsController> logger)
     {
         _settingsService = settingsService;
         _groupMeSettings = groupMeSettings.Value;
+        _teamsBotSettings = teamsBotSettings.Value;
+        _httpClientFactory = httpClientFactory;
         _logger = logger;
     }
 
@@ -215,6 +221,77 @@ public class SystemSettingsController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Get Teams Bot integration status including connection health.
+    /// Checks if the TeamsBot service is configured and reachable.
+    /// </summary>
+    [HttpGet("integrations/teams")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<TeamsIntegrationStatusDto>> GetTeamsIntegrationStatus()
+    {
+        var baseUrl = _teamsBotSettings.BaseUrl?.TrimEnd('/');
+        var isConfigured = !string.IsNullOrEmpty(baseUrl);
+        var isConnected = false;
+        var availableConversations = 0;
+
+        if (isConfigured)
+        {
+            try
+            {
+                // Check if TeamsBot is reachable
+                var client = _httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(5);
+                var healthResponse = await client.GetAsync($"{baseUrl}/api/health");
+                isConnected = healthResponse.IsSuccessStatusCode;
+
+                if (isConnected)
+                {
+                    // Get count of available conversations
+                    var conversationsResponse = await client.GetAsync($"{baseUrl}/api/internal/conversations");
+                    if (conversationsResponse.IsSuccessStatusCode)
+                    {
+                        var json = await conversationsResponse.Content.ReadAsStringAsync();
+                        // Simple parse to get count
+                        if (json.Contains("\"count\":"))
+                        {
+                            var countMatch = System.Text.RegularExpressions.Regex.Match(json, @"""count"":(\d+)");
+                            if (countMatch.Success)
+                            {
+                                availableConversations = int.Parse(countMatch.Groups[1].Value);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to check Teams Bot health at {BaseUrl}", baseUrl);
+                isConnected = false;
+            }
+        }
+
+        return Ok(new TeamsIntegrationStatusDto
+        {
+            IsConfigured = isConfigured,
+            IsConnected = isConnected,
+            BotBaseUrl = baseUrl ?? "(not configured)",
+            InternalApiUrl = isConfigured ? $"{baseUrl}/api/internal/send" : "(not available)",
+            AvailableConversations = availableConversations,
+            StatusMessage = GetTeamsStatusMessage(isConfigured, isConnected, availableConversations)
+        });
+    }
+
+    private static string GetTeamsStatusMessage(bool isConfigured, bool isConnected, int availableConversations)
+    {
+        if (!isConfigured)
+            return "Teams Bot URL not configured in appsettings";
+        if (!isConnected)
+            return "Teams Bot is not reachable";
+        if (availableConversations == 0)
+            return "Connected, but no Teams channels have installed the bot yet";
+        return $"Connected with {availableConversations} available channel(s)";
+    }
+
     private string GetCurrentUser()
     {
         // Get user from context (set by MockUserMiddleware)
@@ -245,4 +322,28 @@ public record GroupMeIntegrationStatusDto
 
     /// <summary>URL to test webhook endpoint accessibility</summary>
     public string WebhookHealthCheckUrl { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Teams Bot integration status for Admin UI display.
+/// </summary>
+public record TeamsIntegrationStatusDto
+{
+    /// <summary>Whether Teams Bot URL is configured in appsettings</summary>
+    public bool IsConfigured { get; init; }
+
+    /// <summary>Whether the Teams Bot service is currently reachable</summary>
+    public bool IsConnected { get; init; }
+
+    /// <summary>The Teams Bot base URL from appsettings</summary>
+    public string BotBaseUrl { get; init; } = string.Empty;
+
+    /// <summary>The internal API URL for sending messages to Teams</summary>
+    public string InternalApiUrl { get; init; } = string.Empty;
+
+    /// <summary>Number of Teams channels that have installed the bot</summary>
+    public int AvailableConversations { get; init; }
+
+    /// <summary>Human-readable status message</summary>
+    public string StatusMessage { get; init; } = string.Empty;
 }

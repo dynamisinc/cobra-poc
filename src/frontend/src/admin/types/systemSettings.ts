@@ -89,3 +89,22 @@ export interface GroupMeIntegrationStatus {
   /** URL to test webhook endpoint accessibility */
   webhookHealthCheckUrl: string;
 }
+
+/**
+ * Teams Bot integration status from server configuration.
+ * Checks if the TeamsBot service is configured and reachable.
+ */
+export interface TeamsIntegrationStatus {
+  /** Whether Teams Bot URL is configured in appsettings */
+  isConfigured: boolean;
+  /** Whether the Teams Bot service is currently reachable */
+  isConnected: boolean;
+  /** The Teams Bot base URL from appsettings */
+  botBaseUrl: string;
+  /** The internal API URL for sending messages to Teams */
+  internalApiUrl: string;
+  /** Number of Teams channels that have installed the bot */
+  availableConversations: number;
+  /** Human-readable status message */
+  statusMessage: string;
+}

@@ -12,6 +12,7 @@ import type {
   UpdateSettingValueRequest,
   SettingCategory,
   GroupMeIntegrationStatus,
+  TeamsIntegrationStatus,
 } from '../types/systemSettings';
 
 export const systemSettingsService = {
@@ -95,6 +96,17 @@ export const systemSettingsService = {
   getGroupMeIntegrationStatus: async (): Promise<GroupMeIntegrationStatus> => {
     const response = await apiClient.get<GroupMeIntegrationStatus>(
       '/api/systemsettings/integrations/groupme'
+    );
+    return response.data;
+  },
+
+  /**
+   * Get Teams Bot integration status.
+   * Checks if the TeamsBot service is configured and reachable.
+   */
+  getTeamsIntegrationStatus: async (): Promise<TeamsIntegrationStatus> => {
+    const response = await apiClient.get<TeamsIntegrationStatus>(
+      '/api/systemsettings/integrations/teams'
     );
     return response.data;
   },

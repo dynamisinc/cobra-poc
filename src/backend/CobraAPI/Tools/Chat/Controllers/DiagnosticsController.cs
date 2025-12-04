@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using CobraAPI.Core.Data;
 using CobraAPI.Tools.Chat.Models.Entities;
+using CobraAPI.Tools.Chat.ExternalPlatforms;
 
 namespace CobraAPI.Tools.Chat.Controllers;
 
@@ -16,13 +18,19 @@ namespace CobraAPI.Tools.Chat.Controllers;
 public class DiagnosticsController : ControllerBase
 {
     private readonly CobraDbContext _dbContext;
+    private readonly TeamsBotSettings _teamsBotSettings;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DiagnosticsController> _logger;
 
     public DiagnosticsController(
         CobraDbContext dbContext,
+        IOptions<TeamsBotSettings> teamsBotSettings,
+        IHttpClientFactory httpClientFactory,
         ILogger<DiagnosticsController> logger)
     {
         _dbContext = dbContext;
+        _teamsBotSettings = teamsBotSettings.Value;
+        _httpClientFactory = httpClientFactory;
         _logger = logger;
     }
 
@@ -223,6 +231,59 @@ public class DiagnosticsController : ControllerBase
     }
 
     /// <summary>
+    /// Gets available Teams conversations from the TeamsBot service.
+    /// These are Teams channels where the bot is installed and ready to receive messages.
+    /// </summary>
+    [HttpGet("teams-conversations")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetTeamsConversations()
+    {
+        var baseUrl = _teamsBotSettings.BaseUrl?.TrimEnd('/');
+        if (string.IsNullOrEmpty(baseUrl))
+        {
+            return BadRequest(new { error = "TeamsBot is not configured" });
+        }
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
+
+            var response = await client.GetAsync($"{baseUrl}/api/internal/conversations");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "Failed to fetch Teams conversations: {StatusCode}",
+                    response.StatusCode);
+                return StatusCode((int)response.StatusCode, new
+                {
+                    error = "Failed to fetch Teams conversations from TeamsBot"
+                });
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+
+            // Return the response as-is (it's already JSON)
+            return Content(content, "application/json");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to connect to TeamsBot at {BaseUrl}", baseUrl);
+            return StatusCode(503, new
+            {
+                error = "TeamsBot is not reachable",
+                details = ex.Message
+            });
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogWarning("TeamsBot request timed out");
+            return StatusCode(504, new { error = "TeamsBot request timed out" });
+        }
+    }
+
+    /// <summary>
     /// Gets recent chat messages for an event.
     /// Used for testing/debugging the message flow.
     /// </summary>
@@ -231,16 +292,18 @@ public class DiagnosticsController : ControllerBase
     public async Task<IActionResult> GetRecentMessages(Guid eventId, [FromQuery] int take = 20)
     {
         var messages = await _dbContext.ChatMessages
-            .Where(m => m.EventId == eventId)
+            .Include(m => m.ChatThread)
+            .Where(m => m.ChatThread.EventId == eventId)
             .OrderByDescending(m => m.CreatedAt)
             .Take(take)
             .Select(m => new
             {
                 id = m.Id,
-                content = m.Content,
-                senderName = m.SenderName,
-                sourcePlatform = m.SourcePlatform.ToString(),
+                content = m.Message,
+                senderName = m.SenderDisplayName,
+                sourcePlatform = m.ExternalSource.HasValue ? m.ExternalSource.Value.ToString() : "COBRA",
                 externalMessageId = m.ExternalMessageId,
+                externalSenderName = m.ExternalSenderName,
                 createdAt = m.CreatedAt
             })
             .ToListAsync();
