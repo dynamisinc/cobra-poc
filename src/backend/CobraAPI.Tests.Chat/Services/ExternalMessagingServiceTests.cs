@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 using CobraAPI.Tools.Chat.ExternalPlatforms;
@@ -19,6 +20,8 @@ public class ExternalMessagingServiceTests : IDisposable
     private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
     private readonly Mock<ILogger<ExternalMessagingService>> _mockLogger;
     private readonly Mock<IServiceProvider> _mockServiceProvider;
+    private readonly Mock<IOptions<TeamsBotSettings>> _mockTeamsBotSettings;
+    private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
     private readonly ExternalMessagingService _service;
     private readonly UserContext _testUser;
 
@@ -34,6 +37,8 @@ public class ExternalMessagingServiceTests : IDisposable
         _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
         _mockLogger = new Mock<ILogger<ExternalMessagingService>>();
         _mockServiceProvider = new Mock<IServiceProvider>();
+        _mockTeamsBotSettings = new Mock<IOptions<TeamsBotSettings>>();
+        _mockHttpClientFactory = new Mock<IHttpClientFactory>();
 
         _testUser = TestUserContextFactory.CreateTestUser();
 
@@ -42,13 +47,18 @@ public class ExternalMessagingServiceTests : IDisposable
         httpContext.Items["UserContext"] = _testUser;
         _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(httpContext);
 
+        // Setup TeamsBotSettings mock
+        _mockTeamsBotSettings.Setup(x => x.Value).Returns(new TeamsBotSettings());
+
         _service = new ExternalMessagingService(
             _context,
             _mockGroupMeClient.Object,
             _mockChatHubService.Object,
             _mockHttpContextAccessor.Object,
             _mockLogger.Object,
-            _mockServiceProvider.Object);
+            _mockServiceProvider.Object,
+            _mockTeamsBotSettings.Object,
+            _mockHttpClientFactory.Object);
     }
 
     public void Dispose()
