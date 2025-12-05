@@ -1,12 +1,22 @@
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using CobraAPI.TeamsBot.Bots;
+using CobraAPI.TeamsBot.Middleware;
 using CobraAPI.TeamsBot.Models;
 using CobraAPI.TeamsBot.Services;
 using Microsoft.Agents.Builder;
 using Microsoft.Agents.Builder.State;
 using Microsoft.Agents.Hosting.AspNetCore;
 using Microsoft.Agents.Storage;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Service name for telemetry
+const string serviceName = "CobraTeamsBot";
+var serviceVersion = typeof(Program).Assembly.GetName().Version?.ToString() ?? "1.0.0";
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -16,12 +26,95 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "COBRA Teams Bot API", Version = "v1" });
 });
 
-// Configure logging
-builder.Services.AddLogging(logging =>
+// Configure OpenTelemetry (Microsoft recommended for Agents SDK)
+// See: https://learn.microsoft.com/en-us/agent-framework/tutorials/agents/enable-observability
+var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"]
+    ?? Environment.GetEnvironmentVariable("APPLICATIONINSIGHTS_CONNECTION_STRING");
+
+var otelBuilder = builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource
+        .AddService(serviceName: serviceName, serviceVersion: serviceVersion)
+        .AddAttributes(new Dictionary<string, object>
+        {
+            ["deployment.environment"] = builder.Environment.EnvironmentName,
+            ["service.instance.id"] = Environment.MachineName
+        }));
+
+// Configure tracing
+otelBuilder.WithTracing(tracing =>
 {
-    logging.AddConsole();
-    logging.AddDebug();
+    tracing
+        .AddAspNetCoreInstrumentation(options =>
+        {
+            // Filter out health check noise
+            options.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/api/health");
+        })
+        .AddHttpClientInstrumentation()
+        .AddSource(serviceName); // Custom activity source for bot operations
+
+    if (builder.Environment.IsDevelopment())
+    {
+        tracing.AddConsoleExporter();
+    }
 });
+
+// Configure metrics
+otelBuilder.WithMetrics(metrics =>
+{
+    metrics
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddMeter(serviceName); // Custom meter for bot metrics
+
+    if (builder.Environment.IsDevelopment())
+    {
+        metrics.AddConsoleExporter();
+    }
+});
+
+// Add Application Insights if connection string is configured (for Azure deployments)
+if (!string.IsNullOrEmpty(appInsightsConnectionString))
+{
+    builder.Services.AddOpenTelemetry().UseAzureMonitor(options =>
+    {
+        options.ConnectionString = appInsightsConnectionString;
+    });
+    Console.WriteLine($"Application Insights configured: {appInsightsConnectionString[..Math.Min(30, appInsightsConnectionString.Length)]}...");
+}
+else
+{
+    Console.WriteLine("Application Insights not configured. Set ApplicationInsights:ConnectionString or APPLICATIONINSIGHTS_CONNECTION_STRING for Azure monitoring.");
+}
+
+// Configure structured logging with OpenTelemetry
+builder.Logging.ClearProviders();
+builder.Logging.AddOpenTelemetry(logging =>
+{
+    logging.IncludeFormattedMessage = true;
+    logging.IncludeScopes = true;
+
+    if (builder.Environment.IsDevelopment())
+    {
+        logging.AddConsoleExporter();
+    }
+});
+
+// Also add console for local development
+if (builder.Environment.IsDevelopment())
+{
+    builder.Logging.AddConsole();
+    builder.Logging.AddDebug();
+    builder.Logging.SetMinimumLevel(LogLevel.Debug);
+}
+else
+{
+    builder.Logging.SetMinimumLevel(LogLevel.Information);
+    builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
+    builder.Logging.AddFilter("Microsoft.Agents", LogLevel.Warning);
+}
+
+// Register metrics service (singleton for app lifetime)
+builder.Services.AddSingleton<IBotMetrics, BotMetrics>();
 
 builder.Services.AddHttpClient();
 
@@ -78,6 +171,10 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+
+// Add request logging middleware (before other middleware for accurate timing)
+app.UseRequestLogging();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -107,9 +204,13 @@ var configuration = app.Services.GetRequiredService<IConfiguration>();
 var appId = configuration["MicrosoftAppId"];
 var cobraApiUrl = configuration["CobraApi:BaseUrl"];
 var botDisplayName = configuration["Bot:DisplayName"] ?? "COBRA Bot";
-logger.LogInformation("{BotName} starting...", botDisplayName);
+
+logger.LogInformation("{BotName} v{Version} starting...", botDisplayName, serviceVersion);
+logger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);
 logger.LogInformation("Bot App ID configured: {HasAppId}", !string.IsNullOrEmpty(appId));
 logger.LogInformation("CobraAPI URL: {CobraApiUrl}", cobraApiUrl ?? "(not configured)");
-logger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);
+logger.LogInformation("Application Insights: {AppInsightsConfigured}",
+    !string.IsNullOrEmpty(appInsightsConnectionString) ? "Enabled" : "Disabled");
+logger.LogInformation("OpenTelemetry tracing and metrics: Enabled");
 
 app.Run();

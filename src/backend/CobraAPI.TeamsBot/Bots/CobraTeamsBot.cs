@@ -34,6 +34,7 @@ public class CobraTeamsBot : TeamsActivityHandler
     private readonly ILogger<CobraTeamsBot> _logger;
     private readonly IConversationReferenceService _conversationReferenceService;
     private readonly ICobraApiClient _cobraApiClient;
+    private readonly IBotMetrics _metrics;
     private readonly ConversationState _conversationState;
     private readonly UserState _userState;
     private readonly BotSettings _botSettings;
@@ -45,6 +46,7 @@ public class CobraTeamsBot : TeamsActivityHandler
         ILogger<CobraTeamsBot> logger,
         IConversationReferenceService conversationReferenceService,
         ICobraApiClient cobraApiClient,
+        IBotMetrics metrics,
         ConversationState conversationState,
         UserState userState,
         IOptions<BotSettings> botSettings)
@@ -52,6 +54,7 @@ public class CobraTeamsBot : TeamsActivityHandler
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _conversationReferenceService = conversationReferenceService ?? throw new ArgumentNullException(nameof(conversationReferenceService));
         _cobraApiClient = cobraApiClient ?? throw new ArgumentNullException(nameof(cobraApiClient));
+        _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
         _conversationState = conversationState ?? throw new ArgumentNullException(nameof(conversationState));
         _userState = userState ?? throw new ArgumentNullException(nameof(userState));
         _botSettings = botSettings?.Value ?? new BotSettings();
@@ -78,11 +81,15 @@ public class CobraTeamsBot : TeamsActivityHandler
     /// </summary>
     protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
     {
+        var startTime = DateTime.UtcNow;
         var activity = turnContext.Activity;
         var senderName = activity.From?.Name ?? "Unknown";
         var messageText = activity.Text ?? string.Empty;
-        var channelId = activity.ChannelId;
+        var channelId = activity.ChannelId ?? "unknown";
         var conversationId = activity.Conversation?.Id ?? "unknown";
+
+        // Record metric for received message
+        _metrics.IncrementMessagesReceived(channelId);
 
         _logger.LogInformation(
             "Received message from {SenderName} in channel {ChannelId}, conversation {ConversationId}: {MessagePreview}",
@@ -110,6 +117,8 @@ public class CobraTeamsBot : TeamsActivityHandler
         {
             // Forward to CobraAPI webhook
             var success = await _cobraApiClient.SendWebhookAsync(mappingId.Value, payload);
+            _metrics.IncrementWebhooksSent(success);
+
             if (success)
             {
                 _logger.LogDebug("Message forwarded to CobraAPI successfully");
@@ -117,6 +126,7 @@ public class CobraTeamsBot : TeamsActivityHandler
             else
             {
                 _logger.LogWarning("Failed to forward message to CobraAPI");
+                _metrics.IncrementMessagesFailed(channelId, "webhook_failed");
                 // Still echo back for debugging in POC
                 var errorMessage = "⚠️ Message received but failed to forward to COBRA. Check logs.";
                 await turnContext.SendActivityAsync(MessageFactory.Text(errorMessage), cancellationToken);
@@ -133,7 +143,11 @@ public class CobraTeamsBot : TeamsActivityHandler
             await turnContext.SendActivityAsync(MessageFactory.Text(echoMessage), cancellationToken);
         }
 
-        _logger.LogDebug("Message processed successfully");
+        // Record latency
+        var latency = (DateTime.UtcNow - startTime).TotalMilliseconds;
+        _metrics.RecordMessageLatency(latency);
+
+        _logger.LogDebug("Message processed successfully in {Latency}ms", latency);
     }
 
     /// <summary>
