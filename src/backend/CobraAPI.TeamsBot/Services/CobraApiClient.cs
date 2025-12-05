@@ -7,12 +7,14 @@ namespace CobraAPI.TeamsBot.Services;
 /// <summary>
 /// HTTP client for communicating with CobraAPI.
 /// Forwards Teams messages to COBRA webhook endpoints.
+/// Includes retry logic for transient failures.
 /// </summary>
 public class CobraApiClient : ICobraApiClient
 {
     private readonly HttpClient _httpClient;
     private readonly CobraApiSettings _settings;
     private readonly ILogger<CobraApiClient> _logger;
+    private readonly RetryOptions _retryOptions;
 
     public CobraApiClient(
         HttpClient httpClient,
@@ -22,6 +24,16 @@ public class CobraApiClient : ICobraApiClient
         _httpClient = httpClient;
         _settings = settings.Value;
         _logger = logger;
+
+        // Configure retry options for CobraAPI calls
+        _retryOptions = new RetryOptions
+        {
+            MaxRetries = 3,
+            InitialDelay = TimeSpan.FromMilliseconds(500),
+            MaxDelay = TimeSpan.FromSeconds(10),
+            BackoffMultiplier = 2.0,
+            AddJitter = true
+        };
 
         // Set base address from configuration
         if (!string.IsNullOrEmpty(_settings.BaseUrl))
@@ -37,7 +49,7 @@ public class CobraApiClient : ICobraApiClient
     }
 
     /// <summary>
-    /// Sends a Teams message to the CobraAPI webhook endpoint.
+    /// Sends a Teams message to the CobraAPI webhook endpoint with retry logic.
     /// </summary>
     public async Task<bool> SendWebhookAsync(Guid mappingId, TeamsWebhookPayload payload)
     {
@@ -47,42 +59,56 @@ public class CobraApiClient : ICobraApiClient
             return false;
         }
 
-        try
-        {
-            _logger.LogInformation(
-                "Forwarding Teams message {MessageId} to CobraAPI webhook for mapping {MappingId}",
-                payload.MessageId, mappingId);
+        _logger.LogInformation(
+            "Forwarding Teams message {MessageId} to CobraAPI webhook for mapping {MappingId}",
+            payload.MessageId, mappingId);
 
-            var response = await _httpClient.PostAsJsonAsync(
-                $"api/webhooks/teams/{mappingId}",
-                payload);
-
-            if (response.IsSuccessStatusCode)
+        var result = await RetryPolicy.ExecuteAsync(
+            async ct =>
             {
-                _logger.LogDebug("Successfully forwarded message to CobraAPI");
-                return true;
-            }
+                var response = await _httpClient.PostAsJsonAsync(
+                    $"api/webhooks/teams/{mappingId}",
+                    payload,
+                    ct);
 
-            var errorContent = await response.Content.ReadAsStringAsync();
-            _logger.LogWarning(
-                "CobraAPI webhook returned {StatusCode}: {Error}",
-                response.StatusCode, errorContent);
-            return false;
-        }
-        catch (HttpRequestException ex)
+                if (response.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+
+                // Check if this is a transient error that should be retried
+                if (RetryPolicy.IsTransientHttpStatusCode(response.StatusCode))
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync(ct);
+                    _logger.LogWarning(
+                        "CobraAPI webhook returned transient error {StatusCode}: {Error}",
+                        response.StatusCode, errorContent);
+                    return false; // Will trigger retry
+                }
+
+                // Non-transient error - log and don't retry
+                var content = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning(
+                    "CobraAPI webhook returned {StatusCode}: {Error}",
+                    response.StatusCode, content);
+                return false;
+            },
+            _retryOptions,
+            _logger,
+            $"SendWebhook({mappingId})");
+
+        if (!result.Success && result.LastException != null)
         {
-            _logger.LogError(ex, "Failed to connect to CobraAPI at {BaseUrl}", _settings.BaseUrl);
-            return false;
+            _logger.LogError(result.LastException,
+                "Failed to forward message to CobraAPI after {Attempts} attempts",
+                result.Attempts);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error forwarding message to CobraAPI");
-            return false;
-        }
+
+        return result.Success && result.Value;
     }
 
     /// <summary>
-    /// Sends a Teams message to CobraAPI when no mapping exists yet.
+    /// Sends a Teams message to CobraAPI when no mapping exists yet with retry logic.
     /// Used during initial channel linking flow.
     /// </summary>
     public async Task<bool> SendUnmappedMessageAsync(string conversationId, TeamsWebhookPayload payload)
@@ -93,44 +119,52 @@ public class CobraApiClient : ICobraApiClient
             return false;
         }
 
-        try
-        {
-            _logger.LogInformation(
-                "Forwarding unmapped Teams message {MessageId} from conversation {ConversationId}",
-                payload.MessageId, conversationId);
+        _logger.LogInformation(
+            "Forwarding unmapped Teams message {MessageId} from conversation {ConversationId}",
+            payload.MessageId, conversationId);
 
-            var response = await _httpClient.PostAsJsonAsync(
-                $"api/webhooks/teams/unmapped",
-                payload);
-
-            if (response.IsSuccessStatusCode)
+        var result = await RetryPolicy.ExecuteAsync(
+            async ct =>
             {
-                _logger.LogDebug("Successfully forwarded unmapped message to CobraAPI");
-                return true;
-            }
+                var response = await _httpClient.PostAsJsonAsync(
+                    "api/webhooks/teams/unmapped",
+                    payload,
+                    ct);
 
-            // 404 is expected if no mapping exists and we're not handling unmapped messages
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                _logger.LogDebug("No mapping found for conversation {ConversationId} - message not stored", conversationId);
+                if (response.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+
+                // 404 is expected if no mapping exists - don't retry
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    _logger.LogDebug("No mapping found for conversation {ConversationId} - message not stored",
+                        conversationId);
+                    return false;
+                }
+
+                // Check if transient
+                if (RetryPolicy.IsTransientHttpStatusCode(response.StatusCode))
+                {
+                    return false; // Will trigger retry
+                }
+
+                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning(
+                    "CobraAPI returned {StatusCode} for unmapped message: {Error}",
+                    response.StatusCode, errorContent);
                 return false;
-            }
+            },
+            _retryOptions,
+            _logger,
+            $"SendUnmappedMessage({conversationId})");
 
-            var errorContent = await response.Content.ReadAsStringAsync();
-            _logger.LogWarning(
-                "CobraAPI returned {StatusCode} for unmapped message: {Error}",
-                response.StatusCode, errorContent);
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error forwarding unmapped message to CobraAPI");
-            return false;
-        }
+        return result.Success && result.Value;
     }
 
     /// <summary>
-    /// Gets the channel mapping ID for a Teams conversation from CobraAPI.
+    /// Gets the channel mapping ID for a Teams conversation from CobraAPI with retry logic.
     /// </summary>
     public async Task<Guid?> GetMappingIdForConversationAsync(string conversationId)
     {
@@ -140,48 +174,58 @@ public class CobraApiClient : ICobraApiClient
             return null;
         }
 
-        try
-        {
-            // URL encode the conversation ID (Teams IDs can contain special characters)
-            var encodedId = Uri.EscapeDataString(conversationId);
+        // URL encode the conversation ID (Teams IDs can contain special characters)
+        var encodedId = Uri.EscapeDataString(conversationId);
 
-            var response = await _httpClient.GetAsync(
-                $"api/chat/diagnostics/teams-mapping/{encodedId}");
-
-            if (response.IsSuccessStatusCode)
+        var result = await RetryPolicy.ExecuteAsync<Guid?>(
+            async ct =>
             {
-                var result = await response.Content.ReadFromJsonAsync<MappingLookupResponse>();
-                if (result != null)
+                var response = await _httpClient.GetAsync(
+                    $"api/chat/diagnostics/teams-mapping/{encodedId}",
+                    ct);
+
+                if (response.IsSuccessStatusCode)
                 {
-                    _logger.LogInformation(
-                        "Found mapping {MappingId} for conversation {ConversationId}",
-                        result.MappingId, conversationId);
-                    return result.MappingId;
+                    var mappingResult = await response.Content.ReadFromJsonAsync<MappingLookupResponse>(ct);
+                    if (mappingResult != null)
+                    {
+                        _logger.LogInformation(
+                            "Found mapping {MappingId} for conversation {ConversationId}",
+                            mappingResult.MappingId, conversationId);
+                        return mappingResult.MappingId;
+                    }
                 }
-            }
 
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                _logger.LogDebug("No mapping found for conversation {ConversationId}", conversationId);
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    _logger.LogDebug("No mapping found for conversation {ConversationId}", conversationId);
+                    return null;
+                }
+
+                // Check if transient - should retry
+                if (RetryPolicy.IsTransientHttpStatusCode(response.StatusCode))
+                {
+                    throw new HttpRequestException($"Transient error: {response.StatusCode}",
+                        null, response.StatusCode);
+                }
+
+                _logger.LogWarning(
+                    "Unexpected response {StatusCode} when looking up mapping for {ConversationId}",
+                    response.StatusCode, conversationId);
                 return null;
-            }
+            },
+            result => false, // null result doesn't trigger retry - only exceptions do
+            _retryOptions,
+            _logger,
+            $"GetMappingId({conversationId})");
 
-            _logger.LogWarning(
-                "Unexpected response {StatusCode} when looking up mapping for {ConversationId}",
-                response.StatusCode, conversationId);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error looking up mapping for conversation {ConversationId}", conversationId);
-            return null;
-        }
+        return result.Value;
     }
 
     // === Stateless Architecture Methods (UC-TI-029) ===
 
     /// <summary>
-    /// Stores or updates a ConversationReference in CobraAPI.
+    /// Stores or updates a ConversationReference in CobraAPI with retry logic.
     /// Called on every incoming message to keep the reference current.
     /// </summary>
     public async Task<StoreConversationReferenceResult?> StoreConversationReferenceAsync(
@@ -193,44 +237,53 @@ public class CobraApiClient : ICobraApiClient
             return null;
         }
 
-        try
-        {
-            _logger.LogDebug(
-                "Storing ConversationReference for {ConversationId}, TenantId: {TenantId}, IsEmulator: {IsEmulator}",
-                request.ConversationId, request.TenantId, request.IsEmulator);
+        _logger.LogDebug(
+            "Storing ConversationReference for {ConversationId}, TenantId: {TenantId}, IsEmulator: {IsEmulator}",
+            request.ConversationId, request.TenantId, request.IsEmulator);
 
-            var response = await _httpClient.PutAsJsonAsync(
-                "api/chat/teams/conversation-reference",
-                request);
-
-            if (response.IsSuccessStatusCode)
+        var result = await RetryPolicy.ExecuteAsync<StoreConversationReferenceResult?>(
+            async ct =>
             {
-                var result = await response.Content.ReadFromJsonAsync<StoreConversationReferenceResult>();
-                if (result != null)
-                {
-                    _logger.LogInformation(
-                        "Stored ConversationReference for {ConversationId}, MappingId: {MappingId}, IsNew: {IsNew}",
-                        request.ConversationId, result.MappingId, result.IsNewMapping);
-                    return result;
-                }
-            }
+                var response = await _httpClient.PutAsJsonAsync(
+                    "api/chat/teams/conversation-reference",
+                    request,
+                    ct);
 
-            var errorContent = await response.Content.ReadAsStringAsync();
-            _logger.LogWarning(
-                "Failed to store ConversationReference. Status: {StatusCode}, Error: {Error}",
-                response.StatusCode, errorContent);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error storing ConversationReference for {ConversationId}",
-                request.ConversationId);
-            return null;
-        }
+                if (response.IsSuccessStatusCode)
+                {
+                    var storeResult = await response.Content.ReadFromJsonAsync<StoreConversationReferenceResult>(ct);
+                    if (storeResult != null)
+                    {
+                        _logger.LogInformation(
+                            "Stored ConversationReference for {ConversationId}, MappingId: {MappingId}, IsNew: {IsNew}",
+                            request.ConversationId, storeResult.MappingId, storeResult.IsNewMapping);
+                        return storeResult;
+                    }
+                }
+
+                // Check if transient
+                if (RetryPolicy.IsTransientHttpStatusCode(response.StatusCode))
+                {
+                    throw new HttpRequestException($"Transient error: {response.StatusCode}",
+                        null, response.StatusCode);
+                }
+
+                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning(
+                    "Failed to store ConversationReference. Status: {StatusCode}, Error: {Error}",
+                    response.StatusCode, errorContent);
+                return null;
+            },
+            result => false, // null result doesn't trigger retry
+            _retryOptions,
+            _logger,
+            $"StoreConversationReference({request.ConversationId})");
+
+        return result.Value;
     }
 
     /// <summary>
-    /// Gets a ConversationReference from CobraAPI by conversation ID.
+    /// Gets a ConversationReference from CobraAPI by conversation ID with retry logic.
     /// </summary>
     public async Task<GetConversationReferenceResult?> GetConversationReferenceAsync(string conversationId)
     {
@@ -240,40 +293,51 @@ public class CobraApiClient : ICobraApiClient
             return null;
         }
 
-        try
-        {
-            var encodedId = Uri.EscapeDataString(conversationId);
-            var response = await _httpClient.GetAsync(
-                $"api/chat/teams/conversation-reference/{encodedId}");
+        var encodedId = Uri.EscapeDataString(conversationId);
 
-            if (response.IsSuccessStatusCode)
+        var result = await RetryPolicy.ExecuteAsync<GetConversationReferenceResult?>(
+            async ct =>
             {
-                var result = await response.Content.ReadFromJsonAsync<GetConversationReferenceResult>();
-                if (result != null)
+                var response = await _httpClient.GetAsync(
+                    $"api/chat/teams/conversation-reference/{encodedId}",
+                    ct);
+
+                if (response.IsSuccessStatusCode)
                 {
-                    _logger.LogDebug(
-                        "Retrieved ConversationReference for {ConversationId}, MappingId: {MappingId}",
-                        conversationId, result.MappingId);
-                    return result;
+                    var getResult = await response.Content.ReadFromJsonAsync<GetConversationReferenceResult>(ct);
+                    if (getResult != null)
+                    {
+                        _logger.LogDebug(
+                            "Retrieved ConversationReference for {ConversationId}, MappingId: {MappingId}",
+                            conversationId, getResult.MappingId);
+                        return getResult;
+                    }
                 }
-            }
 
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                _logger.LogDebug("No ConversationReference found for {ConversationId}", conversationId);
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    _logger.LogDebug("No ConversationReference found for {ConversationId}", conversationId);
+                    return null;
+                }
+
+                // Check if transient
+                if (RetryPolicy.IsTransientHttpStatusCode(response.StatusCode))
+                {
+                    throw new HttpRequestException($"Transient error: {response.StatusCode}",
+                        null, response.StatusCode);
+                }
+
+                _logger.LogWarning(
+                    "Unexpected response {StatusCode} when getting ConversationReference for {ConversationId}",
+                    response.StatusCode, conversationId);
                 return null;
-            }
+            },
+            result => false, // null doesn't trigger retry
+            _retryOptions,
+            _logger,
+            $"GetConversationReference({conversationId})");
 
-            _logger.LogWarning(
-                "Unexpected response {StatusCode} when getting ConversationReference for {ConversationId}",
-                response.StatusCode, conversationId);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting ConversationReference for {ConversationId}", conversationId);
-            return null;
-        }
+        return result.Value;
     }
 }
 

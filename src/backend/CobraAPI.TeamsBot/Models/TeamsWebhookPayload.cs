@@ -153,4 +153,11 @@ public class TeamsSendResponse
 
     [JsonPropertyName("error")]
     public string? Error { get; set; }
+
+    /// <summary>
+    /// Number of attempts made to send the message (1 = succeeded on first try).
+    /// Useful for monitoring retry behavior.
+    /// </summary>
+    [JsonPropertyName("attempts")]
+    public int Attempts { get; set; } = 1;
 }

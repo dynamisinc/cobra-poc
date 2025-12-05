@@ -14,6 +14,7 @@ namespace CobraAPI.TeamsBot.Controllers;
 /// Internal API endpoints for CobraAPI to send messages to Teams.
 /// These endpoints are called by CobraAPI when COBRA users send messages.
 /// Protected by API key authentication when CobraApi:ApiKey is configured.
+/// Includes retry logic for transient Teams API failures.
 /// </summary>
 [Route("api/[controller]")]
 [ApiController]
@@ -24,6 +25,7 @@ public class InternalController : ControllerBase
     private readonly IAgentHttpAdapter _adapter;
     private readonly IConfiguration _configuration;
     private readonly ILogger<InternalController> _logger;
+    private readonly RetryOptions _retryOptions;
 
     public InternalController(
         IConversationReferenceService conversationReferenceService,
@@ -35,10 +37,20 @@ public class InternalController : ControllerBase
         _adapter = adapter;
         _configuration = configuration;
         _logger = logger;
+
+        // Configure retry options for Teams API calls
+        _retryOptions = new RetryOptions
+        {
+            MaxRetries = 3,
+            InitialDelay = TimeSpan.FromSeconds(1),
+            MaxDelay = TimeSpan.FromSeconds(15),
+            BackoffMultiplier = 2.0,
+            AddJitter = true
+        };
     }
 
     /// <summary>
-    /// Sends a message to a Teams channel/conversation.
+    /// Sends a message to a Teams channel/conversation with retry logic.
     /// Called by CobraAPI when a COBRA user sends a message that should be forwarded to Teams.
     /// Stateless: ConversationReference is passed in the request from CobraAPI database.
     /// </summary>
@@ -94,94 +106,105 @@ public class InternalController : ControllerBase
             });
         }
 
-        try
+        // Cast to ChannelServiceAdapterBase to access ContinueConversationAsync
+        if (_adapter is not ChannelServiceAdapterBase channelAdapter)
         {
-            string? sentMessageId = null;
-
-            // Use the adapter to continue the conversation and send the message
-            // In Agents SDK, we use ChannelServiceAdapterBase.ContinueConversationAsync with ClaimsIdentity
-            var appId = _configuration["MicrosoftAppId"] ?? string.Empty;
-
-            // Create a ClaimsIdentity for the bot
-            var claimsIdentity = new ClaimsIdentity(new[]
+            _logger.LogError("Adapter does not support ContinueConversationAsync");
+            return StatusCode(500, new TeamsSendResponse
             {
-                new Claim("appid", appId),
-                new Claim("aud", appId)
+                Success = false,
+                Error = "Adapter does not support proactive messaging"
             });
+        }
 
-            // Cast to ChannelServiceAdapterBase to access ContinueConversationAsync
-            if (_adapter is ChannelServiceAdapterBase channelAdapter)
+        // Use the adapter to continue the conversation and send the message with retry logic
+        var appId = _configuration["MicrosoftAppId"] ?? string.Empty;
+        var claimsIdentity = new ClaimsIdentity(new[]
+        {
+            new Claim("appid", appId),
+            new Claim("aud", appId)
+        });
+
+        var result = await RetryPolicy.ExecuteAsync<string?>(
+            async ct =>
             {
+                string? sentMessageId = null;
+
                 await channelAdapter.ContinueConversationAsync(
                     claimsIdentity,
                     reference,
                     async (turnContext, cancellationToken) =>
                     {
                         // Format the message with sender attribution
-                        // Include event/channel context when multiple channels share this Teams conversation
-                        string formattedMessage;
-                        if (request.HasMultipleChannels && !string.IsNullOrEmpty(request.ChannelName))
-                        {
-                            // Show channel context: [Event: Channel] [Sender] Message
-                            var channelContext = !string.IsNullOrEmpty(request.EventName)
-                                ? $"{request.EventName}: {request.ChannelName}"
-                                : request.ChannelName;
-                            formattedMessage = $"**[{channelContext}]** **[{request.SenderName}]** {request.Message}";
-                        }
-                        else
-                        {
-                            // Simple format for single channel: [Sender] Message
-                            formattedMessage = $"**[{request.SenderName}]** {request.Message}";
-                        }
+                        string formattedMessage = FormatMessage(request);
 
-                        IActivity activity;
-                        if (request.UseAdaptiveCard)
-                        {
-                            // For future: Create an Adaptive Card for rich formatting
-                            // For now, just use text
-                            activity = MessageFactory.Text(formattedMessage);
-                        }
-                        else
-                        {
-                            activity = MessageFactory.Text(formattedMessage);
-                        }
+                        IActivity activity = request.UseAdaptiveCard
+                            ? MessageFactory.Text(formattedMessage) // TODO: Create Adaptive Card
+                            : MessageFactory.Text(formattedMessage);
 
                         var response = await turnContext.SendActivityAsync(activity, cancellationToken);
                         sentMessageId = response?.Id;
                     },
-                    default);
-            }
-            else
-            {
-                _logger.LogError("Adapter does not support ContinueConversationAsync");
-                return StatusCode(500, new TeamsSendResponse
-                {
-                    Success = false,
-                    Error = "Adapter does not support proactive messaging"
-                });
-            }
+                    ct);
 
+                // If we got a message ID, it succeeded
+                if (!string.IsNullOrEmpty(sentMessageId))
+                {
+                    return sentMessageId;
+                }
+
+                // No message ID but no exception - this is unexpected
+                throw new InvalidOperationException("Message sent but no message ID received");
+            },
+            messageId => false, // Don't retry if we got a message ID
+            _retryOptions,
+            _logger,
+            $"SendToTeams({request.ConversationId})");
+
+        if (result.Success && !string.IsNullOrEmpty(result.Value))
+        {
             _logger.LogInformation(
-                "Successfully sent message to Teams conversation {ConversationId}, messageId: {MessageId}",
-                request.ConversationId, sentMessageId);
+                "Successfully sent message to Teams conversation {ConversationId}, messageId: {MessageId} (attempts: {Attempts})",
+                request.ConversationId, result.Value, result.Attempts);
 
             return Ok(new TeamsSendResponse
             {
                 Success = true,
-                MessageId = sentMessageId
+                MessageId = result.Value,
+                Attempts = result.Attempts
             });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send message to Teams conversation {ConversationId}",
-                request.ConversationId);
 
-            return StatusCode(500, new TeamsSendResponse
-            {
-                Success = false,
-                Error = ex.Message
-            });
+        // Failed after all retries
+        var errorMessage = result.LastException?.Message ?? "Unknown error sending message to Teams";
+        _logger.LogError(result.LastException,
+            "Failed to send message to Teams conversation {ConversationId} after {Attempts} attempts",
+            request.ConversationId, result.Attempts);
+
+        return StatusCode(500, new TeamsSendResponse
+        {
+            Success = false,
+            Error = errorMessage,
+            Attempts = result.Attempts
+        });
+    }
+
+    /// <summary>
+    /// Formats a message with sender attribution and optional channel context.
+    /// </summary>
+    private static string FormatMessage(TeamsSendRequest request)
+    {
+        if (request.HasMultipleChannels && !string.IsNullOrEmpty(request.ChannelName))
+        {
+            // Show channel context: [Event: Channel] [Sender] Message
+            var channelContext = !string.IsNullOrEmpty(request.EventName)
+                ? $"{request.EventName}: {request.ChannelName}"
+                : request.ChannelName;
+            return $"**[{channelContext}]** **[{request.SenderName}]** {request.Message}";
         }
+
+        // Simple format for single channel: [Sender] Message
+        return $"**[{request.SenderName}]** {request.Message}";
     }
 
     /// <summary>
