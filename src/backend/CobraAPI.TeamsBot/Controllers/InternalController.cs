@@ -136,7 +136,13 @@ public class InternalController : ControllerBase
         }
 
         // Use the adapter to continue the conversation and send the message with retry logic
-        var appId = _configuration["MicrosoftAppId"] ?? string.Empty;
+        // Note: For the Bot Framework Emulator, MicrosoftAppId may be empty, but the Agents SDK
+        // still requires a non-empty appId for ContinueConversationAsync. Use a placeholder GUID
+        // for emulator/anonymous mode. In production, the real MicrosoftAppId will be used.
+        var configuredAppId = _configuration["MicrosoftAppId"];
+        var appId = string.IsNullOrEmpty(configuredAppId)
+            ? "00000000-0000-0000-0000-000000000000"  // Placeholder for emulator/anonymous mode
+            : configuredAppId;
         var claimsIdentity = new ClaimsIdentity(new[]
         {
             new Claim("appid", appId),

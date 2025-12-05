@@ -344,7 +344,7 @@ public class CreateTeamsMappingRequest
 public class CreateTeamsMappingResponse
 {
     public Guid MappingId { get; set; }
-    public Guid EventId { get; set; }
+    public Guid? EventId { get; set; }
     public string TeamsConversationId { get; set; } = string.Empty;
     public string WebhookUrl { get; set; } = string.Empty;
     public bool IsExisting { get; set; }

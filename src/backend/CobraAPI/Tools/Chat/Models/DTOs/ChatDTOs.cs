@@ -107,7 +107,10 @@ public class CreateExternalChannelRequest
 public class ExternalChannelMappingDto
 {
     public Guid Id { get; set; }
-    public Guid EventId { get; set; }
+    /// <summary>
+    /// The event this mapping is linked to. Null if unlinked (awaiting assignment).
+    /// </summary>
+    public Guid? EventId { get; set; }
     public ExternalPlatform Platform { get; set; }
     public string PlatformName { get; set; } = string.Empty;
     public string ExternalGroupId { get; set; } = string.Empty;

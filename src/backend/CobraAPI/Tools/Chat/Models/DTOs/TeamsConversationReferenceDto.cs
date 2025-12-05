@@ -86,6 +86,17 @@ public record RenameConnectorRequest
 }
 
 /// <summary>
+/// Request to link a Teams connector to an event.
+/// </summary>
+public record LinkConnectorRequest
+{
+    /// <summary>
+    /// The event ID to link the connector to.
+    /// </summary>
+    public Guid EventId { get; init; }
+}
+
+/// <summary>
 /// Summary of a Teams connector for admin UI.
 /// </summary>
 public record TeamsConnectorDto
@@ -104,6 +115,11 @@ public record TeamsConnectorDto
     // Linked event info
     public Guid? LinkedEventId { get; init; }
     public string? LinkedEventName { get; init; }
+
+    /// <summary>
+    /// True if the connector is linked to an event, false if unlinked (awaiting assignment).
+    /// </summary>
+    public bool IsLinked { get; init; }
 }
 
 /// <summary>

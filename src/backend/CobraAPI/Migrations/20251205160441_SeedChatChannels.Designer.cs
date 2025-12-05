@@ -4,16 +4,19 @@ using CobraAPI.Core.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace ChecklistAPI.Migrations
+namespace CobraAPI.Migrations
 {
     [DbContext(typeof(CobraDbContext))]
-    partial class CobraDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251205160441_SeedChatChannels")]
+    partial class SeedChatChannels
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -667,7 +670,7 @@ namespace ChecklistAPI.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<Guid?>("EventId")
+                    b.Property<Guid>("EventId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ExternalGroupId")
@@ -717,8 +720,7 @@ namespace ChecklistAPI.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EventId")
-                        .HasFilter("[EventId] IS NOT NULL");
+                    b.HasIndex("EventId");
 
                     b.HasIndex("IsActive")
                         .HasFilter("[IsActive] = 1");
@@ -1188,7 +1190,8 @@ namespace ChecklistAPI.Migrations
                     b.HasOne("CobraAPI.Shared.Events.Models.Entities.Event", "Event")
                         .WithMany()
                         .HasForeignKey("EventId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Event");
                 });

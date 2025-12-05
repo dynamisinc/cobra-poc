@@ -3,6 +3,7 @@ using CobraAPI.TeamsBot.Bots;
 using CobraAPI.TeamsBot.Middleware;
 using CobraAPI.TeamsBot.Models;
 using CobraAPI.TeamsBot.Services;
+using Microsoft.Agents.Authentication.Msal;
 using Microsoft.Agents.Builder;
 using Microsoft.Agents.Builder.State;
 using Microsoft.Agents.Hosting.AspNetCore;
@@ -13,6 +14,14 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Load additional configuration files (local overrides for development)
+// appsettings.Development.local.json is git-ignored and can contain real credentials
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.local.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables();
 
 // Service name for telemetry
 const string serviceName = "CobraTeamsBot";
@@ -131,21 +140,18 @@ builder.Services.AddSingleton<IBotMetrics, BotMetrics>();
 
 builder.Services.AddHttpClient();
 
+// Configure MSAL authentication for proactive messaging
+// This sets up the IConnections and IAccessTokenProvider needed for ContinueConversationAsync.
+// Without this, proactive messaging fails with "No connections found" error.
+// For anonymous/emulator mode without proactive messaging, this is still required but can use empty Connections.
+builder.Services.AddDefaultMsalAuth(builder.Configuration);
+
 // Configure Microsoft 365 Agents SDK
 // Register the agent (replaces IBot registration)
+// Note: AddAgent handles authentication internally based on MicrosoftAppId/MicrosoftAppPassword config.
+// When these are empty (local dev), it runs in "anonymous mode" which allows Bot Emulator connections.
+// For production, set MicrosoftAppId and MicrosoftAppPassword to enable JWT token validation from Teams/Azure Bot Service.
 builder.AddAgent<CobraTeamsBot>();
-
-// Add authentication and authorization for Agents SDK
-// For POC/Development: Using basic authentication setup
-// For Production: Configure proper JWT token validation with Azure AD
-builder.Services.AddAuthentication()
-    .AddJwtBearer(options =>
-    {
-        // Token validation will be configured for production via Azure AD
-        // For POC, we allow requests to pass through
-        options.RequireHttpsMetadata = false;
-    });
-builder.Services.AddAuthorization();
 
 // Create the storage for conversation state
 // For POC, use in-memory storage. For production, use Azure Blob Storage or CosmosDB
@@ -196,20 +202,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
-app.UseAuthentication();
-app.UseAuthorization();
+// Note: Authentication/Authorization is handled by the Agents SDK internally via AddAgent().
+// When MicrosoftAppId is empty, it runs in anonymous mode for local development.
+// When MicrosoftAppId is set, it validates JWT tokens from Azure Bot Service/Teams.
 app.MapControllers();
 
-// Map the bot messages endpoint using Agents SDK pattern
-app.MapPost("/api/messages", async (
-    HttpRequest request,
-    HttpResponse response,
-    IAgentHttpAdapter adapter,
-    IAgent agent,
-    CancellationToken cancellationToken) =>
-{
-    await adapter.ProcessAsync(request, response, agent, cancellationToken);
-}).RequireAuthorization();
+// Note: The /api/messages endpoint is handled by BotController.
+// The controller-based approach is preferred over minimal API MapPost
+// because it provides better Swagger documentation and follows the
+// pattern used by other controllers in this project.
 
 // Log startup information
 var logger = app.Services.GetRequiredService<ILogger<Program>>();

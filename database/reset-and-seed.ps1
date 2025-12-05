@@ -48,7 +48,7 @@ Write-Host "Database: $DatabaseName" -ForegroundColor Gray
 Write-Host ""
 
 # Step 1: Drop and recreate database via EF Core
-$totalSteps = 7  # 2 migration steps + 5 seed scripts
+$totalSteps = 8  # 2 migration steps + 6 seed scripts
 if (-not $SkipMigrations) {
     Write-Host "[1/$totalSteps] Dropping existing database..." -ForegroundColor Yellow
     Push-Location $BackendDir
@@ -91,7 +91,8 @@ $seedScripts = @(
     @{ Name = "Templates"; File = "seed-templates.sql" },
     @{ Name = "Item Library"; File = "seed-item-library.sql" },
     @{ Name = "Checklists"; File = "seed-checklists.sql" },
-    @{ Name = "Operational Periods"; File = "seed-operational-periods.sql" }
+    @{ Name = "Operational Periods"; File = "seed-operational-periods.sql" },
+    @{ Name = "Chat Channels"; File = "seed-chat-channels.sql" }
 )
 $stepNum = 3
 foreach ($script in $seedScripts) {
@@ -139,6 +140,7 @@ UNION ALL SELECT 'ItemLibrary', COUNT(*) FROM ItemLibrary
 UNION ALL SELECT 'ChecklistInstances', COUNT(*) FROM ChecklistInstances
 UNION ALL SELECT 'ChecklistItems', COUNT(*) FROM ChecklistItems
 UNION ALL SELECT 'OperationalPeriods', COUNT(*) FROM OperationalPeriods
+UNION ALL SELECT 'ChatThreads', COUNT(*) FROM ChatThreads
 "@
 
 $verifyResult = sqlcmd -S $ServerInstance -d $DatabaseName -Q $verifyQuery -h -1 -W 2>&1

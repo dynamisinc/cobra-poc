@@ -63,20 +63,12 @@ public class TeamsController : ControllerBase
 
         if (mapping == null)
         {
-            // Create new mapping (connector not yet linked to an event)
-            // Use a placeholder EventId - will be set when linked to a COBRA channel
-            var placeholderEvent = await _dbContext.Events.FirstOrDefaultAsync();
-            if (placeholderEvent == null)
-            {
-                _logger.LogWarning("No events exist to create Teams mapping. ConversationId: {ConversationId}",
-                    request.ConversationId);
-                return BadRequest(new { error = "No events exist. Create an event first." });
-            }
-
+            // Create new mapping - EventId is null (unlinked) until user explicitly links to an event
+            // This allows the connector to be registered and available for linking via the admin UI
             mapping = new ExternalChannelMapping
             {
                 Id = Guid.NewGuid(),
-                EventId = placeholderEvent.Id, // Placeholder - will be updated when linked
+                EventId = null, // Unlinked - user must explicitly link to an event
                 Platform = ExternalPlatform.Teams,
                 ExternalGroupId = request.ConversationId,
                 ExternalGroupName = request.ChannelName ?? $"Teams {(request.IsEmulator ? "Emulator" : "Channel")}",
@@ -89,7 +81,8 @@ public class TeamsController : ControllerBase
             _dbContext.ExternalChannelMappings.Add(mapping);
 
             _logger.LogInformation(
-                "Created new Teams mapping {MappingId} for conversation {ConversationId}",
+                "Created new unlinked Teams connector {MappingId} for conversation {ConversationId}. " +
+                "Connector must be linked to an event via admin UI.",
                 mapping.Id, request.ConversationId);
         }
 
@@ -192,7 +185,8 @@ public class TeamsController : ControllerBase
                 HasConversationReference = m.ConversationReferenceJson != null,
                 CreatedAt = m.CreatedAt,
                 LinkedEventId = m.EventId,
-                LinkedEventName = m.Event.Name
+                LinkedEventName = m.Event != null ? m.Event.Name : null,
+                IsLinked = m.EventId != null
             })
             .ToListAsync();
 
@@ -297,6 +291,87 @@ public class TeamsController : ControllerBase
             DeletedCount = deletedIds.Count,
             DeletedMappingIds = deletedIds
         });
+    }
+
+    /// <summary>
+    /// Link an unlinked Teams connector to an event.
+    /// This assigns the connector to a specific event so messages can flow between them.
+    /// </summary>
+    [HttpPost("mappings/{mappingId:guid}/link")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> LinkConnectorToEvent(Guid mappingId, [FromBody] LinkConnectorRequest request)
+    {
+        var mapping = await _dbContext.ExternalChannelMappings
+            .FirstOrDefaultAsync(m => m.Id == mappingId && m.Platform == ExternalPlatform.Teams);
+
+        if (mapping == null)
+        {
+            return NotFound(new { error = "Connector not found" });
+        }
+
+        // Validate the event exists
+        var eventEntity = await _dbContext.Events.FirstOrDefaultAsync(e => e.Id == request.EventId);
+        if (eventEntity == null)
+        {
+            return NotFound(new { error = "Event not found" });
+        }
+
+        var userContext = GetUserContext();
+        var previousEventId = mapping.EventId;
+
+        mapping.EventId = request.EventId;
+        mapping.LastModifiedBy = userContext?.Email ?? "Admin";
+        mapping.LastModifiedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Linked Teams connector {MappingId} to event {EventId} ({EventName}). Previous: {PreviousEventId}",
+            mappingId, request.EventId, eventEntity.Name, previousEventId?.ToString() ?? "none");
+
+        return Ok(new
+        {
+            message = "Connector linked to event",
+            mappingId,
+            eventId = request.EventId,
+            eventName = eventEntity.Name
+        });
+    }
+
+    /// <summary>
+    /// Unlink a Teams connector from its event (sets EventId to null).
+    /// The connector will remain registered but not associated with any event.
+    /// </summary>
+    [HttpPost("mappings/{mappingId:guid}/unlink")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UnlinkConnector(Guid mappingId)
+    {
+        var mapping = await _dbContext.ExternalChannelMappings
+            .Include(m => m.Event)
+            .FirstOrDefaultAsync(m => m.Id == mappingId && m.Platform == ExternalPlatform.Teams);
+
+        if (mapping == null)
+        {
+            return NotFound(new { error = "Connector not found" });
+        }
+
+        var userContext = GetUserContext();
+        var previousEventName = mapping.Event?.Name ?? "none";
+
+        mapping.EventId = null;
+        mapping.LastModifiedBy = userContext?.Email ?? "Admin";
+        mapping.LastModifiedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Unlinked Teams connector {MappingId} from event {EventName}",
+            mappingId, previousEventName);
+
+        return Ok(new { message = "Connector unlinked from event", mappingId });
     }
 
     /// <summary>

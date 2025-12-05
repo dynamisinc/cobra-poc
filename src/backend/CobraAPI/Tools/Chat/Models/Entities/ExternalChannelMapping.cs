@@ -18,14 +18,16 @@ public class ExternalChannelMapping
 
     /// <summary>
     /// The COBRA event this external channel is associated with.
+    /// Null when the connector is registered but not yet linked to an event.
     /// One event can have multiple channel mappings (e.g., GroupMe + Teams).
     /// </summary>
-    public Guid EventId { get; set; }
+    public Guid? EventId { get; set; }
 
     /// <summary>
     /// Navigation property to the associated event.
+    /// Null when the connector is not yet linked to an event.
     /// </summary>
-    public Event Event { get; set; } = null!;
+    public Event? Event { get; set; }
 
     /// <summary>
     /// The external messaging platform (GroupMe, Signal, Teams, etc.).

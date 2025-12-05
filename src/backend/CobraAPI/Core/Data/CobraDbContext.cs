@@ -304,12 +304,16 @@ public class CobraDbContext : DbContext
             entity.Property(e => e.TenantId).HasMaxLength(100);
             entity.Property(e => e.InstalledByName).HasMaxLength(200);
 
+            // Optional FK to Event - SetNull when event is deleted
+            // EventId is nullable to allow "unlinked" connectors (registered but not yet assigned to an event)
             entity.HasOne(e => e.Event)
                 .WithMany()
                 .HasForeignKey(e => e.EventId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
 
-            entity.HasIndex(e => e.EventId);
+            entity.HasIndex(e => e.EventId)
+                .HasFilter("[EventId] IS NOT NULL");
             entity.HasIndex(e => new { e.Platform, e.ExternalGroupId }).IsUnique();
             entity.HasIndex(e => e.IsActive).HasFilter("[IsActive] = 1");
 
@@ -367,5 +371,8 @@ public class CobraDbContext : DbContext
 
             entity.HasIndex(e => e.LanguageId);
         });
+
+        // Apply seed data
+        SeedData.ChatChannelSeedData.Apply(modelBuilder);
     }
 }

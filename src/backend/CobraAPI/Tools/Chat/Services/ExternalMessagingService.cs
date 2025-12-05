@@ -503,7 +503,12 @@ public class ExternalMessagingService : IExternalMessagingService
         await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation("Deactivated external channel mapping {MappingId}", mappingId);
-        await _chatHubService.BroadcastChannelDisconnectedAsync(eventId, mappingId);
+
+        // Only broadcast if the mapping was linked to an event
+        if (eventId.HasValue)
+        {
+            await _chatHubService.BroadcastChannelDisconnectedAsync(eventId.Value, mappingId);
+        }
     }
 
     #endregion
@@ -535,6 +540,15 @@ public class ExternalMessagingService : IExternalMessagingService
         if (mapping == null)
         {
             _logger.LogWarning("No active channel mapping found for {MappingId}", mappingId);
+            return;
+        }
+
+        // Check if the mapping is linked to an event - if not, we can't process the message
+        if (!mapping.EventId.HasValue)
+        {
+            _logger.LogWarning("Channel mapping {MappingId} is not linked to an event. Message ignored. " +
+                "Link the connector to an event via admin UI to enable message sync.",
+                mappingId);
             return;
         }
 
@@ -585,7 +599,7 @@ public class ExternalMessagingService : IExternalMessagingService
 
         await chatService.CreateExternalMessageAsync(
             chatThread.Id,
-            mapping.EventId,
+            mapping.EventId.Value,
             ExternalPlatform.GroupMe,
             payload.MessageId,
             payload.SenderName,
@@ -596,7 +610,7 @@ public class ExternalMessagingService : IExternalMessagingService
             mappingId);
 
         _logger.LogInformation("Processed GroupMe message {MessageId} for event {EventId}, thread {ThreadId}",
-            payload.MessageId, mapping.EventId, chatThread.Id);
+            payload.MessageId, mapping.EventId.Value, chatThread.Id);
     }
 
     /// <summary>
@@ -627,6 +641,15 @@ public class ExternalMessagingService : IExternalMessagingService
             return;
         }
 
+        // Check if the mapping is linked to an event - if not, we can't process the message
+        if (!mapping.EventId.HasValue)
+        {
+            _logger.LogWarning("Teams mapping {MappingId} is not linked to an event. Message ignored. " +
+                "Link the connector to an event via admin UI to enable message sync.",
+                mappingId);
+            return;
+        }
+
         // Get ALL ChatThreads linked to this external channel mapping
         // Multiple COBRA channels can share the same Teams conversation
         var linkedThreads = await _dbContext.ChatThreads
@@ -644,7 +667,7 @@ public class ExternalMessagingService : IExternalMessagingService
         {
             _logger.LogWarning("No linked ChatThread found for mapping {MappingId}, falling back to default event thread", mappingId);
             var defaultThread = await _dbContext.ChatThreads
-                .Where(ct => ct.EventId == mapping.EventId && ct.IsDefaultEventThread && ct.IsActive)
+                .Where(ct => ct.EventId == mapping.EventId.Value && ct.IsDefaultEventThread && ct.IsActive)
                 .FirstOrDefaultAsync();
 
             if (defaultThread != null)
@@ -657,7 +680,7 @@ public class ExternalMessagingService : IExternalMessagingService
 
         if (linkedThreads.Count == 0)
         {
-            _logger.LogWarning("No chat thread found for event {EventId}", mapping.EventId);
+            _logger.LogWarning("No chat thread found for event {EventId}", mapping.EventId.Value);
             return;
         }
 
@@ -681,7 +704,7 @@ public class ExternalMessagingService : IExternalMessagingService
 
             await chatService.CreateExternalMessageAsync(
                 chatThread.Id,
-                mapping.EventId,
+                mapping.EventId.Value,
                 ExternalPlatform.Teams,
                 payload.MessageId,
                 payload.SenderName,
@@ -692,7 +715,7 @@ public class ExternalMessagingService : IExternalMessagingService
                 mappingId);
 
             _logger.LogInformation("Processed Teams message {MessageId} for event {EventId}, thread {ThreadId}",
-                payload.MessageId, mapping.EventId, chatThread.Id);
+                payload.MessageId, mapping.EventId.Value, chatThread.Id);
         }
     }
 

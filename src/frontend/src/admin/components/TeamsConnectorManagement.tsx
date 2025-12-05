@@ -30,6 +30,10 @@ import {
   FormControlLabel,
   Checkbox,
   Stack,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -60,6 +64,8 @@ import {
 } from '../../theme/styledComponents';
 import CobraStyles from '../../theme/CobraStyles';
 import { systemSettingsService } from '../services/systemSettingsService';
+import { eventService } from '../../shared/events/services/eventService';
+import type { Event } from '../../shared/events/types';
 import type { TeamsConnectorDto } from '../types/systemSettings';
 
 /**
@@ -235,6 +241,100 @@ const DeleteDialog: React.FC<{
 };
 
 /**
+ * Link Event Dialog - Select which event to link a connector to
+ */
+const LinkEventDialog: React.FC<{
+  open: boolean;
+  connector: TeamsConnectorDto | null;
+  onClose: () => void;
+  onLink: (mappingId: string, eventId: string) => Promise<void>;
+}> = ({ open, connector, onClose, onLink }) => {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setSelectedEventId('');
+      loadEvents();
+    }
+  }, [open]);
+
+  const loadEvents = async () => {
+    try {
+      setLoading(true);
+      // Get all active events
+      const data = await eventService.getEvents(undefined, true);
+      setEvents(data);
+    } catch (err) {
+      toast.error('Failed to load events');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLink = async () => {
+    if (!connector || !selectedEventId) return;
+    try {
+      setSaving(true);
+      await onLink(connector.mappingId, selectedEventId);
+      onClose();
+    } catch {
+      // Error handled in parent
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <CobraDialog open={open} onClose={onClose} title="Link to Event" contentWidth="450px">
+      <Stack spacing={CobraStyles.Spacing.FormFields}>
+        <Typography variant="body2" color="text.secondary">
+          Select a COBRA event to link this Teams connector to. Once linked, messages will flow
+          between the COBRA event chat and this Teams channel.
+        </Typography>
+        {connector && (
+          <Alert severity="info" sx={{ py: 0.5 }}>
+            <Typography variant="body2">
+              Connector: <strong>{connector.displayName}</strong>
+            </Typography>
+          </Alert>
+        )}
+        <FormControl fullWidth disabled={loading || saving}>
+          <InputLabel id="link-event-select-label">Select Event</InputLabel>
+          <Select
+            labelId="link-event-select-label"
+            value={selectedEventId}
+            label="Select Event"
+            onChange={(e) => setSelectedEventId(e.target.value)}
+          >
+            {events.map((event) => (
+              <MenuItem key={event.id} value={event.id}>
+                {event.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            <CircularProgress size={24} />
+          </Box>
+        )}
+        <DialogActions sx={{ px: 0, pt: 2 }}>
+          <CobraLinkButton onClick={onClose} disabled={saving}>
+            Cancel
+          </CobraLinkButton>
+          <CobraPrimaryButton onClick={handleLink} disabled={saving || !selectedEventId || loading}>
+            {saving ? <CircularProgress size={20} /> : 'Link'}
+          </CobraPrimaryButton>
+        </DialogActions>
+      </Stack>
+    </CobraDialog>
+  );
+};
+
+/**
  * Main Teams Connector Management Component
  */
 export const TeamsConnectorManagement: React.FC = () => {
@@ -251,6 +351,7 @@ export const TeamsConnectorManagement: React.FC = () => {
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [selectedConnector, setSelectedConnector] = useState<TeamsConnectorDto | null>(null);
 
   const loadConnectors = useCallback(async () => {
@@ -330,6 +431,29 @@ export const TeamsConnectorManagement: React.FC = () => {
     }
   };
 
+  const handleLink = async (mappingId: string, eventId: string) => {
+    try {
+      await systemSettingsService.linkTeamsConnector(mappingId, eventId);
+      toast.success('Connector linked to event');
+      await loadConnectors();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to link connector';
+      toast.error(message);
+      throw err;
+    }
+  };
+
+  const handleUnlink = async (mappingId: string) => {
+    try {
+      await systemSettingsService.unlinkTeamsConnector(mappingId);
+      toast.success('Connector unlinked from event');
+      await loadConnectors();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to unlink connector';
+      toast.error(message);
+    }
+  };
+
   const openRenameDialog = (connector: TeamsConnectorDto) => {
     setSelectedConnector(connector);
     setRenameDialogOpen(true);
@@ -338,6 +462,11 @@ export const TeamsConnectorManagement: React.FC = () => {
   const openDeleteDialog = (connector: TeamsConnectorDto) => {
     setSelectedConnector(connector);
     setDeleteDialogOpen(true);
+  };
+
+  const openLinkDialog = (connector: TeamsConnectorDto) => {
+    setSelectedConnector(connector);
+    setLinkDialogOpen(true);
   };
 
   // Count statistics
@@ -583,6 +712,30 @@ export const TeamsConnectorManagement: React.FC = () => {
                   </TableCell>
                   <TableCell align="right">
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                      {/* Link/Unlink button */}
+                      {connector.isActive && (
+                        connector.linkedEventId ? (
+                          <Tooltip title="Unlink from event">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleUnlink(connector.mappingId)}
+                              sx={{ color: theme.palette.warning.main }}
+                            >
+                              <FontAwesomeIcon icon={faLinkSlash} style={{ fontSize: 14 }} />
+                            </IconButton>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip title="Link to event">
+                            <IconButton
+                              size="small"
+                              onClick={() => openLinkDialog(connector)}
+                              sx={{ color: theme.palette.info.main }}
+                            >
+                              <FontAwesomeIcon icon={faLink} style={{ fontSize: 14 }} />
+                            </IconButton>
+                          </Tooltip>
+                        )
+                      )}
                       <Tooltip title="Rename">
                         <IconButton size="small" onClick={() => openRenameDialog(connector)}>
                           <FontAwesomeIcon icon={faPencil} style={{ fontSize: 14 }} />
@@ -643,6 +796,16 @@ export const TeamsConnectorManagement: React.FC = () => {
           setSelectedConnector(null);
         }}
         onConfirm={handleDelete}
+      />
+
+      <LinkEventDialog
+        open={linkDialogOpen}
+        connector={selectedConnector}
+        onClose={() => {
+          setLinkDialogOpen(false);
+          setSelectedConnector(null);
+        }}
+        onLink={handleLink}
       />
     </Box>
   );

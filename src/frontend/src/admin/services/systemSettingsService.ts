@@ -102,6 +102,22 @@ export const systemSettingsService = {
     );
     return response.data;
   },
+
+  /**
+   * Link a Teams connector to a COBRA event.
+   * Required before messages can flow between COBRA and Teams.
+   */
+  linkTeamsConnector: async (mappingId: string, eventId: string): Promise<void> => {
+    await apiClient.post(`/api/chat/teams/mappings/${mappingId}/link`, { eventId });
+  },
+
+  /**
+   * Unlink a Teams connector from its current event.
+   * Messages will no longer flow between COBRA and Teams for this connector.
+   */
+  unlinkTeamsConnector: async (mappingId: string): Promise<void> => {
+    await apiClient.post(`/api/chat/teams/mappings/${mappingId}/unlink`);
+  },
 };
 
 export default systemSettingsService;

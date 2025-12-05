@@ -1,0 +1,32 @@
+{
+  "// Instructions": [
+    "1. Copy this file to appsettings.Development.json (which is git-ignored)",
+    "2. Create an Azure Bot resource in the Azure Portal",
+    "3. Copy the Microsoft App ID and create a Client Secret",
+    "4. Replace YOUR_AZURE_BOT_APP_ID with your App ID (4 places total)",
+    "5. Replace YOUR_AZURE_BOT_APP_PASSWORD with your Client Secret (2 places total)",
+    "6. In Bot Framework Emulator, enter the same App ID and Password when connecting",
+    "",
+    "MicrosoftAppId/Password: Used to validate incoming requests from Teams/Emulator",
+    "Connections.ClientId/ClientSecret: Used to get OAuth tokens for proactive messaging (COBRA → Teams)",
+    "These should be the SAME credentials - just different naming conventions"
+  ],
+  "MicrosoftAppType": "MultiTenant",
+  "MicrosoftAppId": "YOUR_AZURE_BOT_APP_ID",
+  "MicrosoftAppPassword": "YOUR_AZURE_BOT_APP_PASSWORD",
+  "MicrosoftAppTenantId": "",
+  "TokenValidation": {
+    "Enabled": false
+  },
+  "Connections": {
+    "ServiceConnection": {
+      "Settings": {
+        "AuthType": "ClientSecret",
+        "ClientId": "YOUR_AZURE_BOT_APP_ID",
+        "ClientSecret": "YOUR_AZURE_BOT_APP_PASSWORD",
+        "AuthorityEndpoint": "https://login.microsoftonline.com/botframework.com",
+        "Scopes": ["https://api.botframework.com/.default"]
+      }
+    }
+  }
+}
