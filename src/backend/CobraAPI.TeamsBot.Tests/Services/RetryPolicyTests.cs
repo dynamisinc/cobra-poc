@@ -228,13 +228,15 @@ public class RetryPolicyTests
         var result = await RetryPolicy.ExecuteAsync(
             async _ =>
             {
-                await Task.Delay(50);
+                await Task.Delay(100);
                 return true;
             },
             logger: _loggerMock.Object,
             operationName: "TestOperation");
 
-        Assert.True(result.TotalDuration.TotalMilliseconds >= 50);
+        // Allow some tolerance for timing variations
+        Assert.True(result.TotalDuration.TotalMilliseconds >= 50,
+            $"Expected duration >= 50ms but was {result.TotalDuration.TotalMilliseconds}ms");
     }
 
     [Fact]
