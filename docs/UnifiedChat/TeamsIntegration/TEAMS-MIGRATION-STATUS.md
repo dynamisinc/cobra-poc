@@ -350,7 +350,7 @@ Relevant documentation:
 - [ ] Bot removal detection (UC-TI-021)
 
 ### Future (Post-POC)
-- [ ] Microsoft 365 Agents SDK migration
+- [x] Microsoft 365 Agents SDK migration ✅ **COMPLETE** (branch: feature/agents-sdk-migration)
 - [ ] Adaptive Cards for rich formatting
 - [ ] File import from Teams messages
 - [ ] Embedded Teams tab for COBRA UI
@@ -364,3 +364,4 @@ Relevant documentation:
 | 2025-12-04 | Initial migration status document created |
 | 2025-12-04 | UC-TI-029 (Stateless Bot) and UC-TI-030 (Admin UI) completed |
 | 2025-12-04 | API key authentication added between services |
+| 2025-12-04 | Microsoft 365 Agents SDK migration completed (branch: feature/agents-sdk-migration) |
