@@ -368,3 +368,4 @@ Relevant documentation:
 | 2025-12-04 | Retry logic for transient failures implemented (UC-TI-024) |
 | 2025-12-04 | Conversation reference expiration handling (UC-TI-025) - validator, HTTP 410 responses |
 | 2025-12-04 | Production readiness improvements: health checks, diagnostics security, dependency checks |
+| 2025-12-04 | OpenTelemetry observability: Application Insights, request logging, metrics endpoints |
