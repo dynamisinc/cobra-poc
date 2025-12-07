@@ -277,8 +277,9 @@ public class CobraDbContext : DbContext
             entity.HasIndex(e => e.ChatThreadId);
             entity.HasIndex(e => e.CreatedAt);
 
-            // Unique index for deduplication of external messages
-            entity.HasIndex(e => e.ExternalMessageId)
+            // Unique index for deduplication of external messages per thread
+            // Allows same external message to appear in multiple channels
+            entity.HasIndex(e => new { e.ExternalMessageId, e.ChatThreadId })
                 .HasFilter("[ExternalMessageId] IS NOT NULL")
                 .IsUnique();
 
@@ -291,21 +292,38 @@ public class CobraDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Platform).IsRequired().HasConversion<int>();
-            entity.Property(e => e.ExternalGroupId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.ExternalGroupId).IsRequired().HasMaxLength(500);
             entity.Property(e => e.ExternalGroupName).IsRequired().HasMaxLength(255);
             entity.Property(e => e.BotId).IsRequired().HasMaxLength(100);
             entity.Property(e => e.WebhookSecret).IsRequired().HasMaxLength(100);
             entity.Property(e => e.ShareUrl).HasMaxLength(500);
             entity.Property(e => e.CreatedBy).IsRequired().HasMaxLength(200);
 
+            // Teams Stateless Architecture fields (UC-TI-029)
+            entity.Property(e => e.ConversationReferenceJson); // nvarchar(max) by default
+            entity.Property(e => e.TenantId).HasMaxLength(100);
+            entity.Property(e => e.InstalledByName).HasMaxLength(200);
+
+            // Optional FK to Event - SetNull when event is deleted
+            // EventId is nullable to allow "unlinked" connectors (registered but not yet assigned to an event)
             entity.HasOne(e => e.Event)
                 .WithMany()
                 .HasForeignKey(e => e.EventId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
 
-            entity.HasIndex(e => e.EventId);
+            entity.HasIndex(e => e.EventId)
+                .HasFilter("[EventId] IS NOT NULL");
             entity.HasIndex(e => new { e.Platform, e.ExternalGroupId }).IsUnique();
             entity.HasIndex(e => e.IsActive).HasFilter("[IsActive] = 1");
+
+            // Index for tenant-based queries (future multi-tenancy)
+            entity.HasIndex(e => e.TenantId)
+                .HasFilter("[TenantId] IS NOT NULL");
+
+            // Index for stale connector cleanup (Teams platform only)
+            entity.HasIndex(e => e.LastActivityAt)
+                .HasFilter("[Platform] = 3"); // Teams = 3 in ExternalPlatform enum
         });
 
         // SystemSetting configuration
@@ -353,5 +371,8 @@ public class CobraDbContext : DbContext
 
             entity.HasIndex(e => e.LanguageId);
         });
+
+        // Apply seed data
+        SeedData.ChatChannelSeedData.Apply(modelBuilder);
     }
 }

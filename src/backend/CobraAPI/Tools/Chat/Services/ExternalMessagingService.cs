@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using CobraAPI.Core.Data;
 using CobraAPI.Tools.Chat.ExternalPlatforms;
 using CobraAPI.Core.Models;
@@ -19,6 +22,8 @@ public class ExternalMessagingService : IExternalMessagingService
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<ExternalMessagingService> _logger;
     private readonly IServiceProvider _serviceProvider;
+    private readonly TeamsBotSettings _teamsBotSettings;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public ExternalMessagingService(
         CobraDbContext dbContext,
@@ -26,7 +31,9 @@ public class ExternalMessagingService : IExternalMessagingService
         IChatHubService chatHubService,
         IHttpContextAccessor httpContextAccessor,
         ILogger<ExternalMessagingService> logger,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        IOptions<TeamsBotSettings> teamsBotSettings,
+        IHttpClientFactory httpClientFactory)
     {
         _dbContext = dbContext;
         _groupMeClient = groupMeClient;
@@ -34,6 +41,8 @@ public class ExternalMessagingService : IExternalMessagingService
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
         _serviceProvider = serviceProvider;
+        _teamsBotSettings = teamsBotSettings.Value;
+        _httpClientFactory = httpClientFactory;
     }
 
     private UserContext? GetUserContext()
@@ -84,6 +93,17 @@ public class ExternalMessagingService : IExternalMessagingService
             deactivatedChannel.IsActive = true;
             deactivatedChannel.LastModifiedBy = userContext.Email;
             deactivatedChannel.LastModifiedAt = DateTime.UtcNow;
+
+            // Also reactivate the linked ChatThread if it exists
+            var linkedThread = await _dbContext.ChatThreads
+                .FirstOrDefaultAsync(ct => ct.ExternalChannelMappingId == deactivatedChannel.Id);
+            if (linkedThread != null)
+            {
+                linkedThread.IsActive = true;
+                linkedThread.LastModifiedBy = userContext.Email;
+                linkedThread.LastModifiedAt = DateTime.UtcNow;
+            }
+
             await _dbContext.SaveChangesAsync();
 
             var reactivatedDto = MapToDto(deactivatedChannel);
@@ -138,10 +158,33 @@ public class ExternalMessagingService : IExternalMessagingService
         };
 
         _dbContext.ExternalChannelMappings.Add(mapping);
+
+        // Get max display order for this event's channels
+        var maxOrder = await _dbContext.ChatThreads
+            .Where(ct => ct.EventId == request.EventId && ct.IsActive)
+            .MaxAsync(ct => (int?)ct.DisplayOrder) ?? -1;
+
+        // Create a ChatThread linked to this external channel
+        var chatThread = new ChatThread
+        {
+            Id = Guid.NewGuid(),
+            EventId = request.EventId,
+            Name = groupName,
+            Description = $"Messages from {request.Platform}",
+            ChannelType = ChannelType.External,
+            DisplayOrder = maxOrder + 1,
+            ExternalChannelMappingId = mappingId,
+            IsDefaultEventThread = false,
+            IsActive = true,
+            CreatedBy = userContext.Email,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.ChatThreads.Add(chatThread);
         await _dbContext.SaveChangesAsync();
 
-        _logger.LogInformation("Created external channel mapping {MappingId} for event {EventId}",
-            mappingId, request.EventId);
+        _logger.LogInformation("Created external channel mapping {MappingId} with ChatThread {ThreadId} for event {EventId}",
+            mappingId, chatThread.Id, request.EventId);
 
         var dto = MapToDto(mapping);
         await _chatHubService.BroadcastChannelConnectedAsync(request.EventId, dto);
@@ -150,29 +193,257 @@ public class ExternalMessagingService : IExternalMessagingService
     }
 
     /// <summary>
-    /// Retrieves all external channel mappings for an event.
+    /// Creates an external channel mapping for Teams with an existing conversation.
+    /// Called when connecting to a Teams conversation from the UI.
+    /// Creates both the ExternalChannelMapping and a linked ChatThread.
+    /// </summary>
+    public async Task<ExternalChannelMappingDto> CreateTeamsChannelMappingAsync(
+        Guid eventId,
+        string teamsConversationId,
+        string channelName,
+        string createdBy)
+    {
+        _logger.LogInformation("Creating Teams channel mapping for event {EventId}, conversation {ConversationId}",
+            eventId, teamsConversationId);
+
+        // Check if mapping already exists for this conversation
+        var existingMapping = await _dbContext.ExternalChannelMappings
+            .FirstOrDefaultAsync(m => m.ExternalGroupId == teamsConversationId && m.IsActive);
+
+        if (existingMapping != null)
+        {
+            _logger.LogInformation("Active Teams mapping already exists for conversation {ConversationId}, returning existing",
+                teamsConversationId);
+            return MapToDto(existingMapping);
+        }
+
+        var mappingId = Guid.NewGuid();
+        var webhookSecret = GenerateWebhookSecret();
+
+        var mapping = new ExternalChannelMapping
+        {
+            Id = mappingId,
+            EventId = eventId,
+            Platform = ExternalPlatform.Teams,
+            ExternalGroupId = teamsConversationId,
+            ExternalGroupName = channelName,
+            BotId = string.Empty,
+            WebhookSecret = webhookSecret,
+            ShareUrl = null,
+            IsActive = true,
+            CreatedBy = createdBy,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.ExternalChannelMappings.Add(mapping);
+
+        // Get max display order for this event's channels
+        var maxOrder = await _dbContext.ChatThreads
+            .Where(ct => ct.EventId == eventId && ct.IsActive)
+            .MaxAsync(ct => (int?)ct.DisplayOrder) ?? -1;
+
+        // Create a ChatThread linked to this external channel
+        var chatThread = new ChatThread
+        {
+            Id = Guid.NewGuid(),
+            EventId = eventId,
+            Name = channelName,
+            Description = "Messages from Microsoft Teams",
+            ChannelType = ChannelType.External,
+            DisplayOrder = maxOrder + 1,
+            ExternalChannelMappingId = mappingId,
+            IsDefaultEventThread = false,
+            IsActive = true,
+            CreatedBy = createdBy,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.ChatThreads.Add(chatThread);
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Created Teams channel mapping {MappingId} with ChatThread {ThreadId} for event {EventId}",
+            mappingId, chatThread.Id, eventId);
+
+        var dto = MapToDto(mapping);
+        await _chatHubService.BroadcastChannelConnectedAsync(eventId, dto);
+
+        return dto;
+    }
+
+    /// <summary>
+    /// Links a Teams conversation to an existing ChatThread.
+    /// This allows any COBRA channel to become bidirectionally synced with Teams.
+    /// </summary>
+    public async Task<ChatThreadDto> LinkTeamsToChannelAsync(Guid channelId, string teamsConversationId)
+    {
+        var userContext = GetUserContext()
+                          ?? throw new UnauthorizedAccessException("User context not found");
+
+        _logger.LogInformation("Linking Teams conversation {ConversationId} to channel {ChannelId}",
+            teamsConversationId, channelId);
+
+        // Get the channel
+        var channel = await _dbContext.ChatThreads
+            .Include(ct => ct.ExternalChannelMapping)
+            .FirstOrDefaultAsync(ct => ct.Id == channelId && ct.IsActive)
+            ?? throw new KeyNotFoundException($"Channel {channelId} not found");
+
+        // Check if channel already has an external mapping
+        if (channel.ExternalChannelMappingId.HasValue)
+        {
+            throw new InvalidOperationException("Channel is already linked to an external platform. Unlink it first.");
+        }
+
+        // Check if there's an existing active mapping for this Teams conversation that we can reuse
+        // This allows multiple COBRA channels to share the same Teams conversation
+        var existingActiveMapping = await _dbContext.ExternalChannelMappings
+            .FirstOrDefaultAsync(m => m.ExternalGroupId == teamsConversationId
+                                   && m.Platform == ExternalPlatform.Teams
+                                   && m.IsActive);
+
+        ExternalChannelMapping mapping;
+
+        if (existingActiveMapping != null)
+        {
+            // Reuse the existing active mapping - allows multiple channels to link to same Teams conversation
+            _logger.LogInformation("Reusing existing active mapping {MappingId} for Teams conversation {ConversationId}",
+                existingActiveMapping.Id, teamsConversationId);
+
+            mapping = existingActiveMapping;
+        }
+        else
+        {
+            // Check if there's a deactivated mapping we can reactivate (due to unique index on Platform+ExternalGroupId)
+            var existingDeactivatedMapping = await _dbContext.ExternalChannelMappings
+                .FirstOrDefaultAsync(m => m.ExternalGroupId == teamsConversationId
+                                       && m.Platform == ExternalPlatform.Teams
+                                       && !m.IsActive);
+
+            if (existingDeactivatedMapping != null)
+            {
+                // Reactivate the existing mapping
+                _logger.LogInformation("Reactivating existing deactivated mapping {MappingId} for Teams conversation {ConversationId}",
+                    existingDeactivatedMapping.Id, teamsConversationId);
+
+                existingDeactivatedMapping.EventId = channel.EventId;
+                existingDeactivatedMapping.ExternalGroupName = channel.Name;
+                existingDeactivatedMapping.IsActive = true;
+                existingDeactivatedMapping.LastModifiedBy = userContext.Email;
+                existingDeactivatedMapping.LastModifiedAt = DateTime.UtcNow;
+
+                mapping = existingDeactivatedMapping;
+            }
+            else
+            {
+                // Create a new external channel mapping
+                var mappingId = Guid.NewGuid();
+                var webhookSecret = GenerateWebhookSecret();
+
+                mapping = new ExternalChannelMapping
+                {
+                    Id = mappingId,
+                    EventId = channel.EventId,
+                    Platform = ExternalPlatform.Teams,
+                    ExternalGroupId = teamsConversationId,
+                    ExternalGroupName = channel.Name,
+                    BotId = string.Empty,
+                    WebhookSecret = webhookSecret,
+                    ShareUrl = null,
+                    IsActive = true,
+                    CreatedBy = userContext.Email,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _dbContext.ExternalChannelMappings.Add(mapping);
+            }
+        }
+
+        // Link the channel to the mapping
+        channel.ExternalChannelMappingId = mapping.Id;
+        channel.LastModifiedBy = userContext.Email;
+        channel.LastModifiedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Linked Teams conversation {ConversationId} to channel {ChannelId} via mapping {MappingId}",
+            teamsConversationId, channelId, mapping.Id);
+
+        // Broadcast channel update
+        var mappingDto = MapToDto(mapping);
+        await _chatHubService.BroadcastChannelConnectedAsync(channel.EventId, mappingDto);
+
+        // Return updated channel DTO
+        return MapChannelToDto(channel, mapping);
+    }
+
+    /// <summary>
+    /// Unlinks an external platform from a channel without deleting the channel.
+    /// The connector remains active and available for re-linking to other channels.
+    /// </summary>
+    public async Task UnlinkExternalChannelAsync(Guid channelId)
+    {
+        var userContext = GetUserContext()
+                          ?? throw new UnauthorizedAccessException("User context not found");
+
+        var channel = await _dbContext.ChatThreads
+            .Include(ct => ct.ExternalChannelMapping)
+            .FirstOrDefaultAsync(ct => ct.Id == channelId && ct.IsActive)
+            ?? throw new KeyNotFoundException($"Channel {channelId} not found");
+
+        if (!channel.ExternalChannelMappingId.HasValue || channel.ExternalChannelMapping == null)
+        {
+            _logger.LogWarning("Channel {ChannelId} is not linked to any external platform", channelId);
+            return;
+        }
+
+        var mappingId = channel.ExternalChannelMappingId.Value;
+        var eventId = channel.EventId;
+        var mappingName = channel.ExternalChannelMapping.ExternalGroupName;
+
+        // Unlink this channel from the mapping (but keep the mapping active for future use)
+        channel.ExternalChannelMappingId = null;
+        channel.LastModifiedBy = userContext.Email;
+        channel.LastModifiedAt = DateTime.UtcNow;
+
+        _logger.LogInformation(
+            "Unlinked channel {ChannelId} ({ChannelName}) from Teams connector {MappingId} ({MappingName}). " +
+            "Connector remains available for re-linking.",
+            channelId, channel.Name, mappingId, mappingName);
+
+        await _dbContext.SaveChangesAsync();
+        await _chatHubService.BroadcastChannelDisconnectedAsync(eventId, mappingId);
+    }
+
+    /// <summary>
+    /// Retrieves all external channel mappings linked to channels in an event.
+    /// Routes via ChatThread.ExternalChannelMappingId (event-level linking).
     /// </summary>
     public async Task<List<ExternalChannelMappingDto>> GetEventChannelMappingsAsync(Guid eventId)
     {
-        return await _dbContext.ExternalChannelMappings
-            .Where(m => m.EventId == eventId && m.IsActive)
-            .Select(m => new ExternalChannelMappingDto
+        return await _dbContext.ChatThreads
+            .Include(ct => ct.ExternalChannelMapping)
+            .Where(ct => ct.EventId == eventId
+                      && ct.IsActive
+                      && ct.ExternalChannelMappingId != null
+                      && ct.ExternalChannelMapping!.IsActive)
+            .Select(ct => new ExternalChannelMappingDto
             {
-                Id = m.Id,
-                EventId = m.EventId,
-                Platform = m.Platform,
-                PlatformName = m.Platform.ToString(),
-                ExternalGroupId = m.ExternalGroupId,
-                ExternalGroupName = m.ExternalGroupName,
-                ShareUrl = m.ShareUrl,
-                IsActive = m.IsActive,
-                CreatedAt = m.CreatedAt
+                Id = ct.ExternalChannelMapping!.Id,
+                EventId = eventId, // Use the event from the ChatThread
+                Platform = ct.ExternalChannelMapping.Platform,
+                PlatformName = ct.ExternalChannelMapping.Platform.ToString(),
+                ExternalGroupId = ct.ExternalChannelMapping.ExternalGroupId,
+                ExternalGroupName = ct.ExternalChannelMapping.ExternalGroupName,
+                ShareUrl = ct.ExternalChannelMapping.ShareUrl,
+                IsActive = ct.ExternalChannelMapping.IsActive,
+                CreatedAt = ct.ExternalChannelMapping.CreatedAt
             })
+            .Distinct()
             .ToListAsync();
     }
 
     /// <summary>
-    /// Deactivates an external channel mapping.
+    /// Deactivates an external channel mapping and its linked ChatThread.
     /// Optionally archives the group on the external platform.
     /// </summary>
     public async Task DeactivateChannelAsync(Guid mappingId, bool archiveExternalGroup = false)
@@ -188,6 +459,16 @@ public class ExternalMessagingService : IExternalMessagingService
         mapping.IsActive = false;
         mapping.LastModifiedBy = userContext.Email;
         mapping.LastModifiedAt = DateTime.UtcNow;
+
+        // Also deactivate the linked ChatThread
+        var linkedThread = await _dbContext.ChatThreads
+            .FirstOrDefaultAsync(ct => ct.ExternalChannelMappingId == mappingId);
+        if (linkedThread != null)
+        {
+            linkedThread.IsActive = false;
+            linkedThread.LastModifiedBy = userContext.Email;
+            linkedThread.LastModifiedAt = DateTime.UtcNow;
+        }
 
         if (archiveExternalGroup)
         {
@@ -210,7 +491,12 @@ public class ExternalMessagingService : IExternalMessagingService
         await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation("Deactivated external channel mapping {MappingId}", mappingId);
-        await _chatHubService.BroadcastChannelDisconnectedAsync(eventId, mappingId);
+
+        // Only broadcast if the mapping was linked to an event
+        if (eventId.HasValue)
+        {
+            await _chatHubService.BroadcastChannelDisconnectedAsync(eventId.Value, mappingId);
+        }
     }
 
     #endregion
@@ -245,6 +531,15 @@ public class ExternalMessagingService : IExternalMessagingService
             return;
         }
 
+        // Check if the mapping is linked to an event - if not, we can't process the message
+        if (!mapping.EventId.HasValue)
+        {
+            _logger.LogWarning("Channel mapping {MappingId} is not linked to an event. Message ignored. " +
+                "Link the connector to an event via admin UI to enable message sync.",
+                mappingId);
+            return;
+        }
+
         // Verify the message is for the correct group
         if (mapping.ExternalGroupId != payload.GroupId)
         {
@@ -263,14 +558,23 @@ public class ExternalMessagingService : IExternalMessagingService
             return;
         }
 
-        // Get the event's default chat thread
+        // Get the ChatThread linked to this external channel mapping
         var chatThread = await _dbContext.ChatThreads
-            .Where(ct => ct.EventId == mapping.EventId && ct.IsDefaultEventThread && ct.IsActive)
+            .Where(ct => ct.ExternalChannelMappingId == mappingId && ct.IsActive)
             .FirstOrDefaultAsync();
+
+        // Fallback to default event thread if no linked thread exists (legacy mappings)
+        if (chatThread == null)
+        {
+            _logger.LogWarning("No linked ChatThread found for mapping {MappingId}, falling back to default event thread", mappingId);
+            chatThread = await _dbContext.ChatThreads
+                .Where(ct => ct.EventId == mapping.EventId && ct.IsDefaultEventThread && ct.IsActive)
+                .FirstOrDefaultAsync();
+        }
 
         if (chatThread == null)
         {
-            _logger.LogWarning("No default chat thread found for event {EventId}", mapping.EventId);
+            _logger.LogWarning("No chat thread found for event {EventId}", mapping.EventId);
             return;
         }
 
@@ -283,7 +587,7 @@ public class ExternalMessagingService : IExternalMessagingService
 
         await chatService.CreateExternalMessageAsync(
             chatThread.Id,
-            mapping.EventId,
+            mapping.EventId.Value,
             ExternalPlatform.GroupMe,
             payload.MessageId,
             payload.SenderName,
@@ -293,8 +597,91 @@ public class ExternalMessagingService : IExternalMessagingService
             payload.GetCreatedAtUtc(),
             mappingId);
 
-        _logger.LogInformation("Processed GroupMe message {MessageId} for event {EventId}",
-            payload.MessageId, mapping.EventId);
+        _logger.LogInformation("Processed GroupMe message {MessageId} for event {EventId}, thread {ThreadId}",
+            payload.MessageId, mapping.EventId.Value, chatThread.Id);
+    }
+
+    /// <summary>
+    /// Processes an incoming webhook message from Teams.
+    /// Creates a ChatMessage record and broadcasts via SignalR.
+    /// Routes messages based on ChatThread.ExternalChannelMappingId (event-level linking).
+    /// </summary>
+    public async Task ProcessTeamsWebhookAsync(Guid mappingId, TeamsWebhookPayload payload)
+    {
+        // Ignore bot messages to prevent loops (handled by TeamsBot, but double-check)
+        if (string.IsNullOrEmpty(payload.Text) && payload.ActivityType == "message")
+        {
+            _logger.LogDebug("Ignoring empty Teams message");
+            return;
+        }
+
+        _logger.LogInformation("Processing Teams webhook for mapping {MappingId}, message {MessageId}",
+            mappingId, payload.MessageId);
+
+        // Verify the mapping exists and is active
+        var mappingExists = await _dbContext.ExternalChannelMappings
+            .AnyAsync(m => m.Id == mappingId && m.IsActive);
+
+        if (!mappingExists)
+        {
+            _logger.LogWarning("No active channel mapping found for {MappingId}", mappingId);
+            return;
+        }
+
+        // Get ALL ChatThreads linked to this external channel mapping via ExternalChannelMappingId
+        // This is the primary routing mechanism - Event Managers link channels to connectors
+        var linkedThreads = await _dbContext.ChatThreads
+            .Where(ct => ct.ExternalChannelMappingId == mappingId && ct.IsActive)
+            .ToListAsync();
+
+        if (linkedThreads.Count == 0)
+        {
+            _logger.LogWarning(
+                "Teams mapping {MappingId} has no linked channels. Message ignored. " +
+                "An Event Manager must link a channel to this Teams connector to enable message sync.",
+                mappingId);
+            return;
+        }
+
+        _logger.LogInformation(
+            "Found {ThreadCount} channel(s) linked to mapping {MappingId}: [{ChannelNames}]",
+            linkedThreads.Count,
+            mappingId,
+            string.Join(", ", linkedThreads.Select(t => $"{t.Name} ({t.Id})")));
+
+        // Create a scope for the ChatService to avoid circular dependency
+        using var scope = _serviceProvider.CreateScope();
+        var chatService = scope.ServiceProvider.GetRequiredService<ChatService>();
+
+        // Send message to ALL linked channels
+        foreach (var chatThread in linkedThreads)
+        {
+            // Check for duplicate message in this specific thread (webhook retry)
+            var isDuplicate = await _dbContext.ChatMessages
+                .AnyAsync(m => m.ExternalMessageId == payload.MessageId && m.ChatThreadId == chatThread.Id);
+
+            if (isDuplicate)
+            {
+                _logger.LogDebug("Ignoring duplicate Teams message {MessageId} for thread {ThreadId}",
+                    payload.MessageId, chatThread.Id);
+                continue;
+            }
+
+            await chatService.CreateExternalMessageAsync(
+                chatThread.Id,
+                chatThread.EventId, // Use EventId from ChatThread, not from mapping
+                ExternalPlatform.Teams,
+                payload.MessageId,
+                payload.SenderName,
+                payload.SenderId,
+                payload.Text ?? "[Attachment]",
+                payload.ImageUrl,
+                payload.Timestamp,
+                mappingId);
+
+            _logger.LogInformation("Processed Teams message {MessageId} for event {EventId}, thread {ThreadId}",
+                payload.MessageId, chatThread.EventId, chatThread.Id);
+        }
     }
 
     #endregion
@@ -302,25 +689,82 @@ public class ExternalMessagingService : IExternalMessagingService
     #region Outbound Message Sending
 
     /// <summary>
-    /// Sends a COBRA chat message to all active external channels for the event.
+    /// Sends a COBRA chat message to external channels linked to the event's channels.
     /// Called from ChatService after a COBRA user sends a message.
+    /// If chatThreadId is provided, only sends to the external channel linked to that specific thread.
+    /// Otherwise, sends to all external channels linked to any channel in this event.
     /// </summary>
-    public async Task BroadcastToExternalChannelsAsync(Guid eventId, string senderName, string message)
+    public async Task BroadcastToExternalChannelsAsync(Guid eventId, string senderName, string message, Guid? chatThreadId = null)
     {
-        var activeChannels = await _dbContext.ExternalChannelMappings
-            .Where(m => m.EventId == eventId && m.IsActive)
-            .ToListAsync();
+        // Get event name for context (used when multiple channels share same Teams conversation)
+        var eventName = await _dbContext.Events
+            .Where(e => e.Id == eventId)
+            .Select(e => e.Name)
+            .FirstOrDefaultAsync() ?? "Unknown Event";
+
+        string? channelName = null;
+        List<ExternalChannelMapping> activeChannels;
+
+        if (chatThreadId.HasValue)
+        {
+            // Specific thread - get only the external channel linked to this thread
+            var threadWithMapping = await _dbContext.ChatThreads
+                .Include(ct => ct.ExternalChannelMapping)
+                .Where(ct => ct.Id == chatThreadId.Value && ct.IsActive)
+                .FirstOrDefaultAsync();
+
+            if (threadWithMapping?.ExternalChannelMapping != null && threadWithMapping.ExternalChannelMapping.IsActive)
+            {
+                channelName = threadWithMapping.Name;
+                activeChannels = new List<ExternalChannelMapping> { threadWithMapping.ExternalChannelMapping };
+            }
+            else
+            {
+                // Thread has no external link, nothing to send
+                return;
+            }
+        }
+        else
+        {
+            // No specific thread - get all external channels linked to any channel in this event
+            // This routes via ChatThread.ExternalChannelMappingId (event-level linking)
+            activeChannels = await _dbContext.ChatThreads
+                .Include(ct => ct.ExternalChannelMapping)
+                .Where(ct => ct.EventId == eventId
+                          && ct.IsActive
+                          && ct.ExternalChannelMappingId != null
+                          && ct.ExternalChannelMapping!.IsActive)
+                .Select(ct => ct.ExternalChannelMapping!)
+                .Distinct()
+                .ToListAsync();
+        }
 
         foreach (var channel in activeChannels)
         {
             try
             {
-                var formattedMessage = $"[{senderName}] {message}";
-
                 switch (channel.Platform)
                 {
                     case ExternalPlatform.GroupMe:
+                        var formattedMessage = $"[{senderName}] {message}";
                         await _groupMeClient.PostBotMessageAsync(channel.BotId, formattedMessage);
+                        break;
+
+                    case ExternalPlatform.Teams:
+                        // Count how many COBRA channels are linked to this Teams conversation
+                        var linkedChannelCount = await _dbContext.ChatThreads
+                            .CountAsync(ct => ct.ExternalChannelMappingId == channel.Id && ct.IsActive);
+
+                        // Send with context if multiple channels share this Teams conversation
+                        // Include ConversationReferenceJson for stateless bot architecture
+                        await SendMessageToTeamsAsync(
+                            channel.ExternalGroupId,
+                            senderName,
+                            message,
+                            channel.ConversationReferenceJson,
+                            eventName,
+                            channelName,
+                            hasMultipleChannels: linkedChannelCount > 1);
                         break;
 
                     default:
@@ -335,6 +779,262 @@ public class ExternalMessagingService : IExternalMessagingService
                     channel.Platform, channel.Id);
             }
         }
+    }
+
+    /// <summary>
+    /// Sends a message to a Teams conversation via the TeamsBot service.
+    /// Stateless architecture: ConversationReferenceJson is passed from DB to TeamsBot.
+    /// </summary>
+    /// <param name="conversationId">Teams conversation ID (for logging)</param>
+    /// <param name="senderName">COBRA sender name</param>
+    /// <param name="message">Message text</param>
+    /// <param name="conversationReferenceJson">Serialized Bot Framework ConversationReference (from DB)</param>
+    /// <param name="eventName">Optional event name for context</param>
+    /// <param name="channelName">Optional channel name for context</param>
+    /// <param name="hasMultipleChannels">True if multiple COBRA channels share this Teams conversation</param>
+    private async Task SendMessageToTeamsAsync(
+        string conversationId,
+        string senderName,
+        string message,
+        string? conversationReferenceJson,
+        string? eventName = null,
+        string? channelName = null,
+        bool hasMultipleChannels = false)
+    {
+        var baseUrl = _teamsBotSettings.BaseUrl?.TrimEnd('/');
+        if (string.IsNullOrEmpty(baseUrl))
+        {
+            _logger.LogWarning("TeamsBot is not configured - cannot send outbound Teams message");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(conversationReferenceJson))
+        {
+            _logger.LogWarning(
+                "No ConversationReference stored for Teams conversation {ConversationId} - cannot send message. " +
+                "A message must be received from Teams first to populate the ConversationReference.",
+                conversationId);
+            return;
+        }
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
+
+            // Add API key header if configured
+            if (!string.IsNullOrEmpty(_teamsBotSettings.ApiKey))
+            {
+                client.DefaultRequestHeaders.Add("X-Api-Key", _teamsBotSettings.ApiKey);
+            }
+
+            var payload = new
+            {
+                conversationId,
+                conversationReferenceJson,
+                message,
+                senderName,
+                eventName,
+                channelName,
+                hasMultipleChannels
+            };
+
+            var content = new StringContent(
+                JsonSerializer.Serialize(payload),
+                Encoding.UTF8,
+                "application/json");
+
+            var response = await client.PostAsync($"{baseUrl}/api/internal/send", content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning(
+                    "Failed to send Teams message: {StatusCode} - {Error}",
+                    response.StatusCode, errorContent);
+            }
+            else
+            {
+                _logger.LogDebug("Sent message to Teams conversation {ConversationId} (hasMultipleChannels: {HasMultiple})",
+                    conversationId, hasMultipleChannels);
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to connect to TeamsBot at {BaseUrl}", baseUrl);
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogWarning("TeamsBot send request timed out");
+        }
+    }
+
+    /// <summary>
+    /// Broadcasts an announcement to all active Teams channels linked to any channel in an event.
+    /// Unlike regular messages, announcements are sent to ALL Teams channels for the event,
+    /// not just the one linked to a specific thread.
+    /// Routes via ChatThread.ExternalChannelMappingId (event-level linking).
+    /// </summary>
+    public async Task<int> BroadcastAnnouncementToTeamsAsync(
+        Guid eventId,
+        string title,
+        string message,
+        string senderName,
+        string priority = "normal")
+    {
+        // Get event name for context
+        var eventName = await _dbContext.Events
+            .Where(e => e.Id == eventId)
+            .Select(e => e.Name)
+            .FirstOrDefaultAsync() ?? "Unknown Event";
+
+        // Get ALL active Teams channels linked to any channel in this event
+        // Routes via ChatThread.ExternalChannelMappingId (event-level linking)
+        var teamsChannels = await _dbContext.ChatThreads
+            .Include(ct => ct.ExternalChannelMapping)
+            .Where(ct => ct.EventId == eventId
+                      && ct.IsActive
+                      && ct.ExternalChannelMappingId != null
+                      && ct.ExternalChannelMapping!.IsActive
+                      && ct.ExternalChannelMapping.Platform == ExternalPlatform.Teams
+                      && ct.ExternalChannelMapping.ConversationReferenceJson != null)
+            .Select(ct => ct.ExternalChannelMapping!)
+            .Distinct()
+            .ToListAsync();
+
+        if (teamsChannels.Count == 0)
+        {
+            _logger.LogDebug("No active Teams channels linked to event {EventId}, skipping announcement broadcast", eventId);
+            return 0;
+        }
+
+        _logger.LogInformation(
+            "Broadcasting announcement '{Title}' to {Count} Teams channels for event {EventId}",
+            title, teamsChannels.Count, eventId);
+
+        var sentCount = 0;
+        var baseUrl = _teamsBotSettings.BaseUrl?.TrimEnd('/');
+
+        if (string.IsNullOrEmpty(baseUrl))
+        {
+            _logger.LogWarning("TeamsBot is not configured - cannot send announcement to Teams");
+            return 0;
+        }
+
+        foreach (var channel in teamsChannels)
+        {
+            try
+            {
+                var client = _httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(15);
+
+                // Add API key header if configured
+                if (!string.IsNullOrEmpty(_teamsBotSettings.ApiKey))
+                {
+                    client.DefaultRequestHeaders.Add("X-Api-Key", _teamsBotSettings.ApiKey);
+                }
+
+                // Format announcement message with priority indicator
+                var formattedMessage = priority.ToLower() switch
+                {
+                    "urgent" => $"\u26a0\ufe0f **URGENT: {title}**\n\n{message}",
+                    "high" => $"\u2757 **{title}**\n\n{message}",
+                    _ => $"\ud83d\udce2 **{title}**\n\n{message}"
+                };
+
+                var payload = new
+                {
+                    conversationId = channel.ExternalGroupId,
+                    conversationReferenceJson = channel.ConversationReferenceJson,
+                    message = formattedMessage,
+                    senderName = senderName,
+                    eventName = eventName,
+                    channelName = "Announcement",
+                    isAnnouncement = true,
+                    priority = priority
+                };
+
+                var content = new StringContent(
+                    JsonSerializer.Serialize(payload),
+                    Encoding.UTF8,
+                    "application/json");
+
+                var response = await client.PostAsync($"{baseUrl}/api/internal/send", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    sentCount++;
+                    _logger.LogDebug(
+                        "Sent announcement to Teams channel {ChannelId} ({ChannelName})",
+                        channel.Id, channel.ExternalGroupName);
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning(
+                        "Failed to send announcement to Teams channel {ChannelId}: {StatusCode} - {Error}",
+                        channel.Id, response.StatusCode, errorContent);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Exception sending announcement to Teams channel {ChannelId}",
+                    channel.Id);
+            }
+        }
+
+        _logger.LogInformation(
+            "Announcement broadcast complete: {Sent}/{Total} Teams channels received announcement",
+            sentCount, teamsChannels.Count);
+
+        return sentCount;
+    }
+
+    #endregion
+
+    #region Available Connectors
+
+    /// <summary>
+    /// Gets available Teams connectors that can be linked to channels in an event.
+    /// Returns connectors that are active and have valid ConversationReferences.
+    /// Emulators are included for development/testing purposes.
+    /// </summary>
+    public async Task<List<AvailableTeamsConnectorDto>> GetAvailableTeamsConnectorsAsync(Guid eventId)
+    {
+        // Get all active Teams connectors with conversation references
+        // Note: Emulators are included for development/testing - filter in production if needed
+        var connectors = await _dbContext.ExternalChannelMappings
+            .Where(m => m.Platform == ExternalPlatform.Teams
+                     && m.IsActive
+                     && m.ConversationReferenceJson != null)
+            .OrderByDescending(m => m.LastActivityAt)
+            .ThenByDescending(m => m.CreatedAt)
+            .ToListAsync();
+
+        // Get channels in this event that are linked to Teams connectors
+        var linkedChannelsInEvent = await _dbContext.ChatThreads
+            .Where(ct => ct.EventId == eventId
+                      && ct.IsActive
+                      && ct.ExternalChannelMappingId != null)
+            .Select(ct => new { ct.ExternalChannelMappingId, ct.Name })
+            .ToListAsync();
+
+        var linkedMappingIds = linkedChannelsInEvent
+            .ToDictionary(x => x.ExternalChannelMappingId!.Value, x => x.Name);
+
+        return connectors.Select(m => new AvailableTeamsConnectorDto
+        {
+            MappingId = m.Id,
+            DisplayName = m.ExternalGroupName,
+            ConversationId = m.ExternalGroupId,
+            TenantId = m.TenantId,
+            LastActivityAt = m.LastActivityAt,
+            InstalledByName = m.InstalledByName,
+            CreatedAt = m.CreatedAt,
+            IsLinkedToThisEvent = linkedMappingIds.ContainsKey(m.Id),
+            LinkedChannelName = linkedMappingIds.TryGetValue(m.Id, out var name) ? name : null
+        }).ToList();
     }
 
     #endregion
@@ -363,6 +1063,55 @@ public class ExternalMessagingService : IExternalMessagingService
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(bytes);
         return Convert.ToBase64String(bytes);
+    }
+
+    /// <summary>
+    /// Ensures a DateTime is specified as UTC kind for proper JSON serialization.
+    /// </summary>
+    private static DateTime SpecifyUtc(DateTime dateTime)
+    {
+        return DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+    }
+
+    /// <summary>
+    /// Maps a ChatThread entity to ChatThreadDto.
+    /// </summary>
+    private static ChatThreadDto MapChannelToDto(ChatThread ct, ExternalChannelMapping? mapping)
+    {
+        return new ChatThreadDto
+        {
+            Id = ct.Id,
+            EventId = ct.EventId,
+            Name = ct.Name,
+            Description = ct.Description,
+            ChannelType = ct.ChannelType,
+            ChannelTypeName = ct.ChannelType.ToString(),
+            IsDefaultEventThread = ct.IsDefaultEventThread,
+            DisplayOrder = ct.DisplayOrder,
+            IconName = ct.IconName,
+            Color = ct.Color,
+            PositionId = ct.PositionId,
+            Position = null, // Not loading position for this use case
+            MessageCount = 0, // Not loading messages for this use case
+            CreatedAt = SpecifyUtc(ct.CreatedAt),
+            IsActive = ct.IsActive,
+            LastMessageAt = null,
+            LastMessageSender = null,
+            ExternalChannel = mapping != null
+                ? new ExternalChannelMappingDto
+                {
+                    Id = mapping.Id,
+                    EventId = mapping.EventId,
+                    Platform = mapping.Platform,
+                    PlatformName = mapping.Platform.ToString(),
+                    ExternalGroupId = mapping.ExternalGroupId,
+                    ExternalGroupName = mapping.ExternalGroupName,
+                    ShareUrl = mapping.ShareUrl,
+                    IsActive = mapping.IsActive,
+                    CreatedAt = SpecifyUtc(mapping.CreatedAt)
+                }
+                : null
+        };
     }
 
     #endregion

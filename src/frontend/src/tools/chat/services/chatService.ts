@@ -284,6 +284,138 @@ export const chatService = {
       `/api/events/${eventId}/chat/external-channels/${mappingId}?archiveExternalGroup=${archiveExternalGroup}`
     );
   },
+
+  // ===== Teams Integration =====
+
+  /**
+   * Gets available Teams conversations from the TeamsBot service.
+   * These are Teams channels where the bot has been installed.
+   * @deprecated Use getAvailableTeamsConnectors for event-level linking.
+   */
+  getTeamsConversations: async (): Promise<TeamsConversation[]> => {
+    const response = await apiClient.get<TeamsConversationsResponse>(
+      '/api/chat/diagnostics/teams-conversations'
+    );
+    return response.data.conversations || [];
+  },
+
+  /**
+   * Gets available Teams connectors that can be linked to channels in an event.
+   * Returns connectors that are active, have valid ConversationReferences,
+   * and includes whether they're already linked to a channel in this event.
+   */
+  getAvailableTeamsConnectors: async (eventId: string): Promise<AvailableTeamsConnector[]> => {
+    const response = await apiClient.get<AvailableTeamsConnector[]>(
+      `/api/events/${eventId}/chat/available-teams-connectors`
+    );
+    return response.data;
+  },
+
+  /**
+   * Creates a Teams channel mapping for a specific event.
+   * Links a Teams conversation to a COBRA event.
+   * @deprecated Use linkTeamsToChannel instead for linking to existing channels.
+   */
+  createTeamsChannelMapping: async (
+    eventId: string,
+    conversationId: string,
+    channelName?: string
+  ): Promise<ExternalChannelMappingDto> => {
+    const response = await apiClient.post<CreateTeamsMappingResponse>(
+      '/api/chat/diagnostics/teams-mapping',
+      {
+        eventId,
+        teamsConversationId: conversationId,
+        channelName,
+      }
+    );
+
+    // Map the diagnostics response to ExternalChannelMappingDto format
+    return {
+      id: response.data.mappingId,
+      eventId: response.data.eventId,
+      platform: 3, // ExternalPlatform.Teams
+      platformName: 'Teams',
+      externalGroupId: response.data.teamsConversationId,
+      externalGroupName: channelName || 'Teams Channel',
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+  },
+
+  /**
+   * Links a Teams conversation to an existing COBRA channel.
+   * This enables bidirectional message sync between the channel and Teams.
+   */
+  linkTeamsToChannel: async (
+    eventId: string,
+    channelId: string,
+    teamsConversationId: string
+  ): Promise<ChatThreadDto> => {
+    const response = await apiClient.post<ChatThreadDto>(
+      `/api/events/${eventId}/chat/channels/${channelId}/link-teams`,
+      { teamsConversationId }
+    );
+    return response.data;
+  },
+
+  /**
+   * Unlinks an external platform from a channel.
+   * The channel remains but loses its external sync capability.
+   */
+  unlinkExternalChannel: async (
+    eventId: string,
+    channelId: string
+  ): Promise<void> => {
+    await apiClient.delete(
+      `/api/events/${eventId}/chat/channels/${channelId}/external-link`
+    );
+  },
 };
+
+/**
+ * Response from Teams conversations endpoint.
+ */
+interface TeamsConversationsResponse {
+  count: number;
+  conversations: TeamsConversation[];
+}
+
+/**
+ * A Teams conversation where the bot is installed.
+ */
+export interface TeamsConversation {
+  conversationId: string;
+  serviceUrl: string;
+  channelId: string;
+  botId?: string;
+  botName?: string;
+}
+
+/**
+ * Response from creating a Teams mapping.
+ */
+interface CreateTeamsMappingResponse {
+  mappingId: string;
+  eventId: string;
+  teamsConversationId: string;
+  webhookUrl: string;
+  isExisting: boolean;
+}
+
+/**
+ * Available Teams connector for event-level linking.
+ */
+export interface AvailableTeamsConnector {
+  mappingId: string;
+  displayName: string;
+  conversationId: string;
+  tenantId?: string;
+  lastActivityAt?: string;
+  installedByName?: string;
+  createdAt: string;
+  isLinkedToThisEvent: boolean;
+  linkedChannelName?: string;
+}
 
 export default chatService;

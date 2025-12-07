@@ -20,12 +20,6 @@ import {
   Typography,
   IconButton,
   Tooltip,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  Chip,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -34,10 +28,6 @@ import {
   faExpand,
   faGripLinesVertical,
   faChevronLeft,
-  faEllipsisV,
-  faLink,
-  faLinkSlash,
-  faExternalLinkAlt,
   faWifi,
   faExclamationTriangle,
 } from '@fortawesome/free-solid-svg-icons';
@@ -47,11 +37,13 @@ import { useChatSidebar } from '../contexts/ChatSidebarContext';
 import { useEvents } from '../../../shared/events';
 import { EventChat } from './EventChat';
 import { ChannelList } from './ChannelList';
+import { ChannelMenu } from './ChannelMenu';
+import { TeamsChannelDialog } from './TeamsChannelDialog';
 import { chatService } from '../services/chatService';
 import { useExternalMessagingConfig } from '../hooks/useExternalMessagingConfig';
 import { useChatHub } from '../hooks/useChatHub';
 import type { ChatThreadDto, ExternalChannelMappingDto } from '../types/chat';
-import { ExternalPlatform, PlatformInfo } from '../types/chat';
+import { ExternalPlatform } from '../types/chat';
 
 export const ChatSidebar: React.FC = () => {
   const theme = useTheme();
@@ -63,16 +55,18 @@ export const ChatSidebar: React.FC = () => {
     width,
     setWidth,
   } = useChatSidebar();
-  const { isConfigured: externalMessagingConfigured } = useExternalMessagingConfig();
+  const externalMessagingConfig = useExternalMessagingConfig();
+  const { isConfigured: externalMessagingConfigured } = externalMessagingConfig;
   const { connectionState } = useChatHub();
 
   // Channel state
   const [selectedChannel, setSelectedChannel] = useState<ChatThreadDto | null>(null);
   const [showChannelList, setShowChannelList] = useState(true);
+  // Key to force ChannelList refresh when external channels are connected/disconnected
+  const [channelListRefreshKey, setChannelListRefreshKey] = useState(0);
 
   // External channels state
   const [externalChannels, setExternalChannels] = useState<ExternalChannelMappingDto[]>([]);
-  const [channelMenuAnchor, setChannelMenuAnchor] = useState<null | HTMLElement>(null);
 
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
@@ -116,14 +110,13 @@ export const ChatSidebar: React.FC = () => {
 
   // Get active external channels
   const activeChannels = externalChannels.filter((c) => c.isActive);
-  const hasGroupMeChannel = activeChannels.some(
-    (c) => c.platform === ExternalPlatform.GroupMe
-  );
+
+  // Teams dialog state
+  const [teamsDialogOpen, setTeamsDialogOpen] = useState(false);
 
   // Create GroupMe channel
   const handleCreateGroupMeChannel = async () => {
     if (!currentEvent) return;
-    setChannelMenuAnchor(null);
     try {
       const channel = await chatService.createExternalChannel(currentEvent.id, {
         platform: ExternalPlatform.GroupMe,
@@ -135,6 +128,8 @@ export const ChatSidebar: React.FC = () => {
         }
         return [...prev, channel];
       });
+      // Refresh channel list to show new external channel
+      setChannelListRefreshKey((prev) => prev + 1);
       toast.success('GroupMe channel connected! Share the link with external team members.');
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to create GroupMe channel';
@@ -142,17 +137,48 @@ export const ChatSidebar: React.FC = () => {
     }
   };
 
-  // Disconnect external channel
-  const handleDisconnectChannel = async (channelId: string) => {
+  // Open Teams channel dialog
+  const handleOpenTeamsDialog = () => {
+    setTeamsDialogOpen(true);
+  };
+
+  // Handle Teams channel linked to existing COBRA channel (callback from dialog)
+  const handleTeamsChannelLinked = (updatedChannel: ChatThreadDto) => {
+    // Update selected channel if it's the one that was linked
+    if (selectedChannel?.id === updatedChannel.id) {
+      setSelectedChannel(updatedChannel);
+    }
+    // Refresh channel list and external channels
+    setChannelListRefreshKey((prev) => prev + 1);
+    setTeamsDialogOpen(false);
+    toast.success(`Teams linked to "${updatedChannel.name}"! Messages will sync bidirectionally.`);
+  };
+
+  // Disconnect/unlink external channel from a COBRA channel
+  // Note: mappingId is the ExternalChannelMapping ID from the activeChannels list
+  // We need to find a channel linked to this mapping and unlink it
+  const handleDisconnectChannel = async (mappingId: string) => {
     if (!currentEvent) return;
-    setChannelMenuAnchor(null);
-    try {
-      await chatService.deactivateExternalChannel(currentEvent.id, channelId);
-      setExternalChannels((prev) => prev.filter((c) => c.id !== channelId));
-      toast.success('External channel disconnected');
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to disconnect channel';
-      toast.error(errorMsg);
+
+    // If selected channel is linked to this mapping, unlink it
+    if (selectedChannel?.externalChannel?.id === mappingId) {
+      try {
+        await chatService.unlinkExternalChannel(currentEvent.id, selectedChannel.id);
+        // Update the selected channel to reflect the unlink
+        setSelectedChannel({ ...selectedChannel, externalChannel: undefined });
+        // Refresh channel list and external channels
+        setChannelListRefreshKey((prev) => prev + 1);
+        // Reload external channels
+        const data = await chatService.getExternalChannels(currentEvent.id);
+        setExternalChannels(data);
+        toast.success('Teams connector unlinked from channel');
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to unlink channel';
+        toast.error(errorMsg);
+      }
+    } else {
+      // Fallback: try to find any channel with this mapping (shouldn't normally happen in sidebar)
+      toast.error('Please select the linked channel first to unlink Teams');
     }
   };
 
@@ -322,91 +348,17 @@ export const ChatSidebar: React.FC = () => {
           )}
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          {/* Connected channel chips - only show if external messaging is configured */}
-          {externalMessagingConfigured &&
-            activeChannels.map((channel) => {
-              const platformKey = channel.platform as ExternalPlatform;
-              const platformInfo = PlatformInfo[platformKey] || null;
-
-              return (
-                <Chip
-                  key={channel.id}
-                  size="small"
-                  label={platformInfo?.name || channel.platform}
-                  sx={{
-                    height: 20,
-                    fontSize: 10,
-                    backgroundColor: `${platformInfo?.color || '#666'}20`,
-                    color: platformInfo?.color || '#666',
-                  }}
-                  onClick={() => {
-                    if (channel.shareUrl) {
-                      window.open(channel.shareUrl, '_blank');
-                    }
-                  }}
-                  icon={
-                    channel.shareUrl ? (
-                      <FontAwesomeIcon icon={faExternalLinkAlt} style={{ fontSize: 8 }} />
-                    ) : undefined
-                  }
-                />
-              );
-            })}
-
           {/* External channel menu - only show if external messaging is configured */}
           {externalMessagingConfigured && (
-            <>
-              <Tooltip title="External channels">
-                <IconButton
-                  size="small"
-                  onClick={(e) => setChannelMenuAnchor(e.currentTarget)}
-                >
-                  <FontAwesomeIcon icon={faEllipsisV} style={{ fontSize: 12 }} />
-                </IconButton>
-              </Tooltip>
-              <Menu
-                anchorEl={channelMenuAnchor}
-                open={Boolean(channelMenuAnchor)}
-                onClose={() => setChannelMenuAnchor(null)}
-              >
-                {!hasGroupMeChannel && (
-                  <MenuItem onClick={handleCreateGroupMeChannel}>
-                    <ListItemIcon>
-                      <FontAwesomeIcon icon={faLink} />
-                    </ListItemIcon>
-                    <ListItemText>Connect GroupMe</ListItemText>
-                  </MenuItem>
-                )}
-                {activeChannels.length > 0 && (
-                  <>
-                    <Divider />
-                    <MenuItem disabled>
-                      <Typography variant="caption" color="text.secondary">
-                        Connected Channels
-                      </Typography>
-                    </MenuItem>
-                    {activeChannels.map((channel) => (
-                      <MenuItem
-                        key={channel.id}
-                        onClick={() => handleDisconnectChannel(channel.id)}
-                      >
-                        <ListItemIcon>
-                          <FontAwesomeIcon icon={faLinkSlash} />
-                        </ListItemIcon>
-                        <ListItemText>Disconnect {channel.externalGroupName}</ListItemText>
-                      </MenuItem>
-                    ))}
-                  </>
-                )}
-                {!hasGroupMeChannel && activeChannels.length === 0 && (
-                  <MenuItem disabled>
-                    <Typography variant="caption" color="text.secondary">
-                      No external channels
-                    </Typography>
-                  </MenuItem>
-                )}
-              </Menu>
-            </>
+            <ChannelMenu
+              config={externalMessagingConfig}
+              activeChannels={activeChannels}
+              onCreateGroupMe={handleCreateGroupMeChannel}
+              onOpenTeamsDialog={handleOpenTeamsDialog}
+              onDisconnectChannel={handleDisconnectChannel}
+              showChips={false}
+              compact
+            />
           )}
 
           <Tooltip title="Open full chat page">
@@ -441,6 +393,7 @@ export const ChatSidebar: React.FC = () => {
                   selectedChannelId={selectedChannel?.id}
                   onChannelSelect={handleChannelSelect}
                   compact
+                  refreshKey={channelListRefreshKey}
                 />
               </Box>
             ) : selectedChannel ? (
@@ -503,6 +456,18 @@ export const ChatSidebar: React.FC = () => {
         >
           {width}px
         </Box>
+      )}
+
+      {/* Teams Channel Dialog - Links Teams to the currently selected channel */}
+      {currentEvent && (
+        <TeamsChannelDialog
+          open={teamsDialogOpen}
+          onClose={() => setTeamsDialogOpen(false)}
+          eventId={currentEvent.id}
+          targetChannelId={selectedChannel?.id}
+          targetChannelName={selectedChannel?.name}
+          onChannelLinked={handleTeamsChannelLinked}
+        />
       )}
     </Box>
   );

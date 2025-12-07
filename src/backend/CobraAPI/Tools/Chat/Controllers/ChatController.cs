@@ -397,6 +397,77 @@ public class ChatController : ControllerBase
             return NotFound("Channel mapping not found");
         }
     }
+
+    /// <summary>
+    /// Links a Teams conversation to an existing channel.
+    /// This allows any COBRA channel to become bidirectionally synced with Teams.
+    /// </summary>
+    [HttpPost("channels/{channelId:guid}/link-teams")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ChatThreadDto>> LinkTeamsToChannel(
+        Guid eventId,
+        Guid channelId,
+        [FromBody] LinkTeamsRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.TeamsConversationId))
+        {
+            return BadRequest("Teams conversation ID is required");
+        }
+
+        try
+        {
+            var channel = await _externalMessagingService.LinkTeamsToChannelAsync(
+                channelId,
+                request.TeamsConversationId);
+            return Ok(channel);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Unlinks an external platform from a channel.
+    /// The channel remains but loses its external sync capability.
+    /// </summary>
+    [HttpDelete("channels/{channelId:guid}/external-link")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> UnlinkExternalChannel(Guid eventId, Guid channelId)
+    {
+        try
+        {
+            await _externalMessagingService.UnlinkExternalChannelAsync(channelId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Gets available Teams connectors that can be linked to channels in this event.
+    /// Returns connectors that are:
+    /// - Active
+    /// - Have a valid ConversationReference (can send messages)
+    /// - Not emulator connections
+    /// - Not already linked to a channel in THIS event
+    /// </summary>
+    [HttpGet("available-teams-connectors")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<AvailableTeamsConnectorDto>>> GetAvailableTeamsConnectors(Guid eventId)
+    {
+        var connectors = await _externalMessagingService.GetAvailableTeamsConnectorsAsync(eventId);
+        return Ok(connectors);
+    }
 }
 
 /// <summary>
@@ -406,6 +477,17 @@ public class CreateExternalChannelApiRequest
 {
     public ExternalPlatform Platform { get; set; }
     public string? CustomGroupName { get; set; }
+}
+
+/// <summary>
+/// Request model for linking a Teams conversation to an existing channel.
+/// </summary>
+public class LinkTeamsRequest
+{
+    /// <summary>
+    /// The Teams conversation ID to link to this channel.
+    /// </summary>
+    public string TeamsConversationId { get; set; } = string.Empty;
 }
 
 /// <summary>

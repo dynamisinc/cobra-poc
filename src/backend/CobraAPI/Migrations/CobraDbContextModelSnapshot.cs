@@ -420,7 +420,7 @@ namespace ChecklistAPI.Migrations
                     b.HasIndex("ExternalChannelMappingId")
                         .HasFilter("[ExternalChannelMappingId] IS NOT NULL");
 
-                    b.HasIndex("ExternalMessageId")
+                    b.HasIndex("ExternalMessageId", "ChatThreadId")
                         .IsUnique()
                         .HasFilter("[ExternalMessageId] IS NOT NULL");
 
@@ -501,6 +501,148 @@ namespace ChecklistAPI.Migrations
                         .HasFilter("[PositionId] IS NOT NULL");
 
                     b.ToTable("ChatThreads");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("aaaaaaaa-0001-0001-0001-000000000001"),
+                            ChannelType = 0,
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "system@cobra.mil",
+                            Description = "General event discussion for all participants",
+                            DisplayOrder = 0,
+                            EventId = new Guid("00000000-0000-0000-0000-000000000001"),
+                            IconName = "comments",
+                            IsActive = true,
+                            IsDefaultEventThread = true,
+                            Name = "Event Chat"
+                        },
+                        new
+                        {
+                            Id = new Guid("aaaaaaaa-0002-0002-0002-000000000001"),
+                            ChannelType = 1,
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "system@cobra.mil",
+                            Description = "Important announcements from event leadership",
+                            DisplayOrder = 1,
+                            EventId = new Guid("00000000-0000-0000-0000-000000000001"),
+                            IconName = "bullhorn",
+                            IsActive = true,
+                            IsDefaultEventThread = false,
+                            Name = "Announcements"
+                        },
+                        new
+                        {
+                            Id = new Guid("aaaaaaaa-0001-0001-0001-000000000002"),
+                            ChannelType = 0,
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "system@cobra.mil",
+                            Description = "General event discussion for all participants",
+                            DisplayOrder = 0,
+                            EventId = new Guid("22222222-2222-2222-2222-222222222002"),
+                            IconName = "comments",
+                            IsActive = true,
+                            IsDefaultEventThread = true,
+                            Name = "Event Chat"
+                        },
+                        new
+                        {
+                            Id = new Guid("aaaaaaaa-0002-0002-0002-000000000002"),
+                            ChannelType = 1,
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "system@cobra.mil",
+                            Description = "Important announcements from event leadership",
+                            DisplayOrder = 1,
+                            EventId = new Guid("22222222-2222-2222-2222-222222222002"),
+                            IconName = "bullhorn",
+                            IsActive = true,
+                            IsDefaultEventThread = false,
+                            Name = "Announcements"
+                        },
+                        new
+                        {
+                            Id = new Guid("aaaaaaaa-0001-0001-0001-000000000003"),
+                            ChannelType = 0,
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "system@cobra.mil",
+                            Description = "General event discussion for all participants",
+                            DisplayOrder = 0,
+                            EventId = new Guid("22222222-2222-2222-2222-222222222003"),
+                            IconName = "comments",
+                            IsActive = true,
+                            IsDefaultEventThread = true,
+                            Name = "Event Chat"
+                        },
+                        new
+                        {
+                            Id = new Guid("aaaaaaaa-0002-0002-0002-000000000003"),
+                            ChannelType = 1,
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "system@cobra.mil",
+                            Description = "Important announcements from event leadership",
+                            DisplayOrder = 1,
+                            EventId = new Guid("22222222-2222-2222-2222-222222222003"),
+                            IconName = "bullhorn",
+                            IsActive = true,
+                            IsDefaultEventThread = false,
+                            Name = "Announcements"
+                        },
+                        new
+                        {
+                            Id = new Guid("aaaaaaaa-0001-0001-0001-000000000004"),
+                            ChannelType = 0,
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "system@cobra.mil",
+                            Description = "General event discussion for all participants",
+                            DisplayOrder = 0,
+                            EventId = new Guid("22222222-2222-2222-2222-222222222004"),
+                            IconName = "comments",
+                            IsActive = true,
+                            IsDefaultEventThread = true,
+                            Name = "Event Chat"
+                        },
+                        new
+                        {
+                            Id = new Guid("aaaaaaaa-0002-0002-0002-000000000004"),
+                            ChannelType = 1,
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "system@cobra.mil",
+                            Description = "Important announcements from event leadership",
+                            DisplayOrder = 1,
+                            EventId = new Guid("22222222-2222-2222-2222-222222222004"),
+                            IconName = "bullhorn",
+                            IsActive = true,
+                            IsDefaultEventThread = false,
+                            Name = "Announcements"
+                        },
+                        new
+                        {
+                            Id = new Guid("aaaaaaaa-0001-0001-0001-000000000005"),
+                            ChannelType = 0,
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "system@cobra.mil",
+                            Description = "General event discussion for all participants",
+                            DisplayOrder = 0,
+                            EventId = new Guid("22222222-2222-2222-2222-222222222005"),
+                            IconName = "comments",
+                            IsActive = true,
+                            IsDefaultEventThread = true,
+                            Name = "Event Chat"
+                        },
+                        new
+                        {
+                            Id = new Guid("aaaaaaaa-0002-0002-0002-000000000005"),
+                            ChannelType = 1,
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "system@cobra.mil",
+                            Description = "Important announcements from event leadership",
+                            DisplayOrder = 1,
+                            EventId = new Guid("22222222-2222-2222-2222-222222222005"),
+                            IconName = "bullhorn",
+                            IsActive = true,
+                            IsDefaultEventThread = false,
+                            Name = "Announcements"
+                        });
                 });
 
             modelBuilder.Entity("CobraAPI.Tools.Chat.Models.Entities.ExternalChannelMapping", b =>
@@ -514,6 +656,9 @@ namespace ChecklistAPI.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("ConversationReferenceJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -522,21 +667,31 @@ namespace ChecklistAPI.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<Guid>("EventId")
+                    b.Property<Guid?>("EventId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ExternalGroupId")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("ExternalGroupName")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<string>("InstalledByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<bool>("IsEmulator")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastActivityAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("LastModifiedAt")
                         .HasColumnType("datetime2");
@@ -551,6 +706,10 @@ namespace ChecklistAPI.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("TenantId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("WebhookSecret")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -558,10 +717,17 @@ namespace ChecklistAPI.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EventId");
+                    b.HasIndex("EventId")
+                        .HasFilter("[EventId] IS NOT NULL");
 
                     b.HasIndex("IsActive")
                         .HasFilter("[IsActive] = 1");
+
+                    b.HasIndex("LastActivityAt")
+                        .HasFilter("[Platform] = 3");
+
+                    b.HasIndex("TenantId")
+                        .HasFilter("[TenantId] IS NOT NULL");
 
                     b.HasIndex("Platform", "ExternalGroupId")
                         .IsUnique();
@@ -1022,8 +1188,7 @@ namespace ChecklistAPI.Migrations
                     b.HasOne("CobraAPI.Shared.Events.Models.Entities.Event", "Event")
                         .WithMany()
                         .HasForeignKey("EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Event");
                 });

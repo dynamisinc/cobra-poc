@@ -28,7 +28,66 @@ public interface IExternalMessagingService
     Task ProcessGroupMeWebhookAsync(Guid mappingId, GroupMeWebhookPayload payload);
 
     /// <summary>
-    /// Broadcasts a message to all active external channels for an event.
+    /// Processes an incoming webhook message from Teams.
     /// </summary>
-    Task BroadcastToExternalChannelsAsync(Guid eventId, string senderName, string message);
+    Task ProcessTeamsWebhookAsync(Guid mappingId, TeamsWebhookPayload payload);
+
+    /// <summary>
+    /// Broadcasts a message to all active external channels for an event.
+    /// If chatThreadId is provided, only sends to the external channel linked to that thread.
+    /// </summary>
+    Task BroadcastToExternalChannelsAsync(Guid eventId, string senderName, string message, Guid? chatThreadId = null);
+
+    /// <summary>
+    /// Creates a Teams channel mapping with a linked ChatThread.
+    /// Used when connecting an event to a Teams conversation.
+    /// </summary>
+    Task<ExternalChannelMappingDto> CreateTeamsChannelMappingAsync(
+        Guid eventId,
+        string teamsConversationId,
+        string channelName,
+        string createdBy);
+
+    /// <summary>
+    /// Links a Teams conversation to an existing ChatThread.
+    /// This allows any COBRA channel to become bidirectionally synced with Teams.
+    /// </summary>
+    /// <param name="channelId">The existing ChatThread ID to link.</param>
+    /// <param name="teamsConversationId">The Teams conversation ID.</param>
+    /// <returns>The updated ChatThread with the external channel mapping.</returns>
+    Task<ChatThreadDto> LinkTeamsToChannelAsync(Guid channelId, string teamsConversationId);
+
+    /// <summary>
+    /// Unlinks an external platform from a channel without deleting the channel.
+    /// The channel remains but loses its external sync capability.
+    /// </summary>
+    /// <param name="channelId">The ChatThread ID to unlink.</param>
+    Task UnlinkExternalChannelAsync(Guid channelId);
+
+    /// <summary>
+    /// Broadcasts an announcement to all active Teams channels for an event.
+    /// Unlike regular messages, announcements are sent to ALL Teams channels,
+    /// not just the one linked to a specific thread.
+    /// </summary>
+    /// <param name="eventId">The event ID.</param>
+    /// <param name="title">The announcement title.</param>
+    /// <param name="message">The announcement message content.</param>
+    /// <param name="senderName">The name of the person sending the announcement.</param>
+    /// <param name="priority">Optional priority level (normal, high, urgent).</param>
+    /// <returns>The number of Teams channels the announcement was sent to.</returns>
+    Task<int> BroadcastAnnouncementToTeamsAsync(
+        Guid eventId,
+        string title,
+        string message,
+        string senderName,
+        string priority = "normal");
+
+    /// <summary>
+    /// Gets available Teams connectors that can be linked to channels in an event.
+    /// Returns connectors that are active and have valid ConversationReferences.
+    /// Emulators are included for development/testing purposes.
+    /// </summary>
+    /// <param name="eventId">The event ID to check for existing links.</param>
+    /// <returns>List of available Teams connectors with their link status for this event.</returns>
+    Task<List<AvailableTeamsConnectorDto>> GetAvailableTeamsConnectorsAsync(Guid eventId);
 }

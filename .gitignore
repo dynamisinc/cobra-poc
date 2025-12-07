@@ -220,8 +220,8 @@ Temporary Items
 *.crt
 secrets.json
 appsettings.local.json
+appsettings.*.local.json
 appsettings.Development.json
-appsettings.Production.json
 connectionstrings.json
 
 # Azure publish profiles and deployment

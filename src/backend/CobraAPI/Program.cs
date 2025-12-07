@@ -39,10 +39,13 @@ builder.Services.AddScoped<IPositionService, PositionService>();
 // Register chat services
 builder.Services.Configure<GroupMeSettings>(
     builder.Configuration.GetSection(GroupMeSettings.SectionName));
+builder.Services.Configure<TeamsBotSettings>(
+    builder.Configuration.GetSection(TeamsBotSettings.SectionName));
 builder.Services.AddHttpClient<IGroupMeApiClient, GroupMeApiClient>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+builder.Services.AddHttpClient(); // Generic HTTP client for Teams integration status checks
 builder.Services.AddScoped<IChatHubService, ChatHubService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<ChatService>(); // Concrete type for internal use
@@ -65,8 +68,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy.WithOrigins(
-                  "http://localhost:5173",
-                  "https://localhost:5173",
+                  "http://localhost:5188",
+                  "https://localhost:5188",
                   "https://checklist-poc-app.azurewebsites.net"
               )
               .AllowAnyHeader()

@@ -1,77 +1,8 @@
 /**
  * System Settings Types
  *
- * TypeScript interfaces for system settings API operations.
+ * TypeScript interfaces for integration status APIs.
  */
-
-export enum SettingCategory {
-  Integration = 0,
-  AI = 1,
-  System = 2,
-}
-
-export const SettingCategoryNames: Record<SettingCategory, string> = {
-  [SettingCategory.Integration]: 'Integrations',
-  [SettingCategory.AI]: 'AI Providers',
-  [SettingCategory.System]: 'System',
-};
-
-export interface SystemSettingDto {
-  id: string;
-  key: string;
-  value: string;
-  category: SettingCategory;
-  categoryName: string;
-  displayName: string;
-  description?: string;
-  isSecret: boolean;
-  isEnabled: boolean;
-  sortOrder: number;
-  modifiedBy: string;
-  modifiedAt: string;
-  hasValue: boolean;
-}
-
-export interface CreateSystemSettingRequest {
-  key: string;
-  value: string;
-  category: SettingCategory;
-  displayName: string;
-  description?: string;
-  isSecret: boolean;
-  isEnabled?: boolean;
-  sortOrder?: number;
-}
-
-export interface UpdateSystemSettingRequest {
-  value?: string;
-  displayName?: string;
-  description?: string;
-  isEnabled?: boolean;
-  sortOrder?: number;
-}
-
-export interface UpdateSettingValueRequest {
-  value: string;
-}
-
-// Predefined setting keys
-export const SystemSettingKeys = {
-  // Integration settings
-  GroupMeAccessToken: 'GroupMe.AccessToken',
-  GroupMeBaseUrl: 'GroupMe.BaseUrl',
-  // Note: GroupMeWebhookBaseUrl is NOT stored in database - comes from appsettings
-
-  // AI settings (future)
-  OpenAiApiKey: 'OpenAI.ApiKey',
-  OpenAiOrganizationId: 'OpenAI.OrganizationId',
-  AzureOpenAiEndpoint: 'AzureOpenAI.Endpoint',
-  AzureOpenAiApiKey: 'AzureOpenAI.ApiKey',
-  AzureOpenAiDeploymentName: 'AzureOpenAI.DeploymentName',
-
-  // System settings
-  SystemMaintenanceMode: 'System.MaintenanceMode',
-} as const;
 
 /**
  * GroupMe integration status from server configuration.
@@ -88,4 +19,72 @@ export interface GroupMeIntegrationStatus {
   webhookCallbackUrlPattern: string;
   /** URL to test webhook endpoint accessibility */
   webhookHealthCheckUrl: string;
+}
+
+/**
+ * Teams Bot integration status from server configuration.
+ * Checks if the TeamsBot service is configured and reachable.
+ */
+export interface TeamsIntegrationStatus {
+  /** Whether Teams Bot URL is configured in appsettings */
+  isConfigured: boolean;
+  /** Whether the Teams Bot service is currently reachable */
+  isConnected: boolean;
+  /** The Teams Bot base URL from appsettings */
+  botBaseUrl: string;
+  /** The internal API URL for sending messages to Teams */
+  internalApiUrl: string;
+  /** Number of Teams channels that have installed the bot */
+  availableConversations: number;
+  /** Human-readable status message */
+  statusMessage: string;
+}
+
+// === Teams Connector Management Types (UC-TI-030) ===
+
+/**
+ * Summary of a Teams connector for admin UI.
+ * Represents a Teams channel/conversation where the bot is installed.
+ */
+export interface TeamsConnectorDto {
+  /** The mapping ID (ExternalChannelMapping.Id) */
+  mappingId: string;
+  /** Human-readable name for the connector */
+  displayName: string;
+  /** The Teams conversation ID */
+  conversationId: string;
+  /** Customer's Microsoft 365 tenant ID */
+  tenantId: string | null;
+  /** Last time a message was received from this channel */
+  lastActivityAt: string | null;
+  /** Name of user who installed/first used the bot */
+  installedByName: string | null;
+  /** True if this is a Bot Framework Emulator connection */
+  isEmulator: boolean;
+  /** Whether the connector is active */
+  isActive: boolean;
+  /** Whether ConversationReference is stored (required for outbound messages) */
+  hasConversationReference: boolean;
+  /** When the connector was created */
+  createdAt: string;
+  /** The linked COBRA event ID */
+  linkedEventId: string | null;
+  /** The linked COBRA event name */
+  linkedEventName: string | null;
+}
+
+/**
+ * Response from listing Teams connectors.
+ */
+export interface ListTeamsConnectorsResponse {
+  count: number;
+  connectors: TeamsConnectorDto[];
+}
+
+/**
+ * Response from cleanup operations.
+ */
+export interface CleanupResponse {
+  deletedCount: number;
+  deletedMappingIds: string[];
 }

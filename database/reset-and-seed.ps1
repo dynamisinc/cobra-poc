@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Resets the ChecklistPOC database and applies all seed data.
+    Resets the COBRA-APP-POC database and applies all seed data.
 
 .DESCRIPTION
     This script:
@@ -35,12 +35,12 @@ $ErrorActionPreference = "Stop"
 
 # Paths
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$BackendDir = Join-Path (Split-Path -Parent $ScriptDir) "src\backend\ChecklistAPI"
-$DatabaseName = "ChecklistPOC"
+$BackendDir = Join-Path (Split-Path -Parent $ScriptDir) "src\backend\CobraAPI"
+$DatabaseName = "COBRAPOC"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  ChecklistPOC - Database Reset & Seed" -ForegroundColor Cyan
+Write-Host "  COBRA POC - Database Reset & Seed" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Server: $ServerInstance" -ForegroundColor Gray
@@ -48,7 +48,7 @@ Write-Host "Database: $DatabaseName" -ForegroundColor Gray
 Write-Host ""
 
 # Step 1: Drop and recreate database via EF Core
-$totalSteps = 7  # 2 migration steps + 5 seed scripts
+$totalSteps = 8  # 2 migration steps + 6 seed scripts
 if (-not $SkipMigrations) {
     Write-Host "[1/$totalSteps] Dropping existing database..." -ForegroundColor Yellow
     Push-Location $BackendDir
@@ -56,7 +56,7 @@ if (-not $SkipMigrations) {
     try {
         # Stop any running instances first
         Write-Host "  Stopping any running API instances..." -ForegroundColor Gray
-        Get-Process -Name "ChecklistAPI" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        Get-Process -Name "CobraAPI" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
         Start-Sleep -Seconds 2
 
         $dropResult = dotnet ef database drop --force 2>&1
@@ -91,7 +91,8 @@ $seedScripts = @(
     @{ Name = "Templates"; File = "seed-templates.sql" },
     @{ Name = "Item Library"; File = "seed-item-library.sql" },
     @{ Name = "Checklists"; File = "seed-checklists.sql" },
-    @{ Name = "Operational Periods"; File = "seed-operational-periods.sql" }
+    @{ Name = "Operational Periods"; File = "seed-operational-periods.sql" },
+    @{ Name = "Chat Channels"; File = "seed-chat-channels.sql" }
 )
 $stepNum = 3
 foreach ($script in $seedScripts) {
@@ -139,6 +140,7 @@ UNION ALL SELECT 'ItemLibrary', COUNT(*) FROM ItemLibrary
 UNION ALL SELECT 'ChecklistInstances', COUNT(*) FROM ChecklistInstances
 UNION ALL SELECT 'ChecklistItems', COUNT(*) FROM ChecklistItems
 UNION ALL SELECT 'OperationalPeriods', COUNT(*) FROM OperationalPeriods
+UNION ALL SELECT 'ChatThreads', COUNT(*) FROM ChatThreads
 "@
 
 $verifyResult = sqlcmd -S $ServerInstance -d $DatabaseName -Q $verifyQuery -h -1 -W 2>&1
@@ -148,7 +150,7 @@ Write-Host $verifyResult
 Write-Host ""
 
 Write-Host "To start the API:" -ForegroundColor Gray
-Write-Host "  cd src\backend\ChecklistAPI && dotnet run" -ForegroundColor White
+Write-Host "  cd src\backend\CobraAPI && dotnet run" -ForegroundColor White
 Write-Host ""
 Write-Host "API will be available at:" -ForegroundColor Gray
 Write-Host "  http://localhost:5000" -ForegroundColor White

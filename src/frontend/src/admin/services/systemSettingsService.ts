@@ -1,90 +1,26 @@
 /**
  * System Settings Service
  *
- * API client for managing customer-level configuration settings.
+ * API client for managing integration settings.
  */
 
 import { apiClient } from '../../core/services/api';
 import type {
-  SystemSettingDto,
-  CreateSystemSettingRequest,
-  UpdateSystemSettingRequest,
-  UpdateSettingValueRequest,
-  SettingCategory,
   GroupMeIntegrationStatus,
+  TeamsIntegrationStatus,
+  ListTeamsConnectorsResponse,
+  CleanupResponse,
 } from '../types/systemSettings';
 
 export const systemSettingsService = {
   /**
-   * Get all system settings
+   * Update a setting value by key
    */
-  getAllSettings: async (category?: SettingCategory): Promise<SystemSettingDto[]> => {
-    const params = category !== undefined ? `?category=${category}` : '';
-    const response = await apiClient.get<SystemSettingDto[]>(`/api/systemsettings${params}`);
-    return response.data;
-  },
-
-  /**
-   * Get a specific setting by key
-   */
-  getSetting: async (key: string): Promise<SystemSettingDto> => {
-    const response = await apiClient.get<SystemSettingDto>(`/api/systemsettings/${encodeURIComponent(key)}`);
-    return response.data;
-  },
-
-  /**
-   * Create a new system setting
-   */
-  createSetting: async (request: CreateSystemSettingRequest): Promise<SystemSettingDto> => {
-    const response = await apiClient.post<SystemSettingDto>('/api/systemsettings', request);
-    return response.data;
-  },
-
-  /**
-   * Update a system setting
-   */
-  updateSetting: async (key: string, request: UpdateSystemSettingRequest): Promise<SystemSettingDto> => {
-    const response = await apiClient.put<SystemSettingDto>(
-      `/api/systemsettings/${encodeURIComponent(key)}`,
-      request
-    );
-    return response.data;
-  },
-
-  /**
-   * Update just the value of a setting
-   */
-  updateSettingValue: async (key: string, value: string): Promise<SystemSettingDto> => {
-    const request: UpdateSettingValueRequest = { value };
-    const response = await apiClient.patch<SystemSettingDto>(
+  updateSettingValue: async (key: string, value: string): Promise<void> => {
+    await apiClient.patch(
       `/api/systemsettings/${encodeURIComponent(key)}/value`,
-      request
+      { value }
     );
-    return response.data;
-  },
-
-  /**
-   * Delete a system setting
-   */
-  deleteSetting: async (key: string): Promise<void> => {
-    await apiClient.delete(`/api/systemsettings/${encodeURIComponent(key)}`);
-  },
-
-  /**
-   * Toggle a setting's enabled state
-   */
-  toggleSetting: async (key: string): Promise<SystemSettingDto> => {
-    const response = await apiClient.patch<SystemSettingDto>(
-      `/api/systemsettings/${encodeURIComponent(key)}/toggle`
-    );
-    return response.data;
-  },
-
-  /**
-   * Initialize default settings
-   */
-  initializeDefaults: async (): Promise<void> => {
-    await apiClient.post('/api/systemsettings/initialize');
   },
 
   /**
@@ -97,6 +33,90 @@ export const systemSettingsService = {
       '/api/systemsettings/integrations/groupme'
     );
     return response.data;
+  },
+
+  /**
+   * Get Teams Bot integration status.
+   * Checks if the TeamsBot service is configured and reachable.
+   */
+  getTeamsIntegrationStatus: async (): Promise<TeamsIntegrationStatus> => {
+    const response = await apiClient.get<TeamsIntegrationStatus>(
+      '/api/systemsettings/integrations/teams'
+    );
+    return response.data;
+  },
+
+  // === Teams Connector Management (UC-TI-030) ===
+
+  /**
+   * List all Teams connectors with optional filters.
+   */
+  listTeamsConnectors: async (params?: {
+    isEmulator?: boolean;
+    isActive?: boolean;
+    staleDays?: number;
+  }): Promise<ListTeamsConnectorsResponse> => {
+    const queryParams = new URLSearchParams();
+    if (params?.isEmulator !== undefined) {
+      queryParams.set('isEmulator', String(params.isEmulator));
+    }
+    if (params?.isActive !== undefined) {
+      queryParams.set('isActive', String(params.isActive));
+    }
+    if (params?.staleDays !== undefined) {
+      queryParams.set('staleDays', String(params.staleDays));
+    }
+    const queryString = queryParams.toString();
+    const url = `/api/chat/teams/mappings${queryString ? `?${queryString}` : ''}`;
+    const response = await apiClient.get<ListTeamsConnectorsResponse>(url);
+    return response.data;
+  },
+
+  /**
+   * Rename a Teams connector.
+   */
+  renameTeamsConnector: async (mappingId: string, displayName: string): Promise<void> => {
+    await apiClient.patch(`/api/chat/teams/mappings/${mappingId}/name`, { displayName });
+  },
+
+  /**
+   * Deactivate a Teams connector (soft delete).
+   */
+  deleteTeamsConnector: async (mappingId: string): Promise<void> => {
+    await apiClient.delete(`/api/chat/teams/mappings/${mappingId}`);
+  },
+
+  /**
+   * Reactivate a previously deactivated Teams connector.
+   */
+  reactivateTeamsConnector: async (mappingId: string): Promise<void> => {
+    await apiClient.post(`/api/chat/teams/mappings/${mappingId}/reactivate`);
+  },
+
+  /**
+   * Bulk delete stale connectors (inactive for N days).
+   */
+  cleanupStaleConnectors: async (inactiveDays: number = 30): Promise<CleanupResponse> => {
+    const response = await apiClient.delete<CleanupResponse>(
+      `/api/chat/teams/mappings/stale?inactiveDays=${inactiveDays}`
+    );
+    return response.data;
+  },
+
+  /**
+   * Link a Teams connector to a COBRA event.
+   * Required before messages can flow between COBRA and Teams.
+   */
+  linkTeamsConnector: async (mappingId: string, eventId: string): Promise<void> => {
+    await apiClient.post(`/api/chat/teams/mappings/${mappingId}/link`, { eventId });
+  },
+
+  /**
+   * Unlink a Teams connector from its current event.
+   * Messages will no longer flow between COBRA and Teams for this connector.
+   */
+  unlinkTeamsConnector: async (mappingId: string): Promise<void> => {
+    await apiClient.post(`/api/chat/teams/mappings/${mappingId}/unlink`);
   },
 };
 
