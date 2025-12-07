@@ -11,14 +11,15 @@ This document details all permissions required by the COBRA Communications bot f
 | Category | Permissions Required | Risk Level | Admin Consent |
 |----------|---------------------|------------|---------------|
 | Azure AD | 1 (User.Read) | Low | No |
-| RSC (Teams) | 2 (Channel messages, Team settings) | Medium | Team Owner |
+| RSC (Teams) | 12 (Channel messages, Team info, Channel management) | Medium | Team Owner |
 | Graph API | None | N/A | N/A |
 
 **Key Points:**
 - No tenant-wide admin consent required
 - Permissions are scoped to teams where the bot is installed
-- No access to private chats, emails, or files
-- Read-only access (bot cannot modify or delete messages)
+- No access to private chats, emails, or files outside installed teams
+- Supports channel creation for incident response workflows
+- File upload support for sharing documents between platforms
 
 ---
 
@@ -48,10 +49,31 @@ These permissions are configured in the Azure AD app registration and apply to t
 
 RSC permissions are Teams-specific and are granted by Team Owners when the app is installed. These permissions are scoped only to the team(s) where the bot is installed.
 
-| Permission | Type | Granted By | Scope |
-|------------|------|-----------|-------|
-| `ChannelMessage.Read.Group` | Application | Team Owner | Installed team only |
-| `TeamSettings.Read.Group` | Application | Team Owner | Installed team only |
+#### Team-Scoped Permissions (Group)
+
+| Permission | Purpose | Risk Level |
+|------------|---------|------------|
+| `ChannelMessage.Read.Group` | Receive all channel messages without @mentions | Medium |
+| `ChannelMessage.Send.Group` | Send messages to channels | Low |
+| `Channel.Create.Group` | Create new channels for incidents | Medium |
+| `Channel.Delete.Group` | Delete channels (admin cleanup) | Medium |
+| `ChannelSettings.Read.Group` | Read channel configuration | Low |
+| `ChannelSettings.ReadWrite.Group` | Update channel settings | Medium |
+| `Team.ReadBasic.Group` | Read team name and metadata | Low |
+| `TeamMember.Read.Group` | Read team membership | Low |
+| `TeamsActivity.Send.Group` | Send activity feed notifications | Low |
+
+#### Chat-Scoped Permissions (for Group Chats)
+
+| Permission | Purpose | Risk Level |
+|------------|---------|------------|
+| `ChatMessage.Read.Chat` | Read messages in group chats with bot | Medium |
+| `ChatMember.Read.Chat` | Read chat membership | Low |
+| `TeamsAppInstallation.Read.Chat` | Check app installation status | Low |
+
+---
+
+### Permission Details
 
 #### ChannelMessage.Read.Group
 
@@ -68,19 +90,43 @@ RSC permissions are Teams-specific and are granted by Team Owners when the app i
 - Ability to modify or delete messages
 - Access to message history before bot installation (by default)
 
-#### TeamSettings.Read.Group
+#### ChannelMessage.Send.Group
 
-**Purpose:** Enables the bot to read team and channel metadata.
+**Purpose:** Enables the bot to send messages to channels.
+
+**What this allows:**
+- Bot can post messages from COBRA to Teams channels
+- Supports formatted messages and attachments
+
+#### Channel.Create.Group
+
+**Purpose:** Enables the bot to create new channels within installed teams.
+
+**What this allows:**
+- Create channels programmatically from COBRA
+- Useful for creating incident-specific channels
+- Channel naming follows team policies
+
+**What this does NOT allow:**
+- Create channels in teams where bot is NOT installed
+- Override team channel policies
+
+#### Channel.Delete.Group
+
+**Purpose:** Enables the bot to delete channels it created or has been granted access to.
+
+**What this allows:**
+- Administrative cleanup of incident channels
+- Removing temporary channels after incident closure
+
+#### Team.ReadBasic.Group & TeamMember.Read.Group
+
+**Purpose:** Enables the bot to read team and membership information.
 
 **What this allows:**
 - Read team name, description, and settings
 - Read list of channels in the team
-- Read channel names and descriptions
-
-**What this does NOT allow:**
-- Modify team or channel settings
-- Create or delete channels
-- Access team membership or user details
+- Read team member list for @mention suggestions
 
 ---
 
@@ -307,14 +353,18 @@ Redirect URIs: https://[cobra-domain]/auth/teams/callback
   "authorization": {
     "permissions": {
       "resourceSpecific": [
-        {
-          "name": "ChannelMessage.Read.Group",
-          "type": "Application"
-        },
-        {
-          "name": "TeamSettings.Read.Group",
-          "type": "Application"
-        }
+        { "name": "ChannelMessage.Read.Group", "type": "Application" },
+        { "name": "ChannelMessage.Send.Group", "type": "Application" },
+        { "name": "Channel.Create.Group", "type": "Application" },
+        { "name": "Channel.Delete.Group", "type": "Application" },
+        { "name": "ChannelSettings.Read.Group", "type": "Application" },
+        { "name": "ChannelSettings.ReadWrite.Group", "type": "Application" },
+        { "name": "Team.ReadBasic.Group", "type": "Application" },
+        { "name": "TeamMember.Read.Group", "type": "Application" },
+        { "name": "TeamsActivity.Send.Group", "type": "Application" },
+        { "name": "ChatMessage.Read.Chat", "type": "Application" },
+        { "name": "ChatMember.Read.Chat", "type": "Application" },
+        { "name": "TeamsAppInstallation.Read.Chat", "type": "Application" }
       ]
     }
   }
@@ -340,6 +390,6 @@ Redirect URIs: https://[cobra-domain]/auth/teams/callback
 
 ---
 
-*Document Version: 1.0*  
-*Last Updated: December 2025*  
+*Document Version: 1.1*
+*Last Updated: December 2025*
 *Classification: Internal / Customer-Facing*

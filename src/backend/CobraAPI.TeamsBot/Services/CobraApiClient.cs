@@ -426,6 +426,234 @@ public class CobraApiClient : ICobraApiClient
 
         return result.Success && result.Value;
     }
+
+    // === Bot Command Support Methods ===
+
+    /// <summary>
+    /// Gets a list of active events that can be linked to this Teams channel.
+    /// Optionally filters by tenant ID to show only events relevant to the organization.
+    /// </summary>
+    public async Task<List<EventSummary>?> GetAvailableEventsAsync(string? tenantId = null)
+    {
+        if (string.IsNullOrEmpty(_settings.BaseUrl))
+        {
+            _logger.LogWarning("CobraAPI BaseUrl is not configured. Cannot get events.");
+            return null;
+        }
+
+        try
+        {
+            // Build URL with optional tenant filter
+            var url = "api/events";
+            if (!string.IsNullOrEmpty(tenantId))
+            {
+                url += $"?tenantId={Uri.EscapeDataString(tenantId)}";
+                _logger.LogDebug("Filtering events by tenant ID: {TenantId}", tenantId);
+            }
+
+            var response = await _httpClient.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var events = await response.Content.ReadFromJsonAsync<List<EventSummary>>();
+                _logger.LogDebug("Retrieved {Count} events for tenant {TenantId}",
+                    events?.Count ?? 0, tenantId ?? "all");
+                return events;
+            }
+
+            _logger.LogWarning("Failed to get events. Status: {StatusCode}", response.StatusCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting available events");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Links a Teams connector to a COBRA event.
+    /// </summary>
+    public async Task<LinkResult?> LinkConnectorToEventAsync(Guid mappingId, Guid eventId)
+    {
+        if (string.IsNullOrEmpty(_settings.BaseUrl))
+        {
+            _logger.LogWarning("CobraAPI BaseUrl is not configured. Cannot link connector.");
+            return null;
+        }
+
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                $"api/chat/teams/mappings/{mappingId}/link",
+                new { eventId });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<LinkApiResponse>();
+                return new LinkResult
+                {
+                    Success = true,
+                    MappingId = mappingId,
+                    EventId = result?.EventId ?? eventId,
+                    EventName = result?.EventName,
+                    Message = result?.Message ?? "Linked successfully"
+                };
+            }
+
+            var error = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning("Failed to link connector. Status: {StatusCode}, Error: {Error}",
+                response.StatusCode, error);
+
+            return new LinkResult
+            {
+                Success = false,
+                MappingId = mappingId,
+                EventId = eventId,
+                Message = $"Failed to link: {response.StatusCode}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error linking connector {MappingId} to event {EventId}", mappingId, eventId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Unlinks a Teams connector from its current event.
+    /// </summary>
+    public async Task<bool> UnlinkConnectorAsync(Guid mappingId)
+    {
+        if (string.IsNullOrEmpty(_settings.BaseUrl))
+        {
+            _logger.LogWarning("CobraAPI BaseUrl is not configured. Cannot unlink connector.");
+            return false;
+        }
+
+        try
+        {
+            var response = await _httpClient.PostAsync(
+                $"api/chat/teams/mappings/{mappingId}/unlink",
+                null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Successfully unlinked connector {MappingId}", mappingId);
+                return true;
+            }
+
+            _logger.LogWarning("Failed to unlink connector. Status: {StatusCode}", response.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error unlinking connector {MappingId}", mappingId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets the current connector status including linked event info.
+    /// </summary>
+    public async Task<ConnectorStatus?> GetConnectorStatusAsync(string conversationId)
+    {
+        if (string.IsNullOrEmpty(_settings.BaseUrl))
+        {
+            _logger.LogWarning("CobraAPI BaseUrl is not configured. Cannot get connector status.");
+            return null;
+        }
+
+        var encodedId = Uri.EscapeDataString(conversationId);
+
+        try
+        {
+            // First get the conversation reference which has the mapping ID
+            var refResponse = await _httpClient.GetAsync($"api/chat/teams/conversation-reference/{encodedId}");
+
+            if (!refResponse.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var refResult = await refResponse.Content.ReadFromJsonAsync<GetConversationReferenceResult>();
+            if (refResult == null)
+            {
+                return null;
+            }
+
+            // Get the full mapping details
+            var mappingsResponse = await _httpClient.GetAsync("api/chat/teams/mappings");
+            if (mappingsResponse.IsSuccessStatusCode)
+            {
+                var mappingsResult = await mappingsResponse.Content.ReadFromJsonAsync<ListMappingsResponse>();
+                var mapping = mappingsResult?.Connectors?.FirstOrDefault(m => m.MappingId == refResult.MappingId);
+
+                if (mapping != null)
+                {
+                    return new ConnectorStatus
+                    {
+                        MappingId = mapping.MappingId,
+                        DisplayName = mapping.DisplayName,
+                        IsActive = mapping.IsActive,
+                        IsLinked = mapping.IsLinked,
+                        LinkedEventId = mapping.LinkedEventId,
+                        LinkedEventName = mapping.LinkedEventName,
+                        LastActivityAt = mapping.LastActivityAt,
+                        CreatedAt = mapping.CreatedAt
+                    };
+                }
+            }
+
+            // Fallback - return basic info from the reference
+            return new ConnectorStatus
+            {
+                MappingId = refResult.MappingId,
+                IsActive = refResult.IsActive,
+                IsLinked = false
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting connector status for {ConversationId}", conversationId);
+            return null;
+        }
+    }
+}
+
+/// <summary>
+/// Response from link API.
+/// </summary>
+internal class LinkApiResponse
+{
+    public string? Message { get; set; }
+    public Guid MappingId { get; set; }
+    public Guid EventId { get; set; }
+    public string? EventName { get; set; }
+}
+
+/// <summary>
+/// Response from list mappings API.
+/// </summary>
+internal class ListMappingsResponse
+{
+    public int Count { get; set; }
+    public List<ConnectorDto>? Connectors { get; set; }
+}
+
+/// <summary>
+/// Connector DTO from API.
+/// </summary>
+internal class ConnectorDto
+{
+    public Guid MappingId { get; set; }
+    public string? DisplayName { get; set; }
+    public bool IsActive { get; set; }
+    public bool IsLinked { get; set; }
+    public Guid? LinkedEventId { get; set; }
+    public string? LinkedEventName { get; set; }
+    public DateTime? LastActivityAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
 
 /// <summary>

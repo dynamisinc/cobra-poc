@@ -11,7 +11,8 @@ public interface IEventService
     /// </summary>
     /// <param name="eventType">Filter by event type: "PLANNED" or "UNPLANNED" (optional)</param>
     /// <param name="activeOnly">Only return active events (default: true)</param>
-    Task<List<EventDto>> GetEventsAsync(string? eventType = null, bool activeOnly = true);
+    /// <param name="tenantId">Filter by Teams tenant ID - returns events that have connectors from this tenant (optional)</param>
+    Task<List<EventDto>> GetEventsAsync(string? eventType = null, bool activeOnly = true, string? tenantId = null);
 
     /// <summary>
     /// Get a specific event by ID

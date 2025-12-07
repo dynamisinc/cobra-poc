@@ -64,6 +64,75 @@ public interface ICobraApiClient
     /// <param name="removedBy">Optional name of the user who removed the bot.</param>
     /// <returns>True if the notification was processed successfully.</returns>
     Task<bool> NotifyBotRemovedAsync(string conversationId, string? removedBy = null);
+
+    // === Bot Command Support Methods ===
+
+    /// <summary>
+    /// Gets a list of active events that can be linked to this Teams channel.
+    /// </summary>
+    /// <param name="tenantId">Optional Teams tenant ID to filter events by organization.</param>
+    /// <returns>List of events available for linking.</returns>
+    Task<List<EventSummary>?> GetAvailableEventsAsync(string? tenantId = null);
+
+    /// <summary>
+    /// Links a Teams connector to a COBRA event.
+    /// </summary>
+    /// <param name="mappingId">The connector mapping ID.</param>
+    /// <param name="eventId">The event ID to link to.</param>
+    /// <returns>Link result with event details, or null on failure.</returns>
+    Task<LinkResult?> LinkConnectorToEventAsync(Guid mappingId, Guid eventId);
+
+    /// <summary>
+    /// Unlinks a Teams connector from its current event.
+    /// </summary>
+    /// <param name="mappingId">The connector mapping ID.</param>
+    /// <returns>True if unlinking was successful.</returns>
+    Task<bool> UnlinkConnectorAsync(Guid mappingId);
+
+    /// <summary>
+    /// Gets the current connector status including linked event info.
+    /// </summary>
+    /// <param name="conversationId">The Teams conversation ID.</param>
+    /// <returns>Connector status information.</returns>
+    Task<ConnectorStatus?> GetConnectorStatusAsync(string conversationId);
+}
+
+/// <summary>
+/// Summary of an event available for linking.
+/// </summary>
+public class EventSummary
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Status { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>
+/// Result from linking a connector to an event.
+/// </summary>
+public class LinkResult
+{
+    public bool Success { get; set; }
+    public Guid MappingId { get; set; }
+    public Guid EventId { get; set; }
+    public string? EventName { get; set; }
+    public string? Message { get; set; }
+}
+
+/// <summary>
+/// Status information for a Teams connector.
+/// </summary>
+public class ConnectorStatus
+{
+    public Guid MappingId { get; set; }
+    public string? DisplayName { get; set; }
+    public bool IsActive { get; set; }
+    public bool IsLinked { get; set; }
+    public Guid? LinkedEventId { get; set; }
+    public string? LinkedEventName { get; set; }
+    public DateTime? LastActivityAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
 
 /// <summary>

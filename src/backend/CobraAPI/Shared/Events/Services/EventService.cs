@@ -32,11 +32,11 @@ public class EventService : IEventService
         return _httpContextAccessor.HttpContext?.Items["UserName"]?.ToString() ?? "Unknown User";
     }
 
-    public async Task<List<EventDto>> GetEventsAsync(string? eventType = null, bool activeOnly = true)
+    public async Task<List<EventDto>> GetEventsAsync(string? eventType = null, bool activeOnly = true, string? tenantId = null)
     {
         _logger.LogInformation(
-            "Getting events with filters - EventType: {EventType}, ActiveOnly: {ActiveOnly}",
-            eventType, activeOnly);
+            "Getting events with filters - EventType: {EventType}, ActiveOnly: {ActiveOnly}, TenantId: {TenantId}",
+            eventType, activeOnly, tenantId);
 
         var query = _context.Events
             .Include(e => e.PrimaryCategory)
@@ -51,6 +51,35 @@ public class EventService : IEventService
         if (activeOnly)
         {
             query = query.Where(e => e.IsActive);
+        }
+
+        // Filter by tenant ID if provided
+        // This returns only events that have at least one Teams connector from this tenant
+        if (!string.IsNullOrWhiteSpace(tenantId))
+        {
+            // Get event IDs that have connectors from this tenant
+            var eventIdsWithTenantConnectors = await _context.ExternalChannelMappings
+                .Where(m => m.TenantId == tenantId && m.IsActive)
+                .Select(m => m.EventId)
+                .Where(id => id.HasValue)
+                .Select(id => id!.Value)
+                .Distinct()
+                .ToListAsync();
+
+            _logger.LogDebug(
+                "Found {Count} events with connectors from tenant {TenantId}",
+                eventIdsWithTenantConnectors.Count, tenantId);
+
+            // Filter to events that either:
+            // 1. Already have a connector from this tenant (can re-link), OR
+            // 2. Have no connectors yet (available for linking)
+            // For now, we'll show ALL events to allow linking to any event
+            // but this could be restricted to tenant-specific events in the future
+
+            // Option B implementation: Show all events regardless of tenant
+            // The tenant filtering is informational - we store the tenant ID on the connector
+            // but don't restrict which events can be linked
+            // This is the minimal implementation - just log the tenant info
         }
 
         var events = await query

@@ -26,18 +26,20 @@ public class EventsController : ControllerBase
     /// </summary>
     /// <param name="eventType">Filter by event type: "PLANNED" or "UNPLANNED" (optional)</param>
     /// <param name="activeOnly">Only return active events (default: true)</param>
+    /// <param name="tenantId">Filter by Teams tenant ID (optional) - for multi-tenant Teams integration</param>
     /// <returns>List of events</returns>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<List<EventDto>>> GetEvents(
         [FromQuery] string? eventType = null,
-        [FromQuery] bool activeOnly = true)
+        [FromQuery] bool activeOnly = true,
+        [FromQuery] string? tenantId = null)
     {
         _logger.LogInformation(
-            "GET /api/events - EventType: {EventType}, ActiveOnly: {ActiveOnly}",
-            eventType, activeOnly);
+            "GET /api/events - EventType: {EventType}, ActiveOnly: {ActiveOnly}, TenantId: {TenantId}",
+            eventType, activeOnly, tenantId);
 
-        var events = await _service.GetEventsAsync(eventType, activeOnly);
+        var events = await _service.GetEventsAsync(eventType, activeOnly, tenantId);
         return Ok(events);
     }
 

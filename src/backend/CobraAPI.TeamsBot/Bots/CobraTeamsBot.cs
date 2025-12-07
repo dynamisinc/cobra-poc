@@ -105,6 +105,14 @@ public class CobraTeamsBot : TeamsActivityHandler
             return;
         }
 
+        // Check if this is a command (starts with known command or is addressed to bot)
+        var command = ExtractCommand(messageText);
+        if (command != null)
+        {
+            await HandleCommandAsync(turnContext, command, conversationId, cancellationToken);
+            return;
+        }
+
         // Build webhook payload for CobraAPI
         var payload = BuildWebhookPayload(activity, "message");
 
@@ -139,7 +147,8 @@ public class CobraTeamsBot : TeamsActivityHandler
 
             // For POC: Echo back to show the bot is working
             var echoMessage = $"🔄 **COBRA received:** \"{messageText}\" from {senderName}\n\n" +
-                              "_Note: This channel is not linked to a COBRA event yet. Messages are not being stored._";
+                              "_Note: This channel is not linked to a COBRA event yet. Messages are not being stored._\n\n" +
+                              "_Type `help` to see available commands._";
             await turnContext.SendActivityAsync(MessageFactory.Text(echoMessage), cancellationToken);
         }
 
@@ -148,6 +157,274 @@ public class CobraTeamsBot : TeamsActivityHandler
         _metrics.RecordMessageLatency(latency);
 
         _logger.LogDebug("Message processed successfully in {Latency}ms", latency);
+    }
+
+    /// <summary>
+    /// Extracts a command from the message text.
+    /// Commands can be plain (help) or prefixed with bot mention.
+    /// </summary>
+    private static string? ExtractCommand(string messageText)
+    {
+        if (string.IsNullOrWhiteSpace(messageText))
+            return null;
+
+        // Remove bot mention if present (e.g., "<at>COBRA Bot</at> help" -> "help")
+        var text = System.Text.RegularExpressions.Regex.Replace(messageText, @"<at>.*?</at>\s*", "").Trim();
+
+        // Check for known commands (case-insensitive)
+        var lowerText = text.ToLowerInvariant();
+
+        // Direct command matches
+        if (lowerText == "help" || lowerText.StartsWith("help "))
+            return "help";
+        if (lowerText == "status" || lowerText.StartsWith("status "))
+            return "status";
+        if (lowerText == "unlink" || lowerText.StartsWith("unlink "))
+            return "unlink";
+        if (lowerText.StartsWith("link"))
+            return text; // Return full text for link command (may have event ID)
+
+        return null;
+    }
+
+    /// <summary>
+    /// Handles bot commands.
+    /// </summary>
+    private async Task HandleCommandAsync(ITurnContext turnContext, string command, string conversationId, CancellationToken cancellationToken)
+    {
+        var lowerCommand = command.ToLowerInvariant();
+        _logger.LogInformation("Processing command: {Command}", command);
+
+        if (lowerCommand == "help")
+        {
+            await HandleHelpCommandAsync(turnContext, cancellationToken);
+        }
+        else if (lowerCommand == "status")
+        {
+            await HandleStatusCommandAsync(turnContext, conversationId, cancellationToken);
+        }
+        else if (lowerCommand == "unlink")
+        {
+            await HandleUnlinkCommandAsync(turnContext, conversationId, cancellationToken);
+        }
+        else if (lowerCommand.StartsWith("link"))
+        {
+            await HandleLinkCommandAsync(turnContext, command, conversationId, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Handles the help command - shows available commands.
+    /// </summary>
+    private async Task HandleHelpCommandAsync(ITurnContext turnContext, CancellationToken cancellationToken)
+    {
+        var helpText = $@"**{_botSettings.DisplayName} Commands**
+
+| Command | Description |
+|---------|-------------|
+| `help` | Show this help message |
+| `status` | Check connection status and linked event |
+| `link` | Show available events to link to |
+| `link [event-id]` | Link this channel to a specific COBRA event |
+| `unlink` | Unlink this channel from the current event |
+
+**Examples:**
+• `status` - See if this channel is connected to COBRA
+• `link` - Browse available events
+• `link abc12345` - Link to event with ID abc12345
+
+_For more help, visit COBRA documentation or contact your administrator._";
+
+        await turnContext.SendActivityAsync(MessageFactory.Text(helpText), cancellationToken);
+    }
+
+    /// <summary>
+    /// Handles the status command - shows connector status.
+    /// </summary>
+    private async Task HandleStatusCommandAsync(ITurnContext turnContext, string conversationId, CancellationToken cancellationToken)
+    {
+        var status = await _cobraApiClient.GetConnectorStatusAsync(conversationId);
+
+        if (status == null)
+        {
+            var notFoundMessage = @"**Connection Status: Not Registered**
+
+This channel is not yet registered with COBRA.
+
+_The bot may need to be reinstalled, or COBRA API may be unavailable._";
+            await turnContext.SendActivityAsync(MessageFactory.Text(notFoundMessage), cancellationToken);
+            return;
+        }
+
+        var statusEmoji = status.IsActive ? "🟢" : "🔴";
+        var linkStatus = status.IsLinked
+            ? $"**Linked to:** {status.LinkedEventName ?? "Unknown Event"}"
+            : "**Not linked** - Messages are not being stored";
+
+        var lastActivity = status.LastActivityAt.HasValue
+            ? status.LastActivityAt.Value.ToString("g") + " UTC"
+            : "Never";
+
+        var statusMessage = $@"**{statusEmoji} Connection Status**
+
+| Property | Value |
+|----------|-------|
+| **Status** | {(status.IsActive ? "Active" : "Inactive")} |
+| **Display Name** | {status.DisplayName ?? "Teams Channel"} |
+| {linkStatus} |
+| **Last Activity** | {lastActivity} |
+| **Connector ID** | `{status.MappingId:N}` |
+
+{(status.IsLinked ? "_Messages from this channel are being synced to COBRA._" : "_Use `link` command to connect to a COBRA event._")}";
+
+        await turnContext.SendActivityAsync(MessageFactory.Text(statusMessage), cancellationToken);
+    }
+
+    /// <summary>
+    /// Handles the link command - links channel to an event.
+    /// </summary>
+    private async Task HandleLinkCommandAsync(ITurnContext turnContext, string command, string conversationId, CancellationToken cancellationToken)
+    {
+        // Get tenant ID for filtering events by organization
+        var tenantId = turnContext.Activity.Conversation?.TenantId;
+
+        // Parse event ID from command if provided (e.g., "link abc123")
+        var parts = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        if (parts.Length == 1)
+        {
+            // Just "link" - show available events
+            await ShowAvailableEventsAsync(turnContext, tenantId, cancellationToken);
+            return;
+        }
+
+        // Try to parse event ID
+        var eventIdStr = parts[1].Trim();
+        if (!Guid.TryParse(eventIdStr, out var eventId))
+        {
+            // Try partial GUID match - take first 8 chars as prefix
+            var events = await _cobraApiClient.GetAvailableEventsAsync(tenantId);
+            var matchingEvent = events?.FirstOrDefault(e =>
+                e.Id.ToString("N").StartsWith(eventIdStr, StringComparison.OrdinalIgnoreCase) ||
+                e.Id.ToString().StartsWith(eventIdStr, StringComparison.OrdinalIgnoreCase));
+
+            if (matchingEvent != null)
+            {
+                eventId = matchingEvent.Id;
+            }
+            else
+            {
+                await turnContext.SendActivityAsync(
+                    MessageFactory.Text($"⚠️ Could not find event with ID `{eventIdStr}`.\n\nUse `link` to see available events."),
+                    cancellationToken);
+                return;
+            }
+        }
+
+        // Get the mapping ID for this conversation
+        var status = await _cobraApiClient.GetConnectorStatusAsync(conversationId);
+        if (status == null)
+        {
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text("⚠️ This channel is not registered with COBRA. Try removing and re-adding the bot."),
+                cancellationToken);
+            return;
+        }
+
+        // Link the connector to the event
+        var result = await _cobraApiClient.LinkConnectorToEventAsync(status.MappingId, eventId);
+
+        if (result?.Success == true)
+        {
+            var successMessage = $@"✅ **Channel Linked Successfully!**
+
+This channel is now connected to:
+**{result.EventName ?? "Event"}** (`{result.EventId:N}`)
+
+All messages in this channel will now sync to COBRA.";
+            await turnContext.SendActivityAsync(MessageFactory.Text(successMessage), cancellationToken);
+        }
+        else
+        {
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text($"⚠️ Failed to link channel: {result?.Message ?? "Unknown error"}"),
+                cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Shows available events that can be linked.
+    /// </summary>
+    /// <param name="turnContext">The turn context.</param>
+    /// <param name="tenantId">Optional tenant ID to filter events by organization.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    private async Task ShowAvailableEventsAsync(ITurnContext turnContext, string? tenantId, CancellationToken cancellationToken)
+    {
+        var events = await _cobraApiClient.GetAvailableEventsAsync(tenantId);
+
+        if (events == null || events.Count == 0)
+        {
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text("No events available for linking. Create an event in COBRA first."),
+                cancellationToken);
+            return;
+        }
+
+        var eventList = string.Join("\n", events.Take(10).Select(e =>
+            $"• `{e.Id.ToString("N")[..8]}` - **{e.Name}** ({e.Status ?? "Active"})"));
+
+        var message = $@"**Available Events**
+
+{eventList}
+
+To link this channel, use:
+`link [event-id]`
+
+Example: `link {events.First().Id.ToString("N")[..8]}`
+
+_Showing up to 10 events. Use COBRA web interface for full list._";
+
+        await turnContext.SendActivityAsync(MessageFactory.Text(message), cancellationToken);
+    }
+
+    /// <summary>
+    /// Handles the unlink command - unlinks channel from current event.
+    /// </summary>
+    private async Task HandleUnlinkCommandAsync(ITurnContext turnContext, string conversationId, CancellationToken cancellationToken)
+    {
+        var status = await _cobraApiClient.GetConnectorStatusAsync(conversationId);
+
+        if (status == null)
+        {
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text("⚠️ This channel is not registered with COBRA."),
+                cancellationToken);
+            return;
+        }
+
+        if (!status.IsLinked)
+        {
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text("This channel is not currently linked to any event."),
+                cancellationToken);
+            return;
+        }
+
+        var previousEvent = status.LinkedEventName;
+        var success = await _cobraApiClient.UnlinkConnectorAsync(status.MappingId);
+
+        if (success)
+        {
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text($"✅ Channel unlinked from **{previousEvent ?? "event"}**.\n\nMessages will no longer sync to COBRA."),
+                cancellationToken);
+        }
+        else
+        {
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text("⚠️ Failed to unlink channel. Try again or contact an administrator."),
+                cancellationToken);
+        }
     }
 
     /// <summary>
