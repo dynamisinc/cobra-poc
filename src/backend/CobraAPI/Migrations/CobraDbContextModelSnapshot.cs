@@ -276,6 +276,81 @@ namespace ChecklistAPI.Migrations
                     b.ToTable("OperationalPeriods");
                 });
 
+            modelBuilder.Entity("CobraAPI.Shared.Positions.Models.Entities.Position", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IconName")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SourceLanguageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("OrganizationId", "DisplayOrder");
+
+                    b.HasIndex("OrganizationId", "IsActive");
+
+                    b.ToTable("Positions");
+                });
+
+            modelBuilder.Entity("CobraAPI.Shared.Positions.Models.Entities.PositionTranslation", b =>
+                {
+                    b.Property<Guid>("PositionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("LanguageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("PositionId", "LanguageId");
+
+                    b.HasIndex("LanguageId");
+
+                    b.ToTable("PositionTranslations");
+                });
+
             modelBuilder.Entity("CobraAPI.Tools.Chat.Models.Entities.ChatMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -407,15 +482,23 @@ namespace ChecklistAPI.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<Guid?>("PositionId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ExternalChannelMappingId");
+
+                    b.HasIndex("PositionId");
 
                     b.HasIndex("EventId", "ChannelType");
 
                     b.HasIndex("EventId", "DisplayOrder");
 
                     b.HasIndex("EventId", "IsDefaultEventThread");
+
+                    b.HasIndex("EventId", "PositionId")
+                        .HasFilter("[PositionId] IS NOT NULL");
 
                     b.ToTable("ChatThreads");
                 });
@@ -880,6 +963,17 @@ namespace ChecklistAPI.Migrations
                     b.Navigation("Event");
                 });
 
+            modelBuilder.Entity("CobraAPI.Shared.Positions.Models.Entities.PositionTranslation", b =>
+                {
+                    b.HasOne("CobraAPI.Shared.Positions.Models.Entities.Position", "Position")
+                        .WithMany("Translations")
+                        .HasForeignKey("PositionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Position");
+                });
+
             modelBuilder.Entity("CobraAPI.Tools.Chat.Models.Entities.ChatMessage", b =>
                 {
                     b.HasOne("CobraAPI.Tools.Chat.Models.Entities.ChatThread", "ChatThread")
@@ -911,9 +1005,16 @@ namespace ChecklistAPI.Migrations
                         .HasForeignKey("ExternalChannelMappingId")
                         .OnDelete(DeleteBehavior.NoAction);
 
+                    b.HasOne("CobraAPI.Shared.Positions.Models.Entities.Position", "Position")
+                        .WithMany()
+                        .HasForeignKey("PositionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Event");
 
                     b.Navigation("ExternalChannelMapping");
+
+                    b.Navigation("Position");
                 });
 
             modelBuilder.Entity("CobraAPI.Tools.Chat.Models.Entities.ExternalChannelMapping", b =>
@@ -978,6 +1079,11 @@ namespace ChecklistAPI.Migrations
             modelBuilder.Entity("CobraAPI.Shared.Events.Models.Entities.OperationalPeriod", b =>
                 {
                     b.Navigation("Checklists");
+                });
+
+            modelBuilder.Entity("CobraAPI.Shared.Positions.Models.Entities.Position", b =>
+                {
+                    b.Navigation("Translations");
                 });
 
             modelBuilder.Entity("CobraAPI.Tools.Chat.Models.Entities.ChatThread", b =>
