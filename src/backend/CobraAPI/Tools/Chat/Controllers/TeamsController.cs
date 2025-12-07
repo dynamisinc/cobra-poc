@@ -20,17 +20,20 @@ public class TeamsController : ControllerBase
 {
     private readonly CobraDbContext _dbContext;
     private readonly IExternalMessagingService _externalMessagingService;
+    private readonly IChannelService _channelService;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<TeamsController> _logger;
 
     public TeamsController(
         CobraDbContext dbContext,
         IExternalMessagingService externalMessagingService,
+        IChannelService channelService,
         IHttpContextAccessor httpContextAccessor,
         ILogger<TeamsController> logger)
     {
         _dbContext = dbContext;
         _externalMessagingService = externalMessagingService;
+        _channelService = channelService;
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
     }
@@ -516,6 +519,131 @@ public class TeamsController : ControllerBase
             conversationId = decodedConversationId
         });
     }
+
+    /// <summary>
+    /// Create a new COBRA channel from an external platform (Teams or GroupMe).
+    /// The channel will be created in the linked event and associated with the connector.
+    /// </summary>
+    [HttpPost("mappings/{mappingId:guid}/create-channel")]
+    [ProducesResponseType(typeof(CreateChannelFromBotResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CreateChannelFromBot(
+        Guid mappingId,
+        [FromBody] CreateChannelFromBotRequest request)
+    {
+        // Find the connector mapping
+        var mapping = await _dbContext.ExternalChannelMappings
+            .FirstOrDefaultAsync(m => m.Id == mappingId && m.IsActive);
+
+        if (mapping == null)
+        {
+            return NotFound(new { error = "Connector not found or inactive" });
+        }
+
+        // Connector must be linked to an event
+        if (!mapping.EventId.HasValue)
+        {
+            return BadRequest(new { error = "Connector is not linked to an event. Use 'link' command first." });
+        }
+
+        // Validate the event exists
+        var eventEntity = await _dbContext.Events.FirstOrDefaultAsync(e => e.Id == mapping.EventId.Value);
+        if (eventEntity == null)
+        {
+            return BadRequest(new { error = "Linked event not found" });
+        }
+
+        _logger.LogInformation(
+            "Creating channel '{ChannelName}' from {Platform} connector {MappingId} for event {EventId}",
+            request.ChannelName, mapping.Platform, mappingId, mapping.EventId);
+
+        try
+        {
+            // Create the channel using ChannelService
+            var createRequest = new CreateChannelRequest
+            {
+                EventId = mapping.EventId.Value,
+                Name = request.ChannelName,
+                Description = request.Description ?? $"Created from {mapping.Platform} by {request.CreatedByName ?? "bot user"}",
+                ChannelType = ChannelType.Custom,
+                IconName = request.IconName ?? GetDefaultIconForPlatform(mapping.Platform)
+            };
+
+            var channel = await _channelService.CreateChannelAsync(createRequest);
+
+            _logger.LogInformation(
+                "Created channel {ChannelId} '{ChannelName}' for event {EventId} from {Platform}",
+                channel.Id, channel.Name, mapping.EventId, mapping.Platform);
+
+            return Ok(new CreateChannelFromBotResponse
+            {
+                Success = true,
+                ChannelId = channel.Id,
+                ChannelName = channel.Name,
+                EventId = mapping.EventId.Value,
+                EventName = eventEntity.Name,
+                Message = $"Channel '{channel.Name}' created successfully"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create channel from bot for mapping {MappingId}", mappingId);
+            return BadRequest(new { error = $"Failed to create channel: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Gets the default icon for a platform.
+    /// </summary>
+    private static string GetDefaultIconForPlatform(ExternalPlatform platform)
+    {
+        return platform switch
+        {
+            ExternalPlatform.Teams => "microsoft",
+            ExternalPlatform.GroupMe => "comment-dots",
+            _ => "comments"
+        };
+    }
+}
+
+/// <summary>
+/// Request to create a channel from a bot command.
+/// </summary>
+public class CreateChannelFromBotRequest
+{
+    /// <summary>
+    /// The name of the channel to create.
+    /// </summary>
+    public required string ChannelName { get; set; }
+
+    /// <summary>
+    /// Optional description for the channel.
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Optional icon name (FontAwesome).
+    /// </summary>
+    public string? IconName { get; set; }
+
+    /// <summary>
+    /// Name of the user who requested the channel creation.
+    /// </summary>
+    public string? CreatedByName { get; set; }
+}
+
+/// <summary>
+/// Response from channel creation.
+/// </summary>
+public class CreateChannelFromBotResponse
+{
+    public bool Success { get; set; }
+    public Guid ChannelId { get; set; }
+    public string ChannelName { get; set; } = string.Empty;
+    public Guid EventId { get; set; }
+    public string? EventName { get; set; }
+    public string? Message { get; set; }
 }
 
 /// <summary>

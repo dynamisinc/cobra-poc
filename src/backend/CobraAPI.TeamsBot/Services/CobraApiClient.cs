@@ -619,6 +619,75 @@ public class CobraApiClient : ICobraApiClient
             return null;
         }
     }
+
+    /// <summary>
+    /// Creates a new COBRA channel from the bot.
+    /// </summary>
+    public async Task<CreateChannelResult?> CreateChannelAsync(
+        Guid mappingId,
+        string channelName,
+        string? description = null,
+        string? createdByName = null)
+    {
+        if (string.IsNullOrEmpty(_settings.BaseUrl))
+        {
+            _logger.LogWarning("CobraAPI BaseUrl is not configured. Cannot create channel.");
+            return null;
+        }
+
+        try
+        {
+            var request = new CreateChannelFromBotRequest
+            {
+                ChannelName = channelName,
+                Description = description,
+                CreatedByName = createdByName
+            };
+
+            var response = await _httpClient.PostAsJsonAsync(
+                $"api/chat/teams/mappings/{mappingId}/create-channel",
+                request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<CreateChannelResult>();
+                if (result != null)
+                {
+                    _logger.LogInformation(
+                        "Created channel '{ChannelName}' ({ChannelId}) for event {EventName}",
+                        result.ChannelName, result.ChannelId, result.EventName);
+                    return result;
+                }
+            }
+
+            var error = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning(
+                "Failed to create channel. Status: {StatusCode}, Error: {Error}",
+                response.StatusCode, error);
+
+            return new CreateChannelResult
+            {
+                Success = false,
+                Message = $"Failed to create channel: {response.StatusCode}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating channel for mapping {MappingId}", mappingId);
+            return null;
+        }
+    }
+}
+
+/// <summary>
+/// Request to create a channel from bot.
+/// </summary>
+internal class CreateChannelFromBotRequest
+{
+    public required string ChannelName { get; set; }
+    public string? Description { get; set; }
+    public string? IconName { get; set; }
+    public string? CreatedByName { get; set; }
 }
 
 /// <summary>

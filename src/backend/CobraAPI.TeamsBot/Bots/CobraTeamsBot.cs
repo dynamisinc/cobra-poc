@@ -183,6 +183,8 @@ public class CobraTeamsBot : TeamsActivityHandler
             return "unlink";
         if (lowerText.StartsWith("link"))
             return text; // Return full text for link command (may have event ID)
+        if (lowerText.StartsWith("create channel") || lowerText.StartsWith("create-channel") || lowerText.StartsWith("newchannel"))
+            return text; // Return full text for create command (has channel name)
 
         return null;
     }
@@ -211,6 +213,10 @@ public class CobraTeamsBot : TeamsActivityHandler
         {
             await HandleLinkCommandAsync(turnContext, command, conversationId, cancellationToken);
         }
+        else if (lowerCommand.StartsWith("create channel") || lowerCommand.StartsWith("create-channel") || lowerCommand.StartsWith("newchannel"))
+        {
+            await HandleCreateChannelCommandAsync(turnContext, command, conversationId, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -227,11 +233,13 @@ public class CobraTeamsBot : TeamsActivityHandler
 | `link` | Show available events to link to |
 | `link [event-id]` | Link this channel to a specific COBRA event |
 | `unlink` | Unlink this channel from the current event |
+| `create channel [name]` | Create a new channel in the linked event |
 
 **Examples:**
 • `status` - See if this channel is connected to COBRA
 • `link` - Browse available events
 • `link abc12345` - Link to event with ID abc12345
+• `create channel Logistics` - Create a channel named 'Logistics'
 
 _For more help, visit COBRA documentation or contact your administrator._";
 
@@ -423,6 +431,115 @@ _Showing up to 10 events. Use COBRA web interface for full list._";
         {
             await turnContext.SendActivityAsync(
                 MessageFactory.Text("⚠️ Failed to unlink channel. Try again or contact an administrator."),
+                cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Handles the create channel command - creates a new COBRA channel in the linked event.
+    /// </summary>
+    private async Task HandleCreateChannelCommandAsync(ITurnContext turnContext, string command, string conversationId, CancellationToken cancellationToken)
+    {
+        // Parse channel name from command
+        // Supports: "create channel My Channel", "create-channel My Channel", "newchannel My Channel"
+        var lowerCommand = command.ToLowerInvariant();
+        string channelName;
+
+        if (lowerCommand.StartsWith("create channel "))
+            channelName = command.Substring("create channel ".Length).Trim();
+        else if (lowerCommand.StartsWith("create-channel "))
+            channelName = command.Substring("create-channel ".Length).Trim();
+        else if (lowerCommand.StartsWith("newchannel "))
+            channelName = command.Substring("newchannel ".Length).Trim();
+        else
+        {
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text(@"**Create Channel**
+
+To create a new COBRA channel, use:
+`create channel [channel name]`
+
+**Examples:**
+• `create channel Logistics`
+• `create channel Fire Team Alpha`
+• `create channel Weather Updates`
+
+The channel will be created in your linked COBRA event."),
+                cancellationToken);
+            return;
+        }
+
+        // Validate channel name
+        if (string.IsNullOrWhiteSpace(channelName))
+        {
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text("⚠️ Please provide a channel name.\n\nExample: `create channel My Channel Name`"),
+                cancellationToken);
+            return;
+        }
+
+        if (channelName.Length > 100)
+        {
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text("⚠️ Channel name is too long. Please use 100 characters or less."),
+                cancellationToken);
+            return;
+        }
+
+        // Get connector status to check if linked to an event
+        var status = await _cobraApiClient.GetConnectorStatusAsync(conversationId);
+
+        if (status == null)
+        {
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text("⚠️ This channel is not registered with COBRA. Start a conversation first."),
+                cancellationToken);
+            return;
+        }
+
+        if (!status.IsLinked)
+        {
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text("⚠️ This channel is not linked to a COBRA event.\n\nUse `link` to connect to an event first."),
+                cancellationToken);
+            return;
+        }
+
+        // Get the sender name for attribution
+        var senderName = turnContext.Activity.From?.Name ?? "Teams User";
+
+        _logger.LogInformation(
+            "Creating channel '{ChannelName}' for mapping {MappingId} by {SenderName}",
+            channelName, status.MappingId, senderName);
+
+        // Create the channel
+        var result = await _cobraApiClient.CreateChannelAsync(
+            status.MappingId,
+            channelName,
+            description: null,
+            createdByName: senderName);
+
+        if (result == null)
+        {
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text("⚠️ Failed to create channel. Please try again or contact an administrator."),
+                cancellationToken);
+            return;
+        }
+
+        if (result.Success)
+        {
+            var successMessage = $@"✅ **Channel Created**
+
+**{result.ChannelName}** has been created in event **{result.EventName}**.
+
+View it in COBRA to start collaborating!";
+            await turnContext.SendActivityAsync(MessageFactory.Text(successMessage), cancellationToken);
+        }
+        else
+        {
+            await turnContext.SendActivityAsync(
+                MessageFactory.Text($"⚠️ Failed to create channel: {result.Message ?? "Unknown error"}"),
                 cancellationToken);
         }
     }

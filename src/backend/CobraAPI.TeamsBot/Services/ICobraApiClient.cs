@@ -95,6 +95,17 @@ public interface ICobraApiClient
     /// <param name="conversationId">The Teams conversation ID.</param>
     /// <returns>Connector status information.</returns>
     Task<ConnectorStatus?> GetConnectorStatusAsync(string conversationId);
+
+    /// <summary>
+    /// Creates a new COBRA channel from the bot.
+    /// The channel will be created in the event linked to this connector.
+    /// </summary>
+    /// <param name="mappingId">The connector mapping ID.</param>
+    /// <param name="channelName">Name for the new channel.</param>
+    /// <param name="description">Optional description.</param>
+    /// <param name="createdByName">Name of the user requesting creation.</param>
+    /// <returns>Channel creation result, or null on failure.</returns>
+    Task<CreateChannelResult?> CreateChannelAsync(Guid mappingId, string channelName, string? description = null, string? createdByName = null);
 }
 
 /// <summary>
@@ -133,6 +144,19 @@ public class ConnectorStatus
     public string? LinkedEventName { get; set; }
     public DateTime? LastActivityAt { get; set; }
     public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>
+/// Result from creating a channel via bot command.
+/// </summary>
+public class CreateChannelResult
+{
+    public bool Success { get; set; }
+    public Guid ChannelId { get; set; }
+    public string ChannelName { get; set; } = string.Empty;
+    public Guid EventId { get; set; }
+    public string? EventName { get; set; }
+    public string? Message { get; set; }
 }
 
 /// <summary>

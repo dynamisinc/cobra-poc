@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
   "manifestVersion": "1.17",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "id": "a4009dbb-e0f8-4546-b4dc-5c3fa5067796",
   "developer": {
     "name": "Dynamis",
@@ -55,6 +55,10 @@
             {
               "title": "unlink",
               "description": "Unlink this channel from COBRA"
+            },
+            {
+              "title": "create channel",
+              "description": "Create a new channel in the linked COBRA event"
             }
           ]
         }
