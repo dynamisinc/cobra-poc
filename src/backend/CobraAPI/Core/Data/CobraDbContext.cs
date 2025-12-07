@@ -292,7 +292,7 @@ public class CobraDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Platform).IsRequired().HasConversion<int>();
-            entity.Property(e => e.ExternalGroupId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.ExternalGroupId).IsRequired().HasMaxLength(500);
             entity.Property(e => e.ExternalGroupName).IsRequired().HasMaxLength(255);
             entity.Property(e => e.BotId).IsRequired().HasMaxLength(100);
             entity.Property(e => e.WebhookSecret).IsRequired().HasMaxLength(100);

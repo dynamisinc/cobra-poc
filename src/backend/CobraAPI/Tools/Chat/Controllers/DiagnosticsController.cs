@@ -172,6 +172,8 @@ public class DiagnosticsController : ControllerBase
     /// <summary>
     /// Gets the mapping ID for a Teams conversation ID.
     /// Used by TeamsBot to look up mappings.
+    /// Note: Event linking now happens via ChatThread.ExternalChannelMappingId (event-level linking).
+    /// The eventId returned is from the first linked channel (for backward compatibility).
     /// </summary>
     [HttpGet("teams-mapping/{conversationId}")]
     [AllowAnonymous]
@@ -184,13 +186,6 @@ public class DiagnosticsController : ControllerBase
             .Where(m => m.Platform == ExternalPlatform.Teams &&
                        m.ExternalGroupId == decodedId &&
                        m.IsActive)
-            .Select(m => new
-            {
-                mappingId = m.Id,
-                eventId = m.EventId,
-                teamsConversationId = m.ExternalGroupId,
-                webhookUrl = $"/api/webhooks/teams/{m.Id}"
-            })
             .FirstOrDefaultAsync();
 
         if (mapping == null)
@@ -198,7 +193,21 @@ public class DiagnosticsController : ControllerBase
             return NotFound(new { error = "No mapping found for this conversation" });
         }
 
-        return Ok(mapping);
+        // Check for linked channels via ChatThread.ExternalChannelMappingId (new event-level linking model)
+        // If any channel is linked to this mapping, use that channel's EventId
+        var linkedChannel = await _dbContext.ChatThreads
+            .Where(ct => ct.ExternalChannelMappingId == mapping.Id && ct.IsActive)
+            .Select(ct => new { ct.EventId, ct.Name })
+            .FirstOrDefaultAsync();
+
+        return Ok(new
+        {
+            mappingId = mapping.Id,
+            eventId = linkedChannel?.EventId ?? mapping.EventId, // Prefer new model, fall back to legacy
+            teamsConversationId = mapping.ExternalGroupId,
+            webhookUrl = $"/api/webhooks/teams/{mapping.Id}",
+            linkedChannelName = linkedChannel?.Name
+        });
     }
 
     /// <summary>

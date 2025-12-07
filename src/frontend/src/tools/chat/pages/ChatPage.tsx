@@ -181,15 +181,26 @@ export const ChatPage: React.FC = () => {
     toast.success(`Teams linked to "${updatedChannel.name}"! Messages will sync bidirectionally.`);
   };
 
-  // Disconnect external channel
-  const handleDisconnectChannel = async (channelId: string) => {
+  // Disconnect/unlink external channel from a COBRA channel
+  // Note: mappingId is the ExternalChannelMapping ID from the activeChannels list
+  // We need to find the ChatThread linked to this mapping and unlink it
+  const handleDisconnectChannel = async (mappingId: string) => {
     if (!currentEvent) return;
+
+    // Find the channel that is linked to this mapping
+    const linkedChannel = channels.find((c) => c.externalChannel?.id === mappingId);
+    if (!linkedChannel) {
+      toast.error('Could not find the linked channel');
+      return;
+    }
+
     try {
-      await chatService.deactivateExternalChannel(currentEvent.id, channelId);
-      setExternalChannels((prev) => prev.filter((c) => c.id !== channelId));
-      toast.success('External channel disconnected');
+      await chatService.unlinkExternalChannel(currentEvent.id, linkedChannel.id);
+      // Reload channels to reflect the unlink
+      loadChannels();
+      toast.success('Teams connector unlinked from channel');
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to disconnect channel';
+      const errorMsg = err instanceof Error ? err.message : 'Failed to unlink channel';
       toast.error(errorMsg);
     }
   };

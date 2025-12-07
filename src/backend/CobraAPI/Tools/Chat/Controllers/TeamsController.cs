@@ -169,26 +169,46 @@ public class TeamsController : ControllerBase
             query = query.Where(m => m.LastActivityAt == null || m.LastActivityAt < cutoff);
         }
 
-        var mappings = await query
+        var rawMappings = await query
             .OrderByDescending(m => m.LastActivityAt)
             .ThenByDescending(m => m.CreatedAt)
-            .Select(m => new TeamsConnectorDto
+            .Select(m => new
             {
-                MappingId = m.Id,
-                DisplayName = m.ExternalGroupName,
-                ConversationId = m.ExternalGroupId,
-                TenantId = m.TenantId,
-                LastActivityAt = m.LastActivityAt,
-                InstalledByName = m.InstalledByName,
-                IsEmulator = m.IsEmulator,
-                IsActive = m.IsActive,
+                m.Id,
+                m.ExternalGroupName,
+                m.ExternalGroupId,
+                m.TenantId,
+                m.LastActivityAt,
+                m.InstalledByName,
+                m.IsEmulator,
+                m.IsActive,
                 HasConversationReference = m.ConversationReferenceJson != null,
-                CreatedAt = m.CreatedAt,
-                LinkedEventId = m.EventId,
-                LinkedEventName = m.Event != null ? m.Event.Name : null,
-                IsLinked = m.EventId != null
+                m.CreatedAt,
+                m.EventId,
+                EventName = m.Event != null ? m.Event.Name : null
             })
             .ToListAsync();
+
+        // Ensure dates are properly marked as UTC for JSON serialization
+        // (EF Core returns DateTime with Kind=Unspecified, causing browser to misinterpret as local time)
+        var mappings = rawMappings.Select(m => new TeamsConnectorDto
+        {
+            MappingId = m.Id,
+            DisplayName = m.ExternalGroupName,
+            ConversationId = m.ExternalGroupId,
+            TenantId = m.TenantId,
+            LastActivityAt = m.LastActivityAt.HasValue
+                ? DateTime.SpecifyKind(m.LastActivityAt.Value, DateTimeKind.Utc)
+                : null,
+            InstalledByName = m.InstalledByName,
+            IsEmulator = m.IsEmulator,
+            IsActive = m.IsActive,
+            HasConversationReference = m.HasConversationReference,
+            CreatedAt = DateTime.SpecifyKind(m.CreatedAt, DateTimeKind.Utc),
+            LinkedEventId = m.EventId,
+            LinkedEventName = m.EventName,
+            IsLinked = m.EventId != null
+        }).ToList();
 
         return Ok(new ListTeamsConnectorsResponse
         {

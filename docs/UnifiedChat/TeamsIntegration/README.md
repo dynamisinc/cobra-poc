@@ -8,13 +8,34 @@ This folder contains comprehensive documentation for the Microsoft Teams integra
 
 ---
 
+## Quick Start (Start Here!)
+
+> **IMPORTANT (December 2025):** Multi-Tenant Bot Type is deprecated after July 31, 2025.
+> Use **Single-Tenant Bot + Multi-Tenant App Registration** for all new bots.
+
+| Document | When to Use |
+|----------|-------------|
+| **[TEAMS-BOT-SETUP.md](TEAMS-BOT-SETUP.md)** | **START HERE** - Complete Azure setup, local dev, multi-tenant config |
+| **[TEAMS-BOT-TROUBLESHOOTING.md](TEAMS-BOT-TROUBLESHOOTING.md)** | 401 errors, auth issues, dev tunnel problems, ConnectionsMap errors |
+
+### Critical Configuration Notes
+
+- **Azure Bot Type**: Must be **Single Tenant** (Multi-Tenant is deprecated)
+- **App Registration**: Must be **Multi-Tenant** (for cross-org support)
+- **Tenant ID in config**: Use your **bot's tenant**, NOT the target customer's tenant
+- **ConnectionsMap**: **REQUIRED** in appsettings for proactive messaging (COBRA -> Teams)
+- **API Permissions**: Microsoft Graph `User.Read` with admin consent
+
+---
+
 ## Document Index
 
-### Planning & Requirements
+### Setup & Troubleshooting (Primary)
 
 | Document | Audience | Description |
 |----------|----------|-------------|
-| [TEAMS-INTEGRATION-USER-STORIES.md](../TEAMS-INTEGRATION-USER-STORIES.md) | Product, Dev | Complete user stories with UC-TI prefix |
+| **[TEAMS-BOT-SETUP.md](TEAMS-BOT-SETUP.md)** | Developers | **Primary setup guide** - Azure config, local dev, deployment |
+| **[TEAMS-BOT-TROUBLESHOOTING.md](TEAMS-BOT-TROUBLESHOOTING.md)** | Developers | **Error solutions** - 401s, auth, tunnels, database issues |
 
 ### Customer-Facing Documentation
 
@@ -29,9 +50,16 @@ This folder contains comprehensive documentation for the Microsoft Teams integra
 
 | Document | Audience | Description |
 |----------|----------|-------------|
-| [TEAMS-DEVELOPER-DOCUMENTATION.md](TEAMS-DEVELOPER-DOCUMENTATION.md) | Developers | Architecture, implementation, troubleshooting |
+| [TEAMS-DEVELOPER-DOCUMENTATION.md](TEAMS-DEVELOPER-DOCUMENTATION.md) | Developers | Architecture, implementation details |
 | [TEAMS-SIDELOADING-GUIDE.md](TEAMS-SIDELOADING-GUIDE.md) | Developers, QA | Testing and local development setup |
 | [TEAMS-VIDEO-WALKTHROUGH-SCRIPT.md](TEAMS-VIDEO-WALKTHROUGH-SCRIPT.md) | Training | Script for demo/training video |
+| [TEAMS-MIGRATION-STATUS.md](TEAMS-MIGRATION-STATUS.md) | Developers | SDK migration status and context |
+
+### Planning & Requirements
+
+| Document | Audience | Description |
+|----------|----------|-------------|
+| [TEAMS-INTEGRATION-USER-STORIES.md](../TEAMS-INTEGRATION-USER-STORIES.md) | Product, Dev | Complete user stories with UC-TI prefix |
 
 ---
 
@@ -101,13 +129,15 @@ All user stories use the **UC-TI** prefix (Unified Communications - Teams Integr
 
 | Component | Technology |
 |-----------|------------|
-| Bot Framework | Microsoft Bot Framework SDK v4 |
-| Runtime | .NET 8 / ASP.NET Core |
+| Bot SDK | **Microsoft 365 Agents SDK** (successor to Bot Framework SDK v4) |
+| Runtime | .NET 10 / ASP.NET Core |
 | Database | SQL Server (shared with UC POC) |
 | Real-time | SignalR (shared with UC POC) |
 | Cards | Adaptive Cards v1.4 |
-| Hosting | Azure App Service (or Azure Functions) |
-| Auth | Azure AD + RSC |
+| Hosting | Azure App Service |
+| Auth | Azure AD (Single-Tenant Bot + Multi-Tenant App Registration) |
+
+> **Note:** The project was migrated from Bot Framework SDK v4 to Microsoft 365 Agents SDK in December 2025.
 
 ---
 

@@ -84,8 +84,8 @@ public interface IExternalMessagingService
 
     /// <summary>
     /// Gets available Teams connectors that can be linked to channels in an event.
-    /// Returns connectors that are active, have valid ConversationReferences,
-    /// and are not emulator connections.
+    /// Returns connectors that are active and have valid ConversationReferences.
+    /// Emulators are included for development/testing purposes.
     /// </summary>
     /// <param name="eventId">The event ID to check for existing links.</param>
     /// <returns>List of available Teams connectors with their link status for this event.</returns>

@@ -672,8 +672,8 @@ namespace ChecklistAPI.Migrations
 
                     b.Property<string>("ExternalGroupId")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("ExternalGroupName")
                         .IsRequired()

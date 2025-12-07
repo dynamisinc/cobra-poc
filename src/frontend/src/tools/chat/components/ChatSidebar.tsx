@@ -154,18 +154,31 @@ export const ChatSidebar: React.FC = () => {
     toast.success(`Teams linked to "${updatedChannel.name}"! Messages will sync bidirectionally.`);
   };
 
-  // Disconnect external channel
-  const handleDisconnectChannel = async (channelId: string) => {
+  // Disconnect/unlink external channel from a COBRA channel
+  // Note: mappingId is the ExternalChannelMapping ID from the activeChannels list
+  // We need to find a channel linked to this mapping and unlink it
+  const handleDisconnectChannel = async (mappingId: string) => {
     if (!currentEvent) return;
-    try {
-      await chatService.deactivateExternalChannel(currentEvent.id, channelId);
-      setExternalChannels((prev) => prev.filter((c) => c.id !== channelId));
-      // Refresh channel list to remove deactivated external channel
-      setChannelListRefreshKey((prev) => prev + 1);
-      toast.success('External channel disconnected');
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to disconnect channel';
-      toast.error(errorMsg);
+
+    // If selected channel is linked to this mapping, unlink it
+    if (selectedChannel?.externalChannel?.id === mappingId) {
+      try {
+        await chatService.unlinkExternalChannel(currentEvent.id, selectedChannel.id);
+        // Update the selected channel to reflect the unlink
+        setSelectedChannel({ ...selectedChannel, externalChannel: undefined });
+        // Refresh channel list and external channels
+        setChannelListRefreshKey((prev) => prev + 1);
+        // Reload external channels
+        const data = await chatService.getExternalChannels(currentEvent.id);
+        setExternalChannels(data);
+        toast.success('Teams connector unlinked from channel');
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to unlink channel';
+        toast.error(errorMsg);
+      }
+    } else {
+      // Fallback: try to find any channel with this mapping (shouldn't normally happen in sidebar)
+      toast.error('Please select the linked channel first to unlink Teams');
     }
   };
 

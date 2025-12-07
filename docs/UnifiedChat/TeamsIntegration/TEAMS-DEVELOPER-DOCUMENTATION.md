@@ -243,21 +243,46 @@ app.Run();
 
 ### Configuration (appsettings.json)
 
+> **IMPORTANT UPDATE (December 2025):** Multi-Tenant Bot Type is deprecated after July 31, 2025.
+> Use **Single-Tenant Bot + Multi-Tenant App Registration** for new bots.
+> See [TEAMS-BOT-SETUP.md](./TEAMS-BOT-SETUP.md) for the correct configuration pattern.
+
 ```json
 {
-  "MicrosoftAppType": "MultiTenant",
+  "MicrosoftAppType": "SingleTenant",
   "MicrosoftAppId": "{{BOT_APP_ID}}",
   "MicrosoftAppPassword": "{{BOT_APP_SECRET}}",
-  "MicrosoftAppTenantId": "",
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=...;Database=CobraUC;..."
+  "MicrosoftAppTenantId": "{{YOUR_BOT_TENANT_ID}}",
+  "TokenValidation": {
+    "Enabled": false
   },
-  "Cobra": {
-    "ApiBaseUrl": "https://cbr-shr-eu-api-app-q.azurewebsites.net",
-    "SignalRHubUrl": "https://cobra-signalr.azurewebsites.net/chathub"
+  "Connections": {
+    "ServiceConnection": {
+      "Settings": {
+        "AuthType": "ClientSecret",
+        "ClientId": "{{BOT_APP_ID}}",
+        "ClientSecret": "{{BOT_APP_SECRET}}",
+        "AuthorityEndpoint": "https://login.microsoftonline.com/{{YOUR_BOT_TENANT_ID}}",
+        "Scopes": ["https://api.botframework.com/.default"]
+      }
+    }
+  },
+  "ConnectionsMap": [
+    { "ServiceUrl": "*", "Connection": "ServiceConnection" }
+  ],
+  "Bot": {
+    "DisplayName": "COBRA Teams Bot",
+    "Description": "COBRA Event Management Bot"
+  },
+  "CobraApi": {
+    "BaseUrl": "http://localhost:5000",
+    "ApiKey": "dev-teams-bot-key-12345"
   }
 }
 ```
+
+**CRITICAL:** The `ConnectionsMap` section is **required** for proactive messaging (COBRA -> Teams).
+Without it, outbound messages will fail with "Authentication configuration section 'Settings' not Found".
 
 ---
 

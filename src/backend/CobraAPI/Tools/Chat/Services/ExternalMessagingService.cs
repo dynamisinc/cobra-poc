@@ -378,7 +378,7 @@ public class ExternalMessagingService : IExternalMessagingService
 
     /// <summary>
     /// Unlinks an external platform from a channel without deleting the channel.
-    /// Only deactivates the mapping if no other channels are using it.
+    /// The connector remains active and available for re-linking to other channels.
     /// </summary>
     public async Task UnlinkExternalChannelAsync(Guid channelId)
     {
@@ -398,38 +398,20 @@ public class ExternalMessagingService : IExternalMessagingService
 
         var mappingId = channel.ExternalChannelMappingId.Value;
         var eventId = channel.EventId;
+        var mappingName = channel.ExternalChannelMapping.ExternalGroupName;
 
-        // Check if other channels are still using this mapping
-        var otherChannelsUsingMapping = await _dbContext.ChatThreads
-            .CountAsync(ct => ct.ExternalChannelMappingId == mappingId
-                           && ct.Id != channelId
-                           && ct.IsActive);
-
-        // Unlink this channel from the mapping
+        // Unlink this channel from the mapping (but keep the mapping active for future use)
         channel.ExternalChannelMappingId = null;
         channel.LastModifiedBy = userContext.Email;
         channel.LastModifiedAt = DateTime.UtcNow;
 
-        // Only deactivate the mapping if no other channels are using it
-        if (otherChannelsUsingMapping == 0)
-        {
-            channel.ExternalChannelMapping.IsActive = false;
-            channel.ExternalChannelMapping.LastModifiedBy = userContext.Email;
-            channel.ExternalChannelMapping.LastModifiedAt = DateTime.UtcNow;
+        _logger.LogInformation(
+            "Unlinked channel {ChannelId} ({ChannelName}) from Teams connector {MappingId} ({MappingName}). " +
+            "Connector remains available for re-linking.",
+            channelId, channel.Name, mappingId, mappingName);
 
-            _logger.LogInformation("Unlinked and deactivated external channel mapping {MappingId} from channel {ChannelId}",
-                mappingId, channelId);
-
-            await _dbContext.SaveChangesAsync();
-            await _chatHubService.BroadcastChannelDisconnectedAsync(eventId, mappingId);
-        }
-        else
-        {
-            _logger.LogInformation("Unlinked channel {ChannelId} from mapping {MappingId}, but mapping remains active for {OtherCount} other channel(s)",
-                channelId, mappingId, otherChannelsUsingMapping);
-
-            await _dbContext.SaveChangesAsync();
-        }
+        await _dbContext.SaveChangesAsync();
+        await _chatHubService.BroadcastChannelDisconnectedAsync(eventId, mappingId);
     }
 
     /// <summary>
@@ -1015,16 +997,16 @@ public class ExternalMessagingService : IExternalMessagingService
 
     /// <summary>
     /// Gets available Teams connectors that can be linked to channels in an event.
-    /// Returns connectors that are active, have valid ConversationReferences,
-    /// and are not emulator connections.
+    /// Returns connectors that are active and have valid ConversationReferences.
+    /// Emulators are included for development/testing purposes.
     /// </summary>
     public async Task<List<AvailableTeamsConnectorDto>> GetAvailableTeamsConnectorsAsync(Guid eventId)
     {
-        // Get all active, non-emulator Teams connectors with conversation references
+        // Get all active Teams connectors with conversation references
+        // Note: Emulators are included for development/testing - filter in production if needed
         var connectors = await _dbContext.ExternalChannelMappings
             .Where(m => m.Platform == ExternalPlatform.Teams
                      && m.IsActive
-                     && !m.IsEmulator
                      && m.ConversationReferenceJson != null)
             .OrderByDescending(m => m.LastActivityAt)
             .ThenByDescending(m => m.CreatedAt)
