@@ -157,6 +157,17 @@ public class CreateChannelResult
     public Guid EventId { get; set; }
     public string? EventName { get; set; }
     public string? Message { get; set; }
+
+    /// <summary>
+    /// The external channel mapping ID the channel is linked to.
+    /// This enables bidirectional messaging between the COBRA channel and this Teams connector.
+    /// </summary>
+    public Guid? LinkedMappingId { get; set; }
+
+    /// <summary>
+    /// True if an existing channel was linked (rather than a new channel being created).
+    /// </summary>
+    public bool WasExisting { get; set; }
 }
 
 /// <summary>

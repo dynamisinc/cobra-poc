@@ -89,6 +89,13 @@ public class CreateChannelRequest
     /// If ChannelType is Position, this should be set.
     /// </summary>
     public Guid? PositionId { get; set; }
+
+    /// <summary>
+    /// Optional external channel mapping ID for channels created from external platforms.
+    /// When set, the channel is automatically linked to the external connector.
+    /// Used when creating channels from Teams/GroupMe bot commands.
+    /// </summary>
+    public Guid? ExternalChannelMappingId { get; set; }
 }
 
 /// <summary>

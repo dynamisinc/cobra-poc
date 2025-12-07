@@ -72,7 +72,12 @@ public class ChannelService : IChannelService
             .MaxAsync(ct => (int?)ct.DisplayOrder) ?? -1;
 
         // If PositionId is provided, set channel type to Position
-        var channelType = request.PositionId.HasValue ? ChannelType.Position : request.ChannelType;
+        // If ExternalChannelMappingId is provided, set channel type to External
+        var channelType = request.PositionId.HasValue
+            ? ChannelType.Position
+            : request.ExternalChannelMappingId.HasValue
+                ? ChannelType.External
+                : request.ChannelType;
 
         var channel = new ChatThread
         {
@@ -85,6 +90,7 @@ public class ChannelService : IChannelService
             IconName = request.IconName,
             Color = request.Color,
             PositionId = request.PositionId,
+            ExternalChannelMappingId = request.ExternalChannelMappingId,
             IsDefaultEventThread = false,
             IsActive = true,
             CreatedBy = userContext.Email,
@@ -104,8 +110,8 @@ public class ChannelService : IChannelService
         }
 
         _logger.LogInformation(
-            "Created channel {ChannelId} '{Name}' of type {Type} for event {EventId}, PositionId: {PositionId}",
-            channel.Id, channel.Name, channel.ChannelType, request.EventId, request.PositionId);
+            "Created channel {ChannelId} '{Name}' of type {Type} for event {EventId}, PositionId: {PositionId}, ExternalMappingId: {ExternalMappingId}",
+            channel.Id, channel.Name, channel.ChannelType, request.EventId, request.PositionId, request.ExternalChannelMappingId);
 
         return MapToDto(channel);
     }

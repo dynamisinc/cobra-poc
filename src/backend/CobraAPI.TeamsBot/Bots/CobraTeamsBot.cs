@@ -529,11 +529,30 @@ The channel will be created in your linked COBRA event."),
 
         if (result.Success)
         {
-            var successMessage = $@"✅ **Channel Created**
+            var linkedMessage = result.LinkedMappingId.HasValue
+                ? "\n\n🔗 Messages from this Teams channel will automatically sync with the COBRA channel."
+                : "";
 
-**{result.ChannelName}** has been created in event **{result.EventName}**.
+            string successMessage;
+            if (result.WasExisting)
+            {
+                // Linked to existing channel
+                successMessage = $@"✅ **Channel Linked**
+
+Existing channel **{result.ChannelName}** in event **{result.EventName}** has been linked to this Teams channel.{linkedMessage}
 
 View it in COBRA to start collaborating!";
+            }
+            else
+            {
+                // Created new channel
+                successMessage = $@"✅ **Channel Created**
+
+**{result.ChannelName}** has been created in event **{result.EventName}**.{linkedMessage}
+
+View it in COBRA to start collaborating!";
+            }
+
             await turnContext.SendActivityAsync(MessageFactory.Text(successMessage), cancellationToken);
         }
         else

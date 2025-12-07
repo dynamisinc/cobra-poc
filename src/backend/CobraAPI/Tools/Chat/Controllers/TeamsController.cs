@@ -554,6 +554,56 @@ public class TeamsController : ControllerBase
             return BadRequest(new { error = "Linked event not found" });
         }
 
+        // Check if a channel with this name already exists in the event
+        var existingChannel = await _dbContext.ChatThreads
+            .FirstOrDefaultAsync(ct =>
+                ct.EventId == mapping.EventId.Value &&
+                ct.IsActive &&
+                ct.Name.ToLower() == request.ChannelName.ToLower());
+
+        if (existingChannel != null)
+        {
+            // Channel exists - link it to this connector instead of creating a new one
+            _logger.LogInformation(
+                "Channel '{ChannelName}' already exists in event {EventId} (ID: {ExistingChannelId}). Linking to connector {MappingId}.",
+                existingChannel.Name, mapping.EventId, existingChannel.Id, mappingId);
+
+            // Check if already linked to a different connector
+            if (existingChannel.ExternalChannelMappingId.HasValue &&
+                existingChannel.ExternalChannelMappingId.Value != mappingId)
+            {
+                _logger.LogWarning(
+                    "Channel '{ChannelName}' is already linked to a different connector {ExistingMappingId}",
+                    existingChannel.Name, existingChannel.ExternalChannelMappingId);
+
+                return BadRequest(new
+                {
+                    error = $"Channel '{existingChannel.Name}' is already linked to a different external connector.",
+                    existingChannelId = existingChannel.Id
+                });
+            }
+
+            // Link existing channel to this connector
+            existingChannel.ExternalChannelMappingId = mappingId;
+            existingChannel.ChannelType = ChannelType.External;
+            existingChannel.LastModifiedBy = request.CreatedByName ?? "TeamsBot";
+            existingChannel.LastModifiedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync();
+
+            return Ok(new CreateChannelFromBotResponse
+            {
+                Success = true,
+                ChannelId = existingChannel.Id,
+                ChannelName = existingChannel.Name,
+                EventId = mapping.EventId.Value,
+                EventName = eventEntity.Name,
+                Message = $"Existing channel '{existingChannel.Name}' linked to this connector",
+                LinkedMappingId = mappingId,
+                WasExisting = true
+            });
+        }
+
         _logger.LogInformation(
             "Creating channel '{ChannelName}' from {Platform} connector {MappingId} for event {EventId}",
             request.ChannelName, mapping.Platform, mappingId, mapping.EventId);
@@ -561,20 +611,22 @@ public class TeamsController : ControllerBase
         try
         {
             // Create the channel using ChannelService
+            // Auto-link to the connector by setting ExternalChannelMappingId
             var createRequest = new CreateChannelRequest
             {
                 EventId = mapping.EventId.Value,
                 Name = request.ChannelName,
                 Description = request.Description ?? $"Created from {mapping.Platform} by {request.CreatedByName ?? "bot user"}",
-                ChannelType = ChannelType.Custom,
-                IconName = request.IconName ?? GetDefaultIconForPlatform(mapping.Platform)
+                ChannelType = ChannelType.External, // Will be set to External due to ExternalChannelMappingId
+                IconName = request.IconName ?? GetDefaultIconForPlatform(mapping.Platform),
+                ExternalChannelMappingId = mappingId // Auto-link to the connector
             };
 
             var channel = await _channelService.CreateChannelAsync(createRequest);
 
             _logger.LogInformation(
-                "Created channel {ChannelId} '{ChannelName}' for event {EventId} from {Platform}",
-                channel.Id, channel.Name, mapping.EventId, mapping.Platform);
+                "Created channel {ChannelId} '{ChannelName}' for event {EventId} from {Platform}, linked to connector {MappingId}",
+                channel.Id, channel.Name, mapping.EventId, mapping.Platform, mappingId);
 
             return Ok(new CreateChannelFromBotResponse
             {
@@ -583,7 +635,9 @@ public class TeamsController : ControllerBase
                 ChannelName = channel.Name,
                 EventId = mapping.EventId.Value,
                 EventName = eventEntity.Name,
-                Message = $"Channel '{channel.Name}' created successfully"
+                Message = $"Channel '{channel.Name}' created and linked to this connector",
+                LinkedMappingId = mappingId,
+                WasExisting = false
             });
         }
         catch (Exception ex)
@@ -644,6 +698,17 @@ public class CreateChannelFromBotResponse
     public Guid EventId { get; set; }
     public string? EventName { get; set; }
     public string? Message { get; set; }
+
+    /// <summary>
+    /// The external channel mapping ID the channel is linked to.
+    /// This enables bidirectional messaging between the COBRA channel and the external platform.
+    /// </summary>
+    public Guid? LinkedMappingId { get; set; }
+
+    /// <summary>
+    /// True if an existing channel was linked (rather than a new channel being created).
+    /// </summary>
+    public bool WasExisting { get; set; }
 }
 
 /// <summary>

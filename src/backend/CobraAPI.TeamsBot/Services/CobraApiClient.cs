@@ -660,15 +660,33 @@ public class CobraApiClient : ICobraApiClient
                 }
             }
 
-            var error = await response.Content.ReadAsStringAsync();
+            // Try to parse error response for better error messages
+            var errorContent = await response.Content.ReadAsStringAsync();
             _logger.LogWarning(
                 "Failed to create channel. Status: {StatusCode}, Error: {Error}",
-                response.StatusCode, error);
+                response.StatusCode, errorContent);
+
+            // Try to extract error message from JSON response
+            string errorMessage = $"Failed to create channel: {response.StatusCode}";
+            try
+            {
+                var errorResponse = System.Text.Json.JsonSerializer.Deserialize<ErrorResponse>(
+                    errorContent,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (!string.IsNullOrEmpty(errorResponse?.Error))
+                {
+                    errorMessage = errorResponse.Error;
+                }
+            }
+            catch
+            {
+                // Ignore JSON parsing errors, use default message
+            }
 
             return new CreateChannelResult
             {
                 Success = false,
-                Message = $"Failed to create channel: {response.StatusCode}"
+                Message = errorMessage
             };
         }
         catch (Exception ex)
@@ -734,6 +752,14 @@ public class MappingLookupResponse
     public Guid? EventId { get; set; }
     public string TeamsConversationId { get; set; } = string.Empty;
     public string WebhookUrl { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Generic error response from API.
+/// </summary>
+internal class ErrorResponse
+{
+    public string? Error { get; set; }
 }
 
 /// <summary>
